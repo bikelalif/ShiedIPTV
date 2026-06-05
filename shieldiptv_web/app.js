@@ -663,6 +663,13 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initApp() {
+    // If loaded over HTTPS, attempt to redirect to HTTP to avoid mixed content blocking with HTTP IPTV servers
+    if (window.location.protocol === 'https:') {
+        const httpUrl = window.location.href.replace('https://', 'http://');
+        window.location.replace(httpUrl);
+        return; // Stop initialization, page will reload on HTTP
+    }
+
     setupEventListeners();
     setupSpatialNavigation();
     
