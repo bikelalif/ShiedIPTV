@@ -2,6 +2,18 @@
    SHIELDIPTV APP ENGINE (PURE VANILLA JS) - V4
    ========================================================================== */
 
+// CORS Proxy URL (Cloudflare Worker) - Used to proxy HTTP IPTV requests through HTTPS
+// Replace this with your own Cloudflare Worker URL after deployment
+const CORS_PROXY_URL = 'https://shieldiptv-proxy.VOTRE_COMPTE.workers.dev';
+
+// Helper: wraps a URL through the CORS proxy if the page is loaded over HTTPS
+function proxyUrl(url) {
+    if (window.location.protocol === 'https:' && url.startsWith('http://')) {
+        return `${CORS_PROXY_URL}/?url=${encodeURIComponent(url)}`;
+    }
+    return url;
+}
+
 // Fallback dynamic placeholder SVG Data-URIs (Resolves poster loading delays & mixed content issues)
 const PLACEHOLDERS = {
     live: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150" viewBox="0 0 300 150"><rect width="300" height="150" fill="%230f1423"/><text x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Outfit,sans-serif" font-size="18" fill="%2364748b">Direct TV</text></svg>',
@@ -663,13 +675,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initApp() {
-    // If loaded over HTTPS, attempt to redirect to HTTP to avoid mixed content blocking with HTTP IPTV servers
-    if (window.location.protocol === 'https:') {
-        const httpUrl = window.location.href.replace('https://', 'http://');
-        window.location.replace(httpUrl);
-        return; // Stop initialization, page will reload on HTTP
-    }
-
     setupEventListeners();
     setupSpatialNavigation();
     
@@ -753,7 +758,7 @@ async function resolveUrlWithDoH(url) {
 // 4. API Request Handler
 async function makeApiCall(action = '', additionalParams = '') {
     const rawUrl = `${state.serverUrl}/player_api.php?username=${state.username}&password=${state.password}${action ? `&action=${action}` : ''}${additionalParams}`;
-    const resolvedUrl = await resolveUrlWithDoH(rawUrl);
+    const resolvedUrl = proxyUrl(await resolveUrlWithDoH(rawUrl));
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
@@ -1382,6 +1387,7 @@ function launchVideoPlayer(url, title, logoUrl) {
     destroyMpegtsPlayer();
     
     resolveUrlWithDoH(url).then(resolvedStreamUrl => {
+        resolvedStreamUrl = proxyUrl(resolvedStreamUrl);
         const isTsStream = resolvedStreamUrl.includes('.ts') || resolvedStreamUrl.includes('/live/');
         
         // Try mpegts.js if it is a TS stream and supported
@@ -1481,6 +1487,7 @@ async function loadLivePreview(item) {
     const streamUrl = `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.ts`;
     
     resolveUrlWithDoH(streamUrl).then(resolvedUrl => {
+        resolvedUrl = proxyUrl(resolvedUrl);
         const isTsStream = resolvedUrl.includes('.ts') || resolvedUrl.includes('/live/');
         
         if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
