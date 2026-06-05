@@ -1,0 +1,102 @@
+[
+  {
+    "category_id": "561",
+    "category_name": "VOD - NETFLIX [MULTISUB]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "1141",
+    "category_name": "VOD - NETFLIX HEVC [MULTISUB]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "1116",
+    "category_name": "VOD - NETFLIX ASIA [MULTISUB]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "562",
+    "category_name": "VOD - NETFLIX KIDS [MULTISUB]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "973",
+    "category_name": "VOD - DISNEY+ [MULTISUB]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "974",
+    "category_name": "VOD - DISNEY+ KIDS [MULTISUB]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "975",
+    "category_name": "VOD - APPLE+ [MULTISUB]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "976",
+    "category_name": "VOD - APPLE+ KIDS [MULTISUB]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "626",
+    "category_name": "VOD - FRENCH 4K",
+    "parent_id": 0
+  },
+  {
+    "category_id": "857",
+    "category_name": "VOD - RÉCEMMENT AJOUTER [FR]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "714",
+    "category_name": "VOD - NETFLIX [FR]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "1214",
+    "category_name": "VOD - PRIME+ [FR]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "1461",
+    "category_name": "VOD - APPLE TV [FR]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "716",
+    "category_name": "VOD - DISNEY+ [FR]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "582",
+    "category_name": "VOD - ANIME [FR]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "638",
+    "category_name": "VOD - ACTION [FR]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "1038",
+    "category_name": "VOD - OTHERS [FR]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "1561",
+    "category_name": "VOD - COMEDIE [FR]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "1565",
+    "category_name": "VOD - DRAME [FR]",
+    "parent_id": 0
+  },
+  {
+    "category_id": "1564",
+    "category_name": "VOD - ROMANCE [FR]",
+    "parent_id": 0
+  }
+]
