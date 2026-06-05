@@ -4,7 +4,7 @@
 
 // CORS Proxy URL (Cloudflare Worker) - Used to proxy HTTP IPTV requests through HTTPS
 // Replace this with your own Cloudflare Worker URL after deployment
-const CORS_PROXY_URL = 'https://shieldiptv-proxy.VOTRE_COMPTE.workers.dev';
+const CORS_PROXY_URL = 'https://shieldiptv-proxy.bilalkefif243.workers.dev';
 
 // Helper: wraps a URL through the CORS proxy if the page is loaded over HTTPS
 function proxyUrl(url) {
