@@ -667,6 +667,9 @@ const state = {
     zapDrawerOpen: false,
     mpegtsPlayer: null, // mpegts.js instance reference
     previewMpegtsPlayer: null, // mpegts.js preview instance reference
+    reconnectTimer: null,
+    reconnectAttempts: 0,
+    maxReconnectAttempts: 5,
     
     // Series details page state
     currentSeriesDetails: null,
@@ -1452,6 +1455,17 @@ function launchVideoPlayer(url, title, logoUrl) {
                 });
                 
                 state.mpegtsPlayer.attachMediaElement(video);
+                
+                state.mpegtsPlayer.on(mpegts.Events.ERROR, (type, detail, info) => {
+                    console.warn(`[mpegts.js] Error: ${type}, ${detail}. Reconnecting.`);
+                    if (!state.reconnectTimer) {
+                        state.reconnectTimer = setTimeout(() => {
+                            state.reconnectTimer = null;
+                            attemptReconnection();
+                        }, 2000);
+                    }
+                });
+                
                 state.mpegtsPlayer.load();
                 state.mpegtsPlayer.play().catch(e => {
                     console.warn("Autoplay failed, trying muted...", e);
@@ -1475,8 +1489,33 @@ function launchVideoPlayer(url, title, logoUrl) {
         }
     });
     
-    video.onwaiting = () => { playerLoader.style.display = "flex"; };
-    video.onplaying = () => { playerLoader.style.display = "none"; };
+    video.onwaiting = () => { 
+        playerLoader.style.display = "flex"; 
+        
+        // Start a reconnect timeout if it is a live stream and not already trying
+        if (isLive && !state.reconnectTimer) {
+            state.reconnectTimer = setTimeout(() => {
+                state.reconnectTimer = null;
+                attemptReconnection();
+            }, 6000); // Wait 6 seconds of stall before reconnecting
+        }
+    };
+    video.onplaying = () => { 
+        playerLoader.style.display = "none"; 
+        
+        // Clear reconnect timers on success
+        if (state.reconnectTimer) {
+            clearTimeout(state.reconnectTimer);
+            state.reconnectTimer = null;
+        }
+        state.reconnectAttempts = 0;
+        
+        // Restore loader text
+        const loaderText = playerLoader.querySelector(".player-loader-text");
+        if (loaderText) {
+            loaderText.innerText = t.playerLoaderText;
+        }
+    };
     video.onplay = () => {
         document.getElementById("player-icon-play").innerText = "pause";
     };
@@ -1484,9 +1523,19 @@ function launchVideoPlayer(url, title, logoUrl) {
         document.getElementById("player-icon-play").innerText = "play_arrow";
     };
     video.onerror = () => {
-        playerLoader.style.display = "none";
-        showToast(t.playerStreamError, 5000);
-        closeVideoPlayer();
+        if (isLive) {
+            console.warn("[Player] Video error event fired. Attempting recovery.");
+            if (!state.reconnectTimer) {
+                state.reconnectTimer = setTimeout(() => {
+                    state.reconnectTimer = null;
+                    attemptReconnection();
+                }, 2000);
+            }
+        } else {
+            playerLoader.style.display = "none";
+            showToast(t.playerStreamError, 5000);
+            closeVideoPlayer();
+        }
     };
     
     video.ontimeupdate = () => {
@@ -1517,6 +1566,89 @@ function destroyMpegtsPlayer() {
         }
         state.mpegtsPlayer = null;
     }
+}
+
+function attemptReconnection() {
+    const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
+    if (!isLive) return; // Only auto-reconnect for live streams as requested
+    
+    if (state.reconnectAttempts >= state.maxReconnectAttempts) {
+        console.warn("[Player] Max reconnect attempts reached. Stopping.");
+        const t = TRANSLATIONS[state.language || 'fr'];
+        showToast(t.playerStreamError || "Erreur : Impossible de lire ce flux vidéo.", 5000);
+        closeVideoPlayer();
+        return;
+    }
+    
+    state.reconnectAttempts++;
+    console.log(`[Player] Attempting reconnection ${state.reconnectAttempts}/${state.maxReconnectAttempts}...`);
+    
+    // Show loader and update text
+    const playerLoader = document.getElementById("player-loader");
+    if (playerLoader) {
+        playerLoader.style.display = "flex";
+        const loaderText = playerLoader.querySelector(".player-loader-text");
+        if (loaderText) {
+            loaderText.innerText = state.language === 'fr' ? `Reconnexion (${state.reconnectAttempts})...` : `Reconnecting (${state.reconnectAttempts})...`;
+        }
+    }
+    
+    // Reload the stream
+    const url = state.currentPlayingStreamUrl;
+    const video = document.getElementById("video-player");
+    
+    // Clean up players first
+    destroyMpegtsPlayer();
+    video.removeAttribute("src");
+    try { video.load(); } catch(e){}
+    
+    // Restart playback
+    resolveUrlWithDoH(url).then(resolvedStreamUrl => {
+        const isTsStream = resolvedStreamUrl.includes('.ts') || resolvedStreamUrl.includes('/live/');
+        
+        if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
+            try {
+                state.mpegtsPlayer = mpegts.createPlayer({
+                    type: 'mpegts',
+                    isLive: true,
+                    url: resolvedStreamUrl
+                }, {
+                    enableWorker: true,
+                    lazyLoadMaxDuration: 3 * 60,
+                    seekType: 'range'
+                });
+                
+                state.mpegtsPlayer.attachMediaElement(video);
+                
+                // Bind error listener
+                state.mpegtsPlayer.on(mpegts.Events.ERROR, (type, detail, info) => {
+                    console.warn(`[mpegts.js] Error inside player: ${type}, ${detail}. Reconnecting.`);
+                    if (!state.reconnectTimer) {
+                        state.reconnectTimer = setTimeout(() => {
+                            state.reconnectTimer = null;
+                            attemptReconnection();
+                        }, 2000);
+                    }
+                });
+                
+                state.mpegtsPlayer.load();
+                state.mpegtsPlayer.play().catch(e => {
+                    video.muted = true;
+                    state.mpegtsPlayer.play().catch(err => console.error(err));
+                });
+            } catch (err) {
+                video.src = resolvedStreamUrl;
+                video.play().catch(err => console.error(err));
+            }
+        } else {
+            video.src = resolvedStreamUrl;
+            video.load();
+            video.play().catch(e => {
+                video.muted = true;
+                video.play().catch(err => console.error(err));
+            });
+        }
+    });
 }
 
 async function loadLivePreview(item) {
@@ -1657,6 +1789,13 @@ function destroyPreviewMpegtsPlayer() {
 }
 
 function closeVideoPlayer() {
+    // Clear reconnect state
+    if (state.reconnectTimer) {
+        clearTimeout(state.reconnectTimer);
+        state.reconnectTimer = null;
+    }
+    state.reconnectAttempts = 0;
+
     if (document.fullscreenElement) {
         document.exitFullscreen().catch(() => {});
     }
