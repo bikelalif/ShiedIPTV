@@ -139,7 +139,10 @@ const TRANSLATIONS = {
         breadcrumbSettings: "Paramètres",
         breadcrumbGeneral: "Général",
         breadcrumbAll: "Tout",
-        untitled: "Sans titre"
+        untitled: "Sans titre",
+        browserWarningTitle: "Lecture limitée sur navigateur",
+        browserWarningDesc: "Pour regarder le Direct et les Films, veuillez utiliser notre application dédiée. Seules les Séries sont disponibles sur le web.",
+        browserPlayBlocked: "Ce contenu nécessite l'application ShieldIPTV pour être lu."
     },
     en: {
         loaderInit: "Loading your IPTV universe...",
@@ -223,7 +226,10 @@ const TRANSLATIONS = {
         breadcrumbSettings: "Settings",
         breadcrumbGeneral: "General",
         breadcrumbAll: "All",
-        untitled: "Untitled"
+        untitled: "Untitled",
+        browserWarningTitle: "Browser Playback Limited",
+        browserWarningDesc: "To watch Live TV and Movies, please use our dedicated app. Only Series are available on the web.",
+        browserPlayBlocked: "This content requires the ShieldIPTV application to play."
     },
     es: {
         loaderInit: "Cargando su universo IPTV...",
@@ -307,7 +313,10 @@ const TRANSLATIONS = {
         breadcrumbSettings: "Ajustes",
         breadcrumbGeneral: "General",
         breadcrumbAll: "Todo",
-        untitled: "Sin título"
+        untitled: "Sin título",
+        browserWarningTitle: "Reproducción limitada en el navegador",
+        browserWarningDesc: "Para ver canales en vivo y películas, utilice nuestra aplicación dedicada. Solo las series están disponibles en la web.",
+        browserPlayBlocked: "Este contenido requiere la aplicación ShieldIPTV para reproducirse."
     },
     it: {
         loaderInit: "Caricamento del tuo universo IPTV...",
@@ -391,7 +400,10 @@ const TRANSLATIONS = {
         breadcrumbSettings: "Impostazioni",
         breadcrumbGeneral: "Generale",
         breadcrumbAll: "Tutto",
-        untitled: "Senza titolo"
+        untitled: "Senza titolo",
+        browserWarningTitle: "Riproduzione limitata nel browser",
+        browserWarningDesc: "Per guardare la TV in diretta e i film, utilizza la nostra app dedicata. Solo le serie sono disponibili sul web.",
+        browserPlayBlocked: "Questo contenuto richiede l'applicazione ShieldIPTV per essere riprodotto."
     }
 };
 
@@ -578,6 +590,11 @@ function applyLanguage(lang) {
     
     const epgContainerH3 = document.querySelector(".preview-epg-container h3");
     if (epgContainerH3) epgContainerH3.innerText = t.epgTitle;
+    
+    const warningTitle = document.getElementById("browser-warning-title");
+    const warningDesc = document.getElementById("browser-warning-desc");
+    if (warningTitle) warningTitle.innerText = t.browserWarningTitle;
+    if (warningDesc) warningDesc.innerText = t.browserWarningDesc;
     
     updateBreadcrumbs();
 }
@@ -868,6 +885,16 @@ async function preloadAllData() {
 
 // 6. Navigation Switching
 async function switchSection(section) {
+    const isWebBrowser = window.location.protocol !== 'file:' && !window.cordova && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    const warningBanner = document.getElementById("browser-warning-banner");
+    if (warningBanner) {
+        if (isWebBrowser && (section === 'live' || section === 'movies')) {
+            warningBanner.classList.remove("hidden");
+        } else {
+            warningBanner.classList.add("hidden");
+        }
+    }
+
     // Set section name on home screen element for section-specific CSS targeting
     const homeScreen = document.getElementById("home-screen");
     if (homeScreen) {
@@ -1243,6 +1270,13 @@ function renderEpisodes(epList, seasonNum) {
 
 // 8. Player Engine
 async function playMedia(item, section) {
+    const isWebBrowser = window.location.protocol !== 'file:' && !window.cordova && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    if (isWebBrowser && (section === 'live' || section === 'movies')) {
+        const t = TRANSLATIONS[state.language || 'fr'];
+        showToast(t.browserPlayBlocked || "Ce contenu nécessite l'application ShieldIPTV pour être lu.", 5000);
+        return;
+    }
+
     if (section === 'series') {
         openSeriesDetails(item);
         return;
