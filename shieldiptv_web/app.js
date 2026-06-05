@@ -645,6 +645,7 @@ const state = {
     
     // Video Player state
     currentPlayingStream: null,
+    currentPlayingStreamUrl: '',
     overlayTimeout: null,
     zapDrawerOpen: false,
     mpegtsPlayer: null, // mpegts.js instance reference
@@ -1249,9 +1250,10 @@ async function playMedia(item, section) {
     
     if (section === 'live') {
         const isPlayerOpen = activeScreenId() === 'player-screen';
+        const isMobile = window.innerWidth <= 768;
         
         // If already playing in preview OR player screen is currently active (zapping in fullscreen), launch/load directly in fullscreen player
-        if (isPlayerOpen || (state.currentPlayingStream && state.currentPlayingStream.section === 'live' && state.currentPlayingStream.item.stream_id === item.stream_id)) {
+        if (isMobile || isPlayerOpen || (state.currentPlayingStream && state.currentPlayingStream.section === 'live' && state.currentPlayingStream.item.stream_id === item.stream_id)) {
             state.currentPlayingStream = { item, section };
             const streamUrl = `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.ts`;
             launchVideoPlayer(streamUrl, item.name, item.stream_icon || item.cover);
@@ -1307,8 +1309,21 @@ async function loadEPG(streamId) {
 }
 
 function launchVideoPlayer(url, title, logoUrl) {
+    state.currentPlayingStreamUrl = url;
+    
     // Stop and clean up preview stream decoding before going fullscreen
     destroyPreviewMpegtsPlayer();
+    
+    // Toggle VLC button on loader for mobile devices
+    const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const vlcLoaderBtn = document.getElementById("player-loader-vlc");
+    if (vlcLoaderBtn) {
+        if (isMobile) {
+            vlcLoaderBtn.classList.remove("hidden");
+        } else {
+            vlcLoaderBtn.classList.add("hidden");
+        }
+    }
     
     showScreen("player-screen");
     const video = document.getElementById("video-player");
@@ -2224,6 +2239,38 @@ function setupEventListeners() {
     document.getElementById("player-btn-fullscreen").addEventListener("click", () => {
         toggleFullscreen();
     });
+    
+    // VLC Player launching
+    const launchVlc = () => {
+        if (state.currentPlayingStreamUrl) {
+            let vlcUrl = state.currentPlayingStreamUrl;
+            if (vlcUrl.startsWith('http://')) {
+                vlcUrl = vlcUrl.replace('http://', 'vlc://');
+            } else if (vlcUrl.startsWith('https://')) {
+                vlcUrl = vlcUrl.replace('https://', 'vlc://');
+            } else {
+                vlcUrl = 'vlc://' + vlcUrl;
+            }
+            console.log("[VLC] Launching stream in external player:", vlcUrl);
+            window.location.href = vlcUrl;
+        }
+    };
+
+    const loaderVlcBtn = document.getElementById("player-loader-vlc");
+    if (loaderVlcBtn) {
+        loaderVlcBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            launchVlc();
+        });
+    }
+
+    const overlayVlcBtn = document.getElementById("player-btn-vlc");
+    if (overlayVlcBtn) {
+        overlayVlcBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            launchVlc();
+        });
+    }
     
     // Timeline Scrubbing: Mouse Seek + Tooltip
     const progressBar = document.getElementById("player-progress-bar");

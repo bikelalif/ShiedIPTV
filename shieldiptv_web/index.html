@@ -283,6 +283,10 @@
             <div id="player-loader" class="player-loader">
                 <div class="loader-spinner"></div>
                 <div class="player-loader-text">Chargement du flux...</div>
+                <button id="player-loader-vlc" class="focusable vlc-btn-loader hidden">
+                    <span class="material-icons">play_circle_filled</span>
+                    <span>Ouvrir dans VLC</span>
+                </button>
             </div>
 
             <!-- Custom Remote Control Overlay -->
@@ -337,6 +341,9 @@
                         
                         <!-- Right controls: Fullscreen trigger -->
                         <div class="right-controls">
+                            <button class="focusable player-btn" id="player-btn-vlc" title="Ouvrir dans VLC">
+                                <span class="material-icons">open_in_new</span>
+                            </button>
                             <button class="focusable player-btn" id="player-btn-fullscreen" title="Plein Écran">
                                 <span class="material-icons">fullscreen</span>
                             </button>
