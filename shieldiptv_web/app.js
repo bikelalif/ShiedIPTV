@@ -885,10 +885,15 @@ async function preloadAllData() {
 
 // 6. Navigation Switching
 async function switchSection(section) {
-    const isWebBrowser = window.location.protocol !== 'file:' && !window.cordova && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
+                        window.location.protocol !== 'file:' && 
+                        !window.cordova && 
+                        !/SmartTV|GoogleTV|AppleTV|AndroidTV/i.test(navigator.userAgent) && 
+                        window.location.hostname !== 'localhost' && 
+                        window.location.hostname !== '127.0.0.1';
     const warningBanner = document.getElementById("browser-warning-banner");
     if (warningBanner) {
-        if (isWebBrowser && (section === 'live' || section === 'movies')) {
+        if (isMobileWeb && (section === 'live' || section === 'movies')) {
             warningBanner.classList.remove("hidden");
         } else {
             warningBanner.classList.add("hidden");
@@ -1270,8 +1275,13 @@ function renderEpisodes(epList, seasonNum) {
 
 // 8. Player Engine
 async function playMedia(item, section) {
-    const isWebBrowser = window.location.protocol !== 'file:' && !window.cordova && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-    if (isWebBrowser && (section === 'live' || section === 'movies')) {
+    const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
+                        window.location.protocol !== 'file:' && 
+                        !window.cordova && 
+                        !/SmartTV|GoogleTV|AppleTV|AndroidTV/i.test(navigator.userAgent) && 
+                        window.location.hostname !== 'localhost' && 
+                        window.location.hostname !== '127.0.0.1';
+    if (isMobileWeb && (section === 'live' || section === 'movies')) {
         const t = TRANSLATIONS[state.language || 'fr'];
         showToast(t.browserPlayBlocked || "Ce contenu nécessite l'application ShieldIPTV pour être lu.", 5000);
         return;
