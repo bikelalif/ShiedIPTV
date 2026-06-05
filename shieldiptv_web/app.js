@@ -756,10 +756,7 @@ async function makeApiCall(action = '', additionalParams = '') {
     
     try {
         const response = await fetch(resolvedUrl, {
-            signal: controller.signal,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
+            signal: controller.signal
         });
         clearTimeout(timeoutId);
         
