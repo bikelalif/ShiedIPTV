@@ -703,6 +703,8 @@ function initApp() {
     } else {
         showScreen("login-screen");
     }
+    const loginDoh = document.getElementById("login-doh-toggle");
+    if (loginDoh) loginDoh.checked = state.isDohEnabled;
 }
 
 // 3. DNS-over-HTTPS (DoH) Resolver
@@ -2137,8 +2139,20 @@ function setupEventListeners() {
     }
     
     // DoH
+    const loginDoh = document.getElementById("login-doh-toggle");
+    if (loginDoh) {
+        loginDoh.addEventListener("change", (e) => {
+            state.isDohEnabled = e.target.checked;
+            const mainDoh = document.getElementById("setting-doh-toggle");
+            if (mainDoh) mainDoh.checked = state.isDohEnabled;
+            saveSettings();
+        });
+    }
+
     document.getElementById("setting-doh-toggle").addEventListener("change", (e) => {
         state.isDohEnabled = e.target.checked;
+        const loginDohToggle = document.getElementById("login-doh-toggle");
+        if (loginDohToggle) loginDohToggle.checked = state.isDohEnabled;
         saveSettings();
         const t = TRANSLATIONS[state.language || 'fr'];
         showToast(state.isDohEnabled ? t.dohEnabledToast : t.dohDisabledToast, 2000);
