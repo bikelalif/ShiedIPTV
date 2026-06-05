@@ -891,6 +891,7 @@ async function switchSection(section) {
                         !/SmartTV|GoogleTV|AppleTV|AndroidTV/i.test(navigator.userAgent) && 
                         window.location.hostname !== 'localhost' && 
                         window.location.hostname !== '127.0.0.1';
+    console.log(`[Browser Check] Section: ${section}, isMobileWeb: ${isMobileWeb}, Width: ${window.innerWidth}, UA: ${navigator.userAgent}`);
     const warningBanner = document.getElementById("browser-warning-banner");
     if (warningBanner) {
         if (isMobileWeb && (section === 'live' || section === 'movies')) {
