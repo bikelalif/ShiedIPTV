@@ -4,6 +4,9 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initApp() {
+    if (isTvWrapper) {
+        document.body.classList.add("tv-mode");
+    }
     setupEventListeners();
     setupSpatialNavigation();
     
@@ -33,37 +36,24 @@ function initApp() {
     showScreen("intro-screen");
     
     setTimeout(() => {
-        // Check if CGU has been accepted (first launch gate)
-        const cguAccepted = localStorage.getItem("shield_cgu_accepted");
-        if (!cguAccepted) {
-            // First launch: show CGU acceptance screen
-            showScreen("cgu-screen");
-            return;
-        }
+        const isNewSession = !sessionStorage.getItem("shield_session_active");
+        sessionStorage.setItem("shield_session_active", "true");
         
-        // CGU already accepted — proceed to normal flow
-        proceedAfterCgu();
-    }, 1800);
-}
-
-function proceedAfterCgu() {
-    const isNewSession = !sessionStorage.getItem("shield_session_active");
-    sessionStorage.setItem("shield_session_active", "true");
-    
-    const activePlaylistId = isNewSession ? null : localStorage.getItem("shield_active_playlist_id");
-    if (activePlaylistId) {
-        const playlists = loadSavedPlaylists();
-        const activePlaylist = playlists.find(p => p.id === activePlaylistId);
-        if (activePlaylist) {
-            connectPlaylist(activePlaylist, true);
+        const activePlaylistId = isNewSession ? null : localStorage.getItem("shield_active_playlist_id");
+        if (activePlaylistId) {
+            const playlists = loadSavedPlaylists();
+            const activePlaylist = playlists.find(p => p.id === activePlaylistId);
+            if (activePlaylist) {
+                connectPlaylist(activePlaylist, true);
+            } else {
+                showScreen("playlist-manager-screen");
+                renderPlaylistsGrid();
+            }
         } else {
             showScreen("playlist-manager-screen");
             renderPlaylistsGrid();
         }
-    } else {
-        showScreen("playlist-manager-screen");
-        renderPlaylistsGrid();
-    }
+    }, 1800);
 }
 
 // UI Interaction Handlers
@@ -95,21 +85,6 @@ function setupEventListeners() {
         btnCguClose.addEventListener("click", () => {
             const modal = document.getElementById("cgu-modal");
             if (modal) modal.classList.add("hidden");
-        });
-    }
-
-    // CGU Acceptance Screen (first launch)
-    const cguCheckbox = document.getElementById("cgu-accept-checkbox");
-    const cguAcceptBtn = document.getElementById("btn-cgu-accept");
-    if (cguCheckbox && cguAcceptBtn) {
-        cguCheckbox.addEventListener("change", () => {
-            cguAcceptBtn.disabled = !cguCheckbox.checked;
-        });
-        cguAcceptBtn.addEventListener("click", () => {
-            if (cguCheckbox.checked) {
-                localStorage.setItem("shield_cgu_accepted", "true");
-                proceedAfterCgu();
-            }
         });
     }
 
