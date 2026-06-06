@@ -202,6 +202,9 @@ function appendItemsToGrid(batch, section) {
     batch.forEach(item => {
         const card = document.createElement("div");
         card.className = "media-card focusable";
+        if (section === 'live') {
+            card.classList.add("live-card");
+        }
         card.setAttribute("tabindex", "0");
         card.setAttribute("data-id", item.stream_id || item.series_id || item.id);
         
@@ -235,7 +238,7 @@ function appendItemsToGrid(batch, section) {
         }
         
         const title = document.createElement("div");
-        title.className = "media-title";
+        title.className = "media-name";
         title.innerText = item.name;
         
         card.appendChild(posterWrapper);
