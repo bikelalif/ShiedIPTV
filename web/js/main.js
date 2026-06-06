@@ -38,6 +38,8 @@ function initApp() {
     setTimeout(() => {
         const cguAccepted = localStorage.getItem("shield_cgu_accepted") === "true";
         if (!cguAccepted) {
+            showScreen("playlist-manager-screen");
+            
             const actionsContainer = document.getElementById("cgu-actions-container");
             const closeBtn = document.getElementById("btn-cgu-close");
             if (actionsContainer) actionsContainer.classList.remove("hidden");
