@@ -33,7 +33,10 @@ function initApp() {
     showScreen("intro-screen");
     
     setTimeout(() => {
-        const activePlaylistId = localStorage.getItem("shield_active_playlist_id");
+        const isNewSession = !sessionStorage.getItem("shield_session_active");
+        sessionStorage.setItem("shield_session_active", "true");
+        
+        const activePlaylistId = isNewSession ? null : localStorage.getItem("shield_active_playlist_id");
         if (activePlaylistId) {
             const playlists = loadSavedPlaylists();
             const activePlaylist = playlists.find(p => p.id === activePlaylistId);
