@@ -139,7 +139,7 @@ function setupEventListeners() {
     }
 
     // Login Form Submit
-    document.getElementById("login-form").addEventListener("submit", (e) => {
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const type = playlistTypeInput ? playlistTypeInput.value : "xtream";
         const name = document.getElementById("login-name").value;
@@ -148,9 +148,9 @@ function setupEventListeners() {
         if (type === "xtream") {
             const user = document.getElementById("login-username").value;
             const pass = document.getElementById("login-password").value;
-            addXtreamCodesPlaylist(name, url, user, pass);
+            await addXtreamCodesPlaylist(name, url, user, pass);
         } else {
-            addM3UPlaylist(name, url);
+            await addM3UPlaylist(name, url);
         }
     });
     

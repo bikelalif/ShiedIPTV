@@ -263,39 +263,169 @@ async function preloadAllData() {
     }
 }
 
-function addXtreamCodesPlaylist(name, url, username, password) {
-    const playlists = loadSavedPlaylists();
-    const id = "playlist_" + Date.now();
+async function addXtreamCodesPlaylist(name, url, username, password) {
+    const t = TRANSLATIONS[state.language || 'fr'];
+    showLoader(t.toastLoginAuth);
     
     let cleanUrl = url.trim();
     if (!cleanUrl.startsWith("http")) cleanUrl = "http://" + cleanUrl;
     if (cleanUrl.endsWith("/")) cleanUrl = cleanUrl.slice(0, -1);
 
-    playlists.push({
-        id: id,
-        name: name.trim() || "Xtream Playlist",
-        type: 'xtream',
-        serverUrl: cleanUrl,
-        username: username,
-        password: password,
-        readonly: false
-    });
-    localStorage.setItem("shield_playlists", JSON.stringify(playlists));
-    connectPlaylist(playlists[playlists.length - 1]);
+    const originalServerUrl = state.serverUrl;
+    const originalUsername = state.username;
+    const originalPassword = state.password;
+    
+    state.serverUrl = cleanUrl;
+    state.username = username;
+    state.password = password;
+    
+    try {
+        const data = await makeApiCall();
+        
+        if (data && data.user_info && data.user_info.auth === 1) {
+            state.isLoggedIn = true;
+            
+            const playlists = loadSavedPlaylists();
+            const id = "playlist_" + Date.now();
+            const newPlaylist = {
+                id: id,
+                name: name.trim() || "Xtream Playlist",
+                type: 'xtream',
+                serverUrl: cleanUrl,
+                username: username,
+                password: password,
+                readonly: false
+            };
+            playlists.push(newPlaylist);
+            localStorage.setItem("shield_playlists", JSON.stringify(playlists));
+            localStorage.setItem("shield_active_playlist_id", id);
+            
+            localStorage.setItem("shield_iptv_session", JSON.stringify({
+                serverUrl: state.serverUrl,
+                username: state.username,
+                password: state.password
+            }));
+            
+            if (document.getElementById("status-username")) {
+                document.getElementById("status-username").innerText = state.username;
+            }
+            document.getElementById("portal-username").innerText = state.username;
+            document.getElementById("info-status").innerText = data.user_info.status === "Active" ? t.activeText : data.user_info.status;
+            document.getElementById("info-server-url").innerText = state.serverUrl;
+            document.getElementById("info-max-connections").innerText = data.user_info.max_connections;
+            
+            if (data.user_info.exp_date) {
+                const date = new Date(parseInt(data.user_info.exp_date) * 1000);
+                const dateStr = date.toLocaleDateString(state.language === 'fr' ? 'fr-FR' : 'en-US');
+                if (document.getElementById("status-expiry")) {
+                    document.getElementById("status-expiry").innerText = `Expire: ${dateStr}`;
+                }
+                document.getElementById("info-exp").innerText = dateStr;
+            } else {
+                if (document.getElementById("status-expiry")) {
+                    document.getElementById("status-expiry").innerText = "Expire: N/A";
+                }
+                document.getElementById("info-exp").innerText = "N/A";
+            }
+            
+            await preloadAllData();
+            
+            hideLoader();
+            showToast(t.toastLoginSuccess, 3000);
+            showScreen("portal-screen");
+        } else {
+            throw new Error("Identifiants incorrects.");
+        }
+    } catch (error) {
+        state.serverUrl = originalServerUrl;
+        state.username = originalUsername;
+        state.password = originalPassword;
+        
+        hideLoader();
+        console.error("Login Error:", error);
+        showToast((t.toastLoginError || "Erreur de connexion : ") + error.message, 5000);
+    }
 }
 
-function addM3UPlaylist(name, url) {
-    const playlists = loadSavedPlaylists();
-    const id = "playlist_" + Date.now();
-    playlists.push({
-        id: id,
-        name: name.trim() || "M3U Playlist",
-        type: 'm3u',
-        url: url.trim(),
-        readonly: false
-    });
-    localStorage.setItem("shield_playlists", JSON.stringify(playlists));
-    connectPlaylist(playlists[playlists.length - 1]);
+async function addM3UPlaylist(name, url) {
+    const t = TRANSLATIONS[state.language || 'fr'];
+    showLoader(t.toastM3uLoad || "Chargement de la playlist M3U...");
+    
+    const cleanUrl = url.trim();
+    
+    try {
+        const resolvedM3uUrl = await resolveUrlWithDoH(cleanUrl);
+        const response = await fetch(resolvedM3uUrl);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const text = await response.text();
+        
+        const streams = parseM3U(text);
+        state.streams = streams;
+        
+        const liveCatsMap = new Map();
+        streams.live.forEach(item => {
+            const catId = item.category_id || "m3u_live_default";
+            const catName = item.category_name || "Général";
+            liveCatsMap.set(catId, catName);
+        });
+        state.categories.live = [{ category_id: "all", category_name: "Tout" }];
+        liveCatsMap.forEach((name, id) => {
+            state.categories.live.push({ category_id: id, category_name: name });
+        });
+        
+        const movieCatsMap = new Map();
+        streams.movies.forEach(item => {
+            const catId = item.category_id || "m3u_movie_default";
+            const catName = item.category_name || "Général";
+            movieCatsMap.set(catId, catName);
+        });
+        state.categories.movies = [{ category_id: "all", category_name: "Tout" }];
+        movieCatsMap.forEach((name, id) => {
+            state.categories.movies.push({ category_id: id, category_name: name });
+        });
+        
+        const seriesCatsMap = new Map();
+        streams.series.forEach(item => {
+            const catId = item.category_id || "m3u_series_default";
+            const catName = item.category_name || "Général";
+            seriesCatsMap.set(catId, catName);
+        });
+        state.categories.series = [{ category_id: "all", category_name: "Tout" }];
+        seriesCatsMap.forEach((name, id) => {
+            state.categories.series.push({ category_id: id, category_name: name });
+        });
+        
+        const playlists = loadSavedPlaylists();
+        const id = "playlist_" + Date.now();
+        const newPlaylist = {
+            id: id,
+            name: name.trim() || "M3U Playlist",
+            type: 'm3u',
+            url: cleanUrl,
+            readonly: false
+        };
+        playlists.push(newPlaylist);
+        localStorage.setItem("shield_playlists", JSON.stringify(playlists));
+        
+        state.username = newPlaylist.name;
+        state.currentPlaylistType = 'm3u';
+        state.isLoggedIn = true;
+        localStorage.setItem("shield_active_playlist_id", id);
+        
+        document.getElementById("portal-username").innerText = newPlaylist.name;
+        document.getElementById("info-status").innerText = t.activeText;
+        document.getElementById("info-server-url").innerText = newPlaylist.url;
+        document.getElementById("info-max-connections").innerText = "1";
+        document.getElementById("info-exp").innerText = "N/A";
+        
+        hideLoader();
+        showToast(t.toastLoginSuccess, 3000);
+        showScreen("portal-screen");
+    } catch (error) {
+        hideLoader();
+        console.error("M3U Load Error:", error);
+        showToast((t.toastLoginError || "Erreur de connexion : ") + error.message, 5000);
+    }
 }
 
 function deletePlaylist(id) {
