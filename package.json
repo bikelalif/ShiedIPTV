@@ -21,5 +21,16 @@
   },
   "allowScripts": {
     "electron@30.5.1": true
+  },
+  "build": {
+    "appId": "com.shieldiptv.app",
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false
+    }
   }
 }
