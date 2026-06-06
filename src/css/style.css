@@ -2516,3 +2516,60 @@ select option {
         overflow-y: auto;
     }
 }
+
+/* TV Mode Overrides to force horizontal layouts and bypass mobile media queries */
+body.tv-mode .portal-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    max-width: 1100px !important;
+    margin: 0 auto !important;
+    gap: 2rem !important;
+}
+
+body.tv-mode .portal-card {
+    padding: 3.5rem 2rem !important;
+}
+
+body.tv-mode .content-body {
+    flex-direction: row !important;
+    gap: 1.5rem !important;
+}
+
+body.tv-mode .category-sidebar {
+    width: 260px !important;
+    height: 100% !important;
+    max-height: none !important;
+    padding: 1.25rem 0.75rem !important;
+}
+
+body.tv-mode .category-list {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+body.tv-mode .category-item {
+    width: 100% !important;
+    white-space: nowrap !important;
+    padding: 0.95rem 1.25rem !important;
+    font-size: 0.95rem !important;
+    border-radius: 12px !important;
+}
+
+body.tv-mode .media-grid-container {
+    flex-grow: 1 !important;
+    height: 100% !important;
+}
+
+body.tv-mode .media-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+    gap: 1.5rem !important;
+}
+
+body.tv-mode .live-preview-panel {
+    width: 320px !important;
+    height: 100% !important;
+}
+
+body.tv-mode .main-content {
+    padding: 2rem 2.5rem !important;
+}
