@@ -20,6 +20,13 @@ function showScreen(screenId) {
     if (screenId && screenId !== "intro-screen" && screenId !== "loader" && screenId !== "player-screen") {
         localStorage.setItem("shield_last_screen", screenId);
     }
+    
+    // Automatically focus the first logical element of the screen for TV remote
+    if (isTvWrapper) {
+        setTimeout(() => {
+            focusFirst();
+        }, 50);
+    }
 }
 
 function activeScreenId() {
@@ -287,7 +294,7 @@ function setupSpatialNavigation() {
         if (activeEl && activeEl.tagName === 'INPUT' && !activeEl.hasAttribute('readonly')) {
             if (key === 'Enter') {
                 e.preventDefault();
-                activeEl.blur();
+                activeEl.setAttribute('readonly', 'true');
             }
             return;
         }
@@ -505,6 +512,15 @@ function moveFocus(direction) {
             block: 'nearest',
             inline: 'nearest'
         });
+    } else {
+        // Wrap-around focus behavior on TV
+        if (direction === 'down' && candidates.length > 0) {
+            candidates[0].focus();
+            candidates[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else if (direction === 'up' && candidates.length > 0) {
+            candidates[candidates.length - 1].focus();
+            candidates[candidates.length - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     }
 }
 
@@ -522,11 +538,19 @@ function focusFirst() {
         let target = null;
         if (screenId === 'portal-screen') {
             target = container.querySelector("#portal-card-live");
+        } else if (screenId === 'playlist-manager-screen') {
+            target = container.querySelector(".playlist-card") || container.querySelector(".focusable");
+        } else if (screenId === 'login-screen') {
+            target = container.querySelector("#login-name") || container.querySelector(".focusable");
         } else if (screenId === 'home-screen') {
-            target = container.querySelector(".category-item.active") || 
-                     container.querySelector(".category-item") || 
-                     container.querySelector(".media-card") || 
-                     container.querySelector(".focusable:not(.btn-back-round):not(#btn-header-back):not(#search-bar):not(#category-search-bar)");
+            if (state.currentSection === 'settings') {
+                target = container.querySelector("#setting-doh-toggle") || container.querySelector(".settings-panel .focusable");
+            } else {
+                target = container.querySelector(".category-item.active") || 
+                         container.querySelector(".category-item") || 
+                         container.querySelector(".media-card") || 
+                         container.querySelector(".focusable:not(.btn-back-round):not(#btn-header-back):not(#search-bar):not(#category-search-bar)");
+            }
         }
         
         if (!target) {

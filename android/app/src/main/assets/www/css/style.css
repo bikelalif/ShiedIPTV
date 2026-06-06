@@ -2589,7 +2589,7 @@ body.tv-mode .login-container {
 body.tv-mode #login-form {
     overflow: hidden !important;
     max-height: none !important;
-    padding: 0 !important;
+    padding: 0.1rem 1rem !important;
 }
 body.tv-mode .login-header-bar {
     margin-bottom: 0.5rem !important;
