@@ -126,6 +126,10 @@ function renderCategories(cats) {
     const listEl = document.getElementById("category-list");
     listEl.innerHTML = "";
     
+    if (!cats || !Array.isArray(cats)) {
+        cats = [];
+    }
+    
     const t = TRANSLATIONS[state.language || 'fr'];
     
     cats.forEach(cat => {
@@ -160,9 +164,12 @@ function loadCategoryStreamsCached(section, categoryId) {
         searchBar.value = "";
     }
 
-    let filtered = state.streams[section];
+    let streamsList = state.streams[section] || [];
+    if (!Array.isArray(streamsList)) streamsList = [];
+    
+    let filtered = streamsList;
     if (categoryId !== "all") {
-        filtered = state.streams[section].filter(item => item.category_id === categoryId);
+        filtered = streamsList.filter(item => item.category_id === categoryId);
     }
     
     state.categoryGridItems = filtered;
@@ -176,6 +183,10 @@ function loadCategoryStreamsCached(section, categoryId) {
 function renderGrid(items, section) {
     const gridEl = document.getElementById("media-grid");
     gridEl.innerHTML = "";
+    
+    if (!items || !Array.isArray(items)) {
+        items = [];
+    }
     
     if (items.length === 0) {
         const t = TRANSLATIONS[state.language || 'fr'];
@@ -253,11 +264,14 @@ function appendItemsToGrid(batch, section) {
 }
 
 function loadNextGridBatch(section) {
-    const totalItems = state.currentGridItems.length;
+    let gridItems = state.currentGridItems || [];
+    if (!Array.isArray(gridItems)) gridItems = [];
+    
+    const totalItems = gridItems.length;
     const loadedCount = state.gridCurrentPage * state.gridItemsPerPage;
     if (loadedCount >= totalItems) return;
     
-    const nextBatch = state.currentGridItems.slice(loadedCount, loadedCount + state.gridItemsPerPage);
+    const nextBatch = gridItems.slice(loadedCount, loadedCount + state.gridItemsPerPage);
     state.gridCurrentPage++;
     appendItemsToGrid(nextBatch, section);
     console.log(`[Grid Pagination] Page ${state.gridCurrentPage} appended. Total rendered: ${state.gridCurrentPage * state.gridItemsPerPage}/${totalItems}`);
@@ -453,22 +467,29 @@ function moveFocus(direction) {
         const deltaX = centerCandidate.x - centerActive.x;
         const deltaY = centerCandidate.y - centerActive.y;
         
+        // Overlap checking to prevent skipping wide inputs or off-center buttons
+        const overlapX = (rect.left < activeRect.right && rect.right > activeRect.left);
+        const overlapY = (rect.top < activeRect.bottom && rect.bottom > activeRect.top);
+        
+        const effDeltaX = overlapX ? deltaX * 0.1 : deltaX;
+        const effDeltaY = overlapY ? deltaY * 0.1 : deltaY;
+        
         let isDirectional = false;
         let distance = 0;
         const margin = 5;
         
         if (direction === 'left') {
             isDirectional = (centerCandidate.x < centerActive.x - margin);
-            distance = Math.abs(deltaX) + Math.abs(deltaY) * 2.5; 
+            distance = Math.abs(deltaX) + Math.abs(effDeltaY) * 2.5; 
         } else if (direction === 'right') {
             isDirectional = (centerCandidate.x > centerActive.x + margin);
-            distance = Math.abs(deltaX) + Math.abs(deltaY) * 2.5;
+            distance = Math.abs(deltaX) + Math.abs(effDeltaY) * 2.5;
         } else if (direction === 'up') {
             isDirectional = (centerCandidate.y < centerActive.y - margin);
-            distance = Math.abs(deltaY) + Math.abs(deltaX) * 2.5;
+            distance = Math.abs(deltaY) + Math.abs(effDeltaX) * 2.5;
         } else if (direction === 'down') {
             isDirectional = (centerCandidate.y > centerActive.y + margin);
-            distance = Math.abs(deltaY) + Math.abs(deltaX) * 2.5;
+            distance = Math.abs(deltaY) + Math.abs(effDeltaX) * 2.5;
         }
         
         if (isDirectional && distance < minDistance) {
@@ -538,7 +559,15 @@ function handleBackButton() {
     } else if (screenId === "home-screen") {
         showScreen("portal-screen");
     } else if (screenId === "settings-panel" || (screenId === "home-screen" && state.currentSection === "settings") || screenId === "speedtest-screen" || screenId === "linktester-screen" || screenId === "streamtester-screen") {
-        showScreen("playlist-manager-screen");
+        const parentScreen = state.utilityParentScreen || "playlist-manager-screen";
+        if (parentScreen === "portal-screen") {
+            showScreen("portal-screen");
+        } else {
+            showScreen("playlist-manager-screen");
+            if (parentScreen === "playlist-manager-screen") {
+                renderPlaylistsGrid();
+            }
+        }
         focusFirst();
     } else if (screenId === "login-screen") {
         showScreen("playlist-manager-screen");
