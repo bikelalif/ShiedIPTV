@@ -35,6 +35,48 @@ class PlayerActivity : ComponentActivity() {
             keepScreenOn = true
         }
         container.addView(playerView)
+
+        // Custom Back Button Overlay (Top-Left)
+        val backButton = android.widget.Button(this).apply {
+            val sizeWidth = (140 * resources.displayMetrics.density).toInt()
+            val sizeHeight = (50 * resources.displayMetrics.density).toInt()
+            layoutParams = FrameLayout.LayoutParams(sizeWidth, sizeHeight).apply {
+                gravity = android.view.Gravity.TOP or android.view.Gravity.START
+                leftMargin = (24 * resources.displayMetrics.density).toInt()
+                topMargin = (24 * resources.displayMetrics.density).toInt()
+            }
+            text = "← Retour"
+            textSize = 15f
+            setTextColor(android.graphics.Color.WHITE)
+            // Draw a rounded-corner semi-transparent background programmatically
+            val shape = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = 25f * resources.displayMetrics.density
+                setColor(android.graphics.Color.parseColor("#99000000")) // 60% transparent black
+                setStroke((1.5 * resources.displayMetrics.density).toInt(), android.graphics.Color.parseColor("#40FFFFFF"))
+            }
+            background = shape
+            isFocusable = true
+            
+            // Highlight when focused (TV style)
+            setOnFocusChangeListener { _, hasFocus ->
+                if (hasFocus) {
+                    shape.setColor(android.graphics.Color.parseColor("#00E5FF")) // Focus border color cyan
+                    setTextColor(android.graphics.Color.BLACK)
+                    shape.setStroke((1.5 * resources.displayMetrics.density).toInt(), android.graphics.Color.WHITE)
+                } else {
+                    shape.setColor(android.graphics.Color.parseColor("#99000000"))
+                    setTextColor(android.graphics.Color.WHITE)
+                    shape.setStroke((1.5 * resources.displayMetrics.density).toInt(), android.graphics.Color.parseColor("#40FFFFFF"))
+                }
+            }
+            
+            setOnClickListener {
+                finish()
+            }
+        }
+        container.addView(backButton)
+
         setContentView(container)
 
         val streamUrl = intent.getStringExtra("STREAM_URL") ?: ""

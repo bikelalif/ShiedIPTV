@@ -2580,6 +2580,11 @@ body.tv-mode .login-container {
     max-height: 96vh !important;
     max-width: 480px !important;
 }
+body.tv-mode #login-form {
+    overflow: hidden !important;
+    max-height: none !important;
+    padding: 0 !important;
+}
 body.tv-mode .login-header-bar {
     margin-bottom: 0.5rem !important;
     gap: 0.75rem !important;
