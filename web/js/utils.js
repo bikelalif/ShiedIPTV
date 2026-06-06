@@ -6,33 +6,42 @@
 async function resolveUrlWithDoH(url) {
     if (!state.isDohEnabled) return url;
     
-    // Bypass DoH for HTTPS URLs because replacing hostnames with IP addresses breaks TLS/SSL handshake in browsers
-    if (url.startsWith('https://')) {
-        return url;
-    }
-    
     try {
         const parsedUrl = new URL(url);
         const hostname = parsedUrl.hostname;
         
+        // Already an IP address — no need to resolve
         if (/^[0-9.]+$/.test(hostname)) return url;
         
+        // For HTTPS, DoH cannot replace the hostname (breaks TLS SNI), so we skip IP substitution
+        // but we still attempt DoH to verify the domain is resolvable
+        const isHttps = url.startsWith('https://');
+        
+        // DoH fetch with a 5-second timeout so a blocked resolver doesn't hang the whole login
+        const dohController = new AbortController();
+        const dohTimeout = setTimeout(() => dohController.abort(), 5000);
+        
         let dnsData;
-        if (state.dohResolver.includes("dns.google")) {
-            const dohResponse = await fetch(`${state.dohResolver}?name=${hostname}&type=A`, {
-                headers: { 'Accept': 'application/json' }
-            });
+        try {
+            const acceptHeader = state.dohResolver.includes("dns.google")
+                ? 'application/json'
+                : 'application/dns-json';
+            const dohResponse = await fetch(
+                `${state.dohResolver}?name=${encodeURIComponent(hostname)}&type=A`,
+                { headers: { 'Accept': acceptHeader }, signal: dohController.signal }
+            );
+            clearTimeout(dohTimeout);
             dnsData = await dohResponse.json();
-        } else {
-            const dohResponse = await fetch(`${state.dohResolver}?name=${hostname}&type=A`, {
-                headers: { 'Accept': 'application/dns-json' }
-            });
-            dnsData = await dohResponse.json();
+        } catch (dohErr) {
+            clearTimeout(dohTimeout);
+            console.warn(`[DoH] Resolver ${state.dohResolver} unreachable or timed out. Using original URL.`, dohErr);
+            return url;
         }
         
         if (dnsData && dnsData.Answer && dnsData.Answer.length > 0) {
             const aRecord = dnsData.Answer.find(record => record.type === 1);
-            if (aRecord) {
+            if (aRecord && !isHttps) {
+                // Only substitute IP for plain HTTP (HTTPS SNI would break)
                 const ip = aRecord.data;
                 parsedUrl.hostname = ip;
                 console.log(`[DoH] Resolved: ${hostname} -> ${ip}`);
@@ -65,6 +74,12 @@ async function makeApiCall(action = '', additionalParams = '') {
     } catch (error) {
         clearTimeout(timeoutId);
         console.error(`API Error on action: ${action}`, error);
+        // Give a human-readable error message based on error type
+        if (error.name === 'AbortError') {
+            throw new Error('Délai dépassé — le serveur ne répond pas (timeout)');
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('net::')) {
+            throw new Error('Serveur injoignable — vérifiez l\'URL et votre connexion réseau');
+        }
         throw error;
     }
 }
