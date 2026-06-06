@@ -2573,3 +2573,68 @@ body.tv-mode .live-preview-panel {
 body.tv-mode .main-content {
     padding: 2rem 2.5rem !important;
 }
+
+/* TV Mode Compact Login Overrides */
+body.tv-mode .login-container {
+    padding: 0.85rem 1.5rem !important;
+    max-height: 96vh !important;
+    max-width: 480px !important;
+}
+body.tv-mode .login-header-bar {
+    margin-bottom: 0.5rem !important;
+    gap: 0.75rem !important;
+}
+body.tv-mode .login-header-bar h2 {
+    font-size: 1.15rem !important;
+}
+body.tv-mode .btn-back-round {
+    width: 36px !important;
+    height: 36px !important;
+}
+body.tv-mode .playlist-type-selector {
+    margin-bottom: 0.5rem !important;
+    padding-bottom: 0.4rem !important;
+    gap: 0.75rem !important;
+}
+body.tv-mode .playlist-type-selector button {
+    padding: 0.45rem 0.65rem !important;
+    font-size: 0.85rem !important;
+}
+body.tv-mode .input-group {
+    margin-bottom: 0.4rem !important;
+}
+body.tv-mode .input-group label {
+    margin-bottom: 0.2rem !important;
+    font-size: 0.75rem !important;
+    letter-spacing: 0.5px !important;
+}
+body.tv-mode .input-wrapper input {
+    padding: 0.55rem 0.75rem 0.55rem 2.75rem !important;
+    font-size: 0.85rem !important;
+    border-radius: 10px !important;
+}
+body.tv-mode .input-icon {
+    left: 1rem !important;
+    font-size: 1.1rem !important;
+}
+body.tv-mode .xtream-fields {
+    gap: 0.75rem !important;
+    margin-bottom: 0.4rem !important;
+}
+body.tv-mode .login-doh-wrapper {
+    margin-bottom: 0.5rem !important;
+    font-size: 0.85rem !important;
+}
+body.tv-mode .doh-checkbox-label {
+    font-size: 0.85rem !important;
+    gap: 0.5rem !important;
+}
+body.tv-mode .login-doh-wrapper input[type="checkbox"] {
+    width: 16px !important;
+    height: 16px !important;
+}
+body.tv-mode button.btn-primary#btn-connect {
+    padding: 0.65rem !important;
+    font-size: 0.9rem !important;
+    border-radius: 10px !important;
+}

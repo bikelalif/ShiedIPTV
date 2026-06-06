@@ -152,7 +152,9 @@ const state = {
     activeSeasonNum: null,
     
     // Focus management helper
-    lastFocusedElement: null
+    lastFocusedElement: null,
+    // Parent screen tracking for settings/diagnostics return behavior
+    utilityParentScreen: ''
 };
 
 // Helper to decode Base64 encoded UTF-8 strings

@@ -225,33 +225,50 @@ function setupEventListeners() {
     document.getElementById("portal-card-series").addEventListener("click", () => {
         switchSection("series");
     });
-    const pmBtnSpeedtest = document.getElementById("pm-btn-speedtest");
-    if (pmBtnSpeedtest) {
-        pmBtnSpeedtest.addEventListener("click", () => {
-            showScreen("speedtest-screen");
-        });
-    }
-    const pmBtnLinktester = document.getElementById("pm-btn-linktester");
-    if (pmBtnLinktester) {
-        pmBtnLinktester.addEventListener("click", () => {
-            showScreen("linktester-screen");
-            const resEl = document.getElementById("link-test-result");
-            if (resEl) resEl.classList.add("hidden");
-        });
-    }
-    const pmBtnStreamtester = document.getElementById("pm-btn-streamtester");
-    if (pmBtnStreamtester) {
-        pmBtnStreamtester.addEventListener("click", () => {
-            showScreen("streamtester-screen");
-            initStreamTesterUI();
-        });
-    }
-    const pmBtnSettings = document.getElementById("pm-btn-settings");
-    if (pmBtnSettings) {
-        pmBtnSettings.addEventListener("click", () => {
-            switchSection("settings");
-        });
-    }
+    const bindUtilityBtn = (btnId, screenId, callback) => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.addEventListener("click", () => {
+                state.utilityParentScreen = activeScreenId();
+                if (callback) {
+                    callback();
+                } else {
+                    showScreen(screenId);
+                }
+            });
+        }
+    };
+
+    // Bind Playlist Manager buttons
+    bindUtilityBtn("pm-btn-speedtest", "speedtest-screen");
+    bindUtilityBtn("pm-btn-linktester", "linktester-screen", () => {
+        showScreen("linktester-screen");
+        const resEl = document.getElementById("link-test-result");
+        if (resEl) resEl.classList.add("hidden");
+    });
+    bindUtilityBtn("pm-btn-streamtester", "streamtester-screen", () => {
+        showScreen("streamtester-screen");
+        initStreamTesterUI();
+    });
+    bindUtilityBtn("pm-btn-settings", null, () => {
+        switchSection("settings");
+    });
+
+    // Bind Portal buttons
+    bindUtilityBtn("portal-btn-speedtest", "speedtest-screen");
+    bindUtilityBtn("portal-btn-linktester", "linktester-screen", () => {
+        showScreen("linktester-screen");
+        const resEl = document.getElementById("link-test-result");
+        if (resEl) resEl.classList.add("hidden");
+    });
+    bindUtilityBtn("portal-btn-streamtester", "streamtester-screen", () => {
+        showScreen("streamtester-screen");
+        initStreamTesterUI();
+    });
+    bindUtilityBtn("portal-btn-settings", null, () => {
+        switchSection("settings");
+    });
+
     document.getElementById("portal-btn-accounts").addEventListener("click", () => {
         showScreen("playlist-manager-screen");
         renderPlaylistsGrid();
@@ -261,7 +278,12 @@ function setupEventListeners() {
     const btnSpeedtestBack = document.getElementById("btn-speedtest-back");
     if (btnSpeedtestBack) {
         btnSpeedtestBack.addEventListener("click", () => {
-            showScreen("playlist-manager-screen");
+            const parentScreen = state.utilityParentScreen || "playlist-manager-screen";
+            if (parentScreen === "portal-screen") {
+                showScreen("portal-screen");
+            } else {
+                showScreen("playlist-manager-screen");
+            }
             focusFirst();
         });
     }
@@ -269,7 +291,12 @@ function setupEventListeners() {
     const btnLinktesterBack = document.getElementById("btn-linktester-back");
     if (btnLinktesterBack) {
         btnLinktesterBack.addEventListener("click", () => {
-            showScreen("playlist-manager-screen");
+            const parentScreen = state.utilityParentScreen || "playlist-manager-screen";
+            if (parentScreen === "portal-screen") {
+                showScreen("portal-screen");
+            } else {
+                showScreen("playlist-manager-screen");
+            }
             focusFirst();
         });
     }
@@ -277,7 +304,12 @@ function setupEventListeners() {
     const btnStreamtesterBack = document.getElementById("btn-streamtester-back");
     if (btnStreamtesterBack) {
         btnStreamtesterBack.addEventListener("click", () => {
-            showScreen("playlist-manager-screen");
+            const parentScreen = state.utilityParentScreen || "playlist-manager-screen";
+            if (parentScreen === "portal-screen") {
+                showScreen("portal-screen");
+            } else {
+                showScreen("playlist-manager-screen");
+            }
             focusFirst();
         });
     }
@@ -285,7 +317,13 @@ function setupEventListeners() {
     // Back to portal / playlist manager
     document.getElementById("btn-header-back").addEventListener("click", () => {
         if (state.currentSection === "settings") {
-            showScreen("playlist-manager-screen");
+            const parentScreen = state.utilityParentScreen || "playlist-manager-screen";
+            if (parentScreen === "portal-screen") {
+                showScreen("portal-screen");
+            } else {
+                showScreen("playlist-manager-screen");
+                renderPlaylistsGrid();
+            }
             focusFirst();
         } else {
             showScreen("portal-screen");
