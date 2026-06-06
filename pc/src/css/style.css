@@ -115,8 +115,9 @@ video::-webkit-media-controls-start-playback-button {
 
 #login-form {
     overflow-y: auto;
+    overflow-x: hidden;
     max-height: 100%;
-    padding-right: 4px;
+    padding: 10px 15px;
 }
 
 #login-form::-webkit-scrollbar {
@@ -221,11 +222,18 @@ video::-webkit-media-controls-start-playback-button {
     transition: var(--transition-smooth);
 }
 
-.focusable:focus-visible, .focusable.focused {
+body.tv-mode .focusable:focus-visible, body.tv-mode .focusable.focused {
     border-color: var(--border-focus) !important;
     box-shadow: 0 0 20px var(--focus-glow) !important;
     transform: scale(1.03);
     background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Safe, non-scaling focus state for inputs and select elements on PC/Web to avoid clipping/overflow */
+input.focusable:focus, select.focusable:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 10px var(--primary-glow) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
 }
 
 /* Buttons styling */
@@ -256,7 +264,7 @@ button.btn-primary:hover {
     box-shadow: 0 8px 20px rgba(59, 130, 246, 0.45) !important;
 }
 
-button.btn-primary:focus-visible, button.btn-primary.focused {
+body.tv-mode button.btn-primary:focus-visible, body.tv-mode button.btn-primary.focused {
     transform: scale(1.04);
     box-shadow: 0 0 25px rgba(0, 229, 255, 0.9) !important;
     border: 2px solid white !important;
@@ -273,21 +281,33 @@ button.btn-danger:hover {
     box-shadow: 0 8px 20px rgba(239, 68, 68, 0.45) !important;
 }
 
-button.btn-danger:focus-visible, button.btn-danger.focused {
+body.tv-mode button.btn-danger:focus-visible, body.tv-mode button.btn-danger.focused {
     transform: scale(1.04);
     box-shadow: 0 0 25px rgba(239, 68, 68, 0.8) !important;
     border: 2px solid white !important;
 }
 
 /* Hover & Focus states for Playlist Manager actions */
-#btn-quick-demo:hover, #btn-quick-demo:focus-visible, #btn-quick-demo.focused {
+#btn-quick-demo:hover {
+    background: rgba(59, 130, 246, 0.45) !important;
+    transform: scale(1.04) translateY(-2px);
+    box-shadow: 0 8px 20px var(--primary-glow) !important;
+    border-color: var(--border-focus) !important;
+}
+body.tv-mode #btn-quick-demo:focus-visible, body.tv-mode #btn-quick-demo.focused {
     background: rgba(59, 130, 246, 0.45) !important;
     transform: scale(1.04) translateY(-2px);
     box-shadow: 0 8px 20px var(--primary-glow) !important;
     border-color: var(--border-focus) !important;
 }
 
-#btn-view-cgu:hover, #btn-view-cgu:focus-visible, #btn-view-cgu.focused {
+#btn-view-cgu:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    transform: scale(1.04) translateY(-2px);
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 8px 20px rgba(255, 255, 255, 0.1) !important;
+}
+body.tv-mode #btn-view-cgu:focus-visible, body.tv-mode #btn-view-cgu.focused {
     background: rgba(255, 255, 255, 0.08) !important;
     transform: scale(1.04) translateY(-2px);
     border-color: var(--border-focus) !important;
@@ -329,12 +349,17 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     transition: var(--transition-smooth);
 }
 
-.login-doh-wrapper input[type="checkbox"]:focus-visible,
-.login-doh-wrapper input[type="checkbox"].focused {
+body.tv-mode .login-doh-wrapper input[type="checkbox"]:focus-visible,
+body.tv-mode .login-doh-wrapper input[type="checkbox"].focused {
     outline: 2px solid var(--border-focus);
     outline-offset: 2px;
     box-shadow: 0 0 10px var(--focus-glow) !important;
     transform: scale(1.1);
+}
+
+.login-doh-wrapper input[type="checkbox"]:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
 }
 
 /* 5. Portal Screen CSS */
@@ -394,7 +419,7 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     box-shadow: 0 0 15px var(--focus-glow) !important;
 }
 
-.icon-btn:focus-visible, .icon-btn.focused {
+body.tv-mode .icon-btn:focus-visible, body.tv-mode .icon-btn.focused {
     background: rgba(255, 255, 255, 0.2) !important;
     border-color: var(--border-focus) !important;
     box-shadow: 0 0 20px var(--focus-glow) !important;
@@ -452,14 +477,26 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     --card-accent: #a855f7;
 }
 
-.portal-card:hover, .portal-card:focus-visible, .portal-card.focused {
+.portal-card:hover {
+    transform: scale(1.06) translateY(-8px);
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 15px 40px var(--focus-glow) !important;
+    background: rgba(15, 23, 42, 0.7) !important;
+}
+body.tv-mode .portal-card:focus-visible, body.tv-mode .portal-card.focused {
     transform: scale(1.06) translateY(-8px);
     border-color: var(--border-focus) !important;
     box-shadow: 0 15px 40px var(--focus-glow) !important;
     background: rgba(15, 23, 42, 0.7) !important;
 }
 
-.portal-card:hover .portal-card-icon, .portal-card:focus-visible .portal-card-icon, .portal-card.focused .portal-card-icon {
+.portal-card:hover .portal-card-icon {
+    background: linear-gradient(135deg, #00f2fe, var(--primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    transform: scale(1.1);
+}
+body.tv-mode .portal-card:focus-visible .portal-card-icon, body.tv-mode .portal-card.focused .portal-card-icon {
     background: linear-gradient(135deg, #00f2fe, var(--primary));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -513,7 +550,14 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     transition: var(--transition-smooth);
 }
 
-.btn-back-round:hover, .btn-back-round:focus-visible, .btn-back-round.focused {
+.btn-back-round:hover {
+    background: var(--border-focus) !important;
+    color: white !important;
+    border-color: white !important;
+    box-shadow: 0 0 15px var(--focus-glow) !important;
+    transform: scale(1.1);
+}
+body.tv-mode .btn-back-round:focus-visible, body.tv-mode .btn-back-round.focused {
     background: var(--border-focus) !important;
     color: white !important;
     border-color: white !important;
@@ -583,7 +627,13 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     transition: var(--transition-smooth);
 }
 
-.btn-search:focus, .btn-search.focused {
+.btn-search:hover {
+    background: var(--primary) !important;
+    border-color: white !important;
+    box-shadow: 0 0 15px var(--primary-glow) !important;
+    transform: scale(1.05);
+}
+body.tv-mode .btn-search:focus, body.tv-mode .btn-search.focused {
     background: var(--primary) !important;
     border-color: white !important;
     box-shadow: 0 0 15px var(--primary-glow) !important;
@@ -696,7 +746,7 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     font-weight: 600;
 }
 
-.category-item:focus-visible, .category-item.focused {
+body.tv-mode .category-item:focus-visible, body.tv-mode .category-item.focused {
     background: var(--primary) !important;
     color: white !important;
     transform: scale(1.03);
@@ -806,7 +856,7 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
 }
 
 /* TV Focus on Cards */
-.media-card:focus-visible, .media-card.focused {
+body.tv-mode .media-card:focus-visible, body.tv-mode .media-card.focused {
     transform: scale(1.05) translateY(-5px);
     border-color: var(--border-focus);
     box-shadow: 0 0 25px var(--focus-glow);
@@ -814,7 +864,7 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     z-index: 10;
 }
 
-.media-card:focus-visible img, .media-card.focused img {
+body.tv-mode .media-card:focus-visible img, body.tv-mode .media-card.focused img {
     transform: scale(1.05);
 }
 
@@ -897,7 +947,7 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     pointer-events: none; /* bubble clicks up to container */
 }
 
-.preview-video-container:focus-visible, .preview-video-container.focused {
+body.tv-mode .preview-video-container:focus-visible, body.tv-mode .preview-video-container.focused {
     border-color: var(--border-focus);
     box-shadow: 0 0 20px var(--focus-glow);
     transform: scale(1.03);
@@ -922,13 +972,20 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     cursor: pointer;
 }
 
-.preview-video-container:hover .preview-overlay-btn,
-.preview-video-container:focus-visible .preview-overlay-btn,
-.preview-video-container.focused .preview-overlay-btn {
+.preview-video-container:hover .preview-overlay-btn {
+    opacity: 1;
+}
+body.tv-mode .preview-video-container:focus-visible .preview-overlay-btn,
+body.tv-mode .preview-video-container.focused .preview-overlay-btn {
     opacity: 1;
 }
 
-.preview-overlay-btn:hover, .preview-overlay-btn:focus-visible {
+.preview-overlay-btn:hover {
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 15px var(--focus-glow) !important;
+}
+body.tv-mode .preview-overlay-btn:focus-visible {
     background: rgba(255, 255, 255, 0.25) !important;
     border-color: var(--border-focus) !important;
     box-shadow: 0 0 15px var(--focus-glow) !important;
@@ -1263,7 +1320,7 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     color: var(--accent);
 }
 
-.season-btn:focus, .season-btn.focused {
+body.tv-mode .season-btn:focus, body.tv-mode .season-btn.focused {
     background: var(--accent) !important;
     border-color: white !important;
     color: white !important;
@@ -1346,17 +1403,17 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     color: white;
 }
 
-.episode-card:focus-visible, .episode-card.focused {
+body.tv-mode .episode-card:focus-visible, body.tv-mode .episode-card.focused {
     transform: scale(1.04);
     border-color: var(--border-focus);
     box-shadow: 0 0 20px var(--focus-glow);
     background: rgba(255, 255, 255, 0.08);
 }
 
-.episode-card:focus-visible .episode-play-icon, .episode-card.focused .episode-play-icon {
+body.tv-mode .episode-card:focus-visible .episode-play-icon, body.tv-mode .episode-card.focused .episode-play-icon {
     background: white;
 }
-.episode-card:focus-visible .episode-play-icon .material-icons, .episode-card.focused .episode-play-icon .material-icons {
+body.tv-mode .episode-card:focus-visible .episode-play-icon .material-icons, body.tv-mode .episode-card.focused .episode-play-icon .material-icons {
     color: black;
 }
 
@@ -1409,7 +1466,12 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     transition: var(--transition-smooth);
 }
 
-.vlc-btn-loader:hover, .vlc-btn-loader:focus-visible, .vlc-btn-loader.focused {
+.vlc-btn-loader:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(255, 85, 0, 0.7);
+    background: linear-gradient(135deg, #ff9900, #ff6600) !important;
+}
+body.tv-mode .vlc-btn-loader:focus-visible, body.tv-mode .vlc-btn-loader.focused {
     transform: scale(1.05);
     box-shadow: 0 0 25px rgba(255, 85, 0, 0.7);
     background: linear-gradient(135deg, #ff9900, #ff6600) !important;
@@ -1466,7 +1528,7 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     transform: scale(1.08);
 }
 
-.player-btn:focus-visible, .player-btn.focused {
+body.tv-mode .player-btn:focus-visible, body.tv-mode .player-btn.focused {
     background: rgba(255, 255, 255, 0.25) !important;
     border-color: var(--border-focus) !important;
     box-shadow: 0 0 20px var(--focus-glow) !important;
@@ -1525,7 +1587,12 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     transition: var(--transition-smooth);
 }
 
-.player-progress-bar:hover, .player-progress-bar:focus, .player-progress-bar.focused {
+.player-progress-bar:hover, .player-progress-bar:focus {
+    height: 12px;
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 10px rgba(255,255,255,0.1);
+}
+body.tv-mode .player-progress-bar.focused {
     height: 12px;
     background: rgba(255, 255, 255, 0.25);
     box-shadow: 0 0 10px rgba(255,255,255,0.1);
@@ -1603,7 +1670,7 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     color: black;
 }
 
-#player-btn-play:focus-visible, #player-btn-play.focused {
+body.tv-mode #player-btn-play:focus-visible, body.tv-mode #player-btn-play.focused {
     background: var(--border-focus) !important;
     color: white !important;
 }
@@ -1693,7 +1760,7 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     background: rgba(59, 130, 246, 0.08);
 }
 
-.zap-item:focus-visible, .zap-item.focused {
+body.tv-mode .zap-item:focus-visible, body.tv-mode .zap-item.focused {
     background: var(--primary) !important;
     color: white !important;
     transform: scale(1.03);
@@ -1901,21 +1968,26 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     transition: var(--transition-smooth);
 }
 
-.playlist-card:hover, .playlist-card:focus-visible, .playlist-card.focused {
+.playlist-card:hover {
+    transform: scale(1.04) translateY(-5px);
+    border-color: var(--border-focus);
+    box-shadow: 0 15px 30px var(--focus-glow);
+    background: rgba(15, 23, 42, 0.75);
+}
+body.tv-mode .playlist-card:focus-visible, body.tv-mode .playlist-card.focused {
     transform: scale(1.04) translateY(-5px);
     border-color: var(--border-focus);
     box-shadow: 0 15px 30px var(--focus-glow);
     background: rgba(15, 23, 42, 0.75);
 }
 
-.playlist-card-icon {
-    font-size: 2.75rem !important;
-    background: linear-gradient(135deg, var(--text-main), var(--text-muted));
+.playlist-card:hover .playlist-card-icon {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    transform: scale(1.1);
 }
-
-.playlist-card:hover .playlist-card-icon, .playlist-card:focus-visible .playlist-card-icon, .playlist-card.focused .playlist-card-icon {
+body.tv-mode .playlist-card:focus-visible .playlist-card-icon, body.tv-mode .playlist-card.focused .playlist-card-icon {
     background: linear-gradient(135deg, var(--primary), var(--accent));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -1984,9 +2056,11 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     -webkit-text-fill-color: initial;
 }
 
-.playlist-card.add-card:hover .playlist-card-icon,
-.playlist-card.add-card:focus-visible .playlist-card-icon,
-.playlist-card.add-card.focused .playlist-card-icon {
+.playlist-card.add-card:hover .playlist-card-icon {
+    color: var(--border-focus);
+}
+body.tv-mode .playlist-card.add-card:focus-visible .playlist-card-icon,
+body.tv-mode .playlist-card.add-card.focused .playlist-card-icon {
     color: var(--border-focus);
 }
 
@@ -2033,7 +2107,7 @@ button.btn-danger:focus-visible, button.btn-danger.focused {
     box-shadow: 0 0 15px rgba(59, 130, 246, 0.35);
 }
 
-.playlist-type-selector button:focus-visible, .playlist-type-selector button.focused {
+body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlist-type-selector button.focused {
     border-color: var(--border-focus);
     box-shadow: 0 0 10px var(--focus-glow);
 }
@@ -2429,167 +2503,3 @@ select option {
         overflow-y: auto;
     }
 }
-
-/* ==========================================================================
-   CGU ACCEPTANCE SCREEN (First Launch Gate)
-   ========================================================================== */
-
-#cgu-screen {
-    background: radial-gradient(circle at 50% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 60%),
-                radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
-                #05060a;
-    align-items: center;
-    justify-content: center;
-}
-
-.cgu-acceptance-container {
-    width: 90%;
-    max-width: 620px;
-    padding: 2.5rem 2.5rem 2rem;
-    border-radius: 24px;
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    max-height: 90vh;
-}
-
-.cgu-acceptance-container h2 {
-    font-size: 1.35rem;
-    font-weight: 600;
-    color: var(--text-main);
-    margin-bottom: 1.25rem;
-    letter-spacing: 0.5px;
-}
-
-.cgu-content {
-    text-align: left;
-    margin-bottom: 1.5rem;
-}
-
-.cgu-scroll-box {
-    max-height: 320px;
-    overflow-y: auto;
-    padding: 1.5rem;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-}
-
-.cgu-scroll-box::-webkit-scrollbar {
-    width: 6px;
-}
-
-.cgu-scroll-box::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 3px;
-}
-
-.cgu-scroll-box::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.cgu-scroll-box h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--primary);
-    margin-bottom: 0.5rem;
-    margin-top: 1.25rem;
-}
-
-.cgu-scroll-box h3:first-child {
-    margin-top: 0;
-}
-
-.cgu-scroll-box p {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    line-height: 1.65;
-    margin-bottom: 0.5rem;
-}
-
-.cgu-checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    cursor: pointer;
-    font-size: 0.95rem;
-    color: var(--text-muted);
-    user-select: none;
-    margin-bottom: 1.25rem;
-    padding: 1rem 1.25rem;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    transition: var(--transition-smooth);
-    text-align: left;
-}
-
-.cgu-checkbox-label:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.15);
-}
-
-.cgu-checkbox-label input[type="checkbox"] {
-    width: 22px;
-    height: 22px;
-    accent-color: var(--primary);
-    cursor: pointer;
-    flex-shrink: 0;
-}
-
-.cgu-checkbox-label input[type="checkbox"]:focus-visible {
-    outline: 2px solid var(--border-focus);
-    outline-offset: 2px;
-    box-shadow: 0 0 10px var(--focus-glow);
-}
-
-.cgu-accept-btn {
-    transition: var(--transition-smooth);
-}
-
-.cgu-accept-btn:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-    pointer-events: none;
-    filter: grayscale(0.6);
-}
-
-/* CGU Modal (View from settings/playlist manager) */
-.screen-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-}
-
-.onboarding-container {
-    width: 90%;
-    max-width: 520px;
-    padding: 2rem 2.25rem;
-    border-radius: 20px;
-    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65);
-    text-align: center;
-}
-
-.onboarding-container h2 {
-    font-size: 1.2rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-}
-
-.onboarding-container .cgu-content p {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    line-height: 1.65;
-    margin-bottom: 0.75rem;
-}
-

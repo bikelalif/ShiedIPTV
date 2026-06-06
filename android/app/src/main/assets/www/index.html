@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shield IPTV Player</title>
+    <!-- Google Fonts: Outfit & Material Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Material+Icons&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Local mpegts.js for live TS stream decoding in browser -->
+    <script src="libs/mpegts.min.js"></script>
+    <!-- Local hls.js for live HLS stream decoding in browser -->
+    <script src="libs/hls.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- 1. Fullscreen Loader -->
+        <div id="loader" class="screen-overlay hidden">
+            <div class="spinner-container">
+                <div class="loader-spinner"></div>
+                <div id="loader-text">Chargement de votre univers IPTV...</div>
+            </div>
+        </div>
+
+        <!-- 2. Toast Notifications -->
+        <div id="toast" class="toast hidden">Message Toast</div>
+
+        <!-- Intro Logo Animation Screen -->
+        <div id="intro-screen" class="screen">
+            <div class="intro-logo-container">
+                <div class="brand-logo intro-logo">
+                    <span class="material-icons logo-icon logo-glow-in">shield</span>
+                    <h1 class="logo-text-in">Shield<span>IPTV</span></h1>
+                </div>
+            </div>
+        </div>
+
+        <!-- CGU Acceptance Screen (First Launch Only) -->
+        <div id="cgu-screen" class="screen hidden">
+            <div class="cgu-acceptance-container glass">
+                <div class="brand-logo">
+                    <span class="material-icons logo-icon">shield</span>
+                    <h1>Shield<span>IPTV</span></h1>
+                </div>
+                <h2>Conditions Générales d'Utilisation</h2>
+                <div class="cgu-content">
+                    <div class="cgu-scroll-box">
+                        <h3>1. Présentation</h3>
+                        <p><strong>ShieldIPTV Player</strong> est un lecteur multimédia vidéo générique. L'application est fournie « en l'état », sans aucun contenu, flux média ou abonnement inclus.</p>
+                        
+                        <h3>2. Responsabilité de l'utilisateur</h3>
+                        <p>En tant qu'utilisateur, vous êtes seul responsable des flux vidéo et contenus que vous importez dans l'application (liens M3U, identifiants Xtream Codes, etc.). Vous devez vous assurer que vous disposez des droits légaux d'accès et de visionnage de ces contenus.</p>
+                        
+                        <h3>3. Clause de non-responsabilité</h3>
+                        <p>ShieldIPTV <strong>n'approuve pas</strong>, <strong>ne fournit pas</strong> et <strong>ne facilite pas</strong> l'accès à du contenu protégé par le droit d'auteur sans l'accord des ayants droit. L'application ne stocke, ne redistribue et ne diffuse aucun contenu multimédia.</p>
+                        
+                        <h3>4. Utilisation légale</h3>
+                        <p>Vous vous engagez à utiliser cette application conformément aux lois et réglementations en vigueur dans votre pays de résidence. Toute utilisation illicite relève de votre entière responsabilité.</p>
+                        
+                        <h3>5. Données personnelles</h3>
+                        <p>L'application stocke vos identifiants et préférences uniquement en local sur votre appareil. Aucune donnée n'est transmise à des serveurs tiers par ShieldIPTV.</p>
+                    </div>
+                </div>
+                <label class="cgu-checkbox-label" for="cgu-accept-checkbox">
+                    <input type="checkbox" id="cgu-accept-checkbox" class="focusable">
+                    <span>J'ai lu et j'accepte les Conditions Générales d'Utilisation</span>
+                </label>
+                <button id="btn-cgu-accept" class="focusable btn-primary cgu-accept-btn" disabled>
+                    <span>Accéder à l'application</span>
+                    <span class="material-icons">arrow_forward</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- CGU Modal Dialog (View from settings) -->
+        <div id="cgu-modal" class="screen-overlay hidden">
+            <div class="onboarding-container glass">
+                <div class="brand-logo">
+                    <span class="material-icons logo-icon">shield</span>
+                    <h1>Shield<span>IPTV</span></h1>
+                </div>
+                <h2>Conditions Générales d'Utilisation</h2>
+                <div class="cgu-content">
+                    <p><strong>ShieldIPTV Player</strong> est un lecteur multimédia vidéo générique. L'application est fournie sans aucun contenu ni flux média.</p>
+                    <p>En tant qu'utilisateur, vous devez fournir vos propres flux vidéo (liens de playlists légaux, comptes Xtream Codes, etc.). ShieldIPTV n'approuve pas, ne fournit pas et ne facilite pas l'accès à du contenu protégé par le droit d'auteur sans l'accord des ayants droit.</p>
+                    <p>En continuant, vous confirmez posséder les droits d'utilisation des flux et contenus que vous importerez dans ce lecteur.</p>
+                </div>
+                <button id="btn-cgu-close" class="focusable btn-primary" style="margin-top: 1rem;">
+                    <span>Fermer</span>
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 2c. Screen: Playlist Manager (Select Playlist) -->
+        <div id="playlist-manager-screen" class="screen hidden">
+            <div class="playlist-manager-container">
+                <div class="playlist-manager-header">
+                    <div class="brand-logo">
+                        <span class="material-icons logo-icon">shield</span>
+                        <h1>Shield<span>IPTV</span></h1>
+                    </div>
+                    <p>Sélectionnez ou ajoutez une playlist pour commencer</p>
+                </div>
+                
+                <div class="playlists-grid" id="playlists-grid">
+                    <!-- Dynamic saved playlists will be loaded here -->
+                </div>
+
+                <div class="playlist-manager-actions" style="display: flex; gap: 1.5rem; justify-content: center; margin-top: 2rem; align-items: center;">
+                    <button id="btn-quick-demo" class="focusable btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.9rem; width: auto; background: rgba(59, 130, 246, 0.25); border: 1px solid var(--primary); text-shadow: 0 0 10px rgba(59, 130, 246, 0.4);">
+                        <span class="material-icons" style="font-size: 1.15rem; margin-right: 0.5rem; color: var(--primary);">stars</span>
+                        <span>Playlist Démo</span>
+                    </button>
+                    <button id="btn-view-cgu" class="focusable btn-secondary" style="padding: 0.6rem 1.25rem; font-size: 0.9rem; width: auto; background: transparent; border: 1px solid var(--border-color);">
+                        <span class="material-icons" style="font-size: 1.15rem; margin-right: 0.5rem; color: var(--text-muted);">description</span>
+                        <span>Conditions Générales</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Screen: Login / Add Playlist Form -->
+        <div id="login-screen" class="screen hidden">
+            <div class="login-container glass">
+                <div class="login-header-bar">
+                    <button class="focusable btn-back-round" id="btn-login-back" title="Retour aux playlists">
+                        <span class="material-icons">arrow_back</span>
+                    </button>
+                    <h2>Ajouter une Playlist</h2>
+                </div>
+                
+                <div class="playlist-type-selector">
+                    <button type="button" id="tab-xtream" class="focusable active-tab">Xtream Codes</button>
+                    <button type="button" id="tab-m3u" class="focusable">Lien M3U</button>
+                </div>
+                
+                <form id="login-form">
+                    <input type="hidden" id="playlist-type" value="xtream">
+                    
+                    <div class="input-group">
+                        <label for="login-name">Nom de la playlist</label>
+                        <div class="input-wrapper">
+                            <span class="material-icons input-icon">label</span>
+                            <input type="text" id="login-name" class="focusable" placeholder="Ma Playlist" required>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="login-url" id="label-url">URL du serveur</label>
+                        <div class="input-wrapper">
+                            <span class="material-icons input-icon" id="icon-url">dns</span>
+                            <input type="url" id="login-url" class="focusable" placeholder="http://domain.com:8080" required>
+                        </div>
+                    </div>
+                    
+                    <div class="xtream-fields">
+                        <div class="input-group">
+                            <label for="login-username">Nom d'utilisateur</label>
+                            <div class="input-wrapper">
+                                <span class="material-icons input-icon">person</span>
+                                <input type="text" id="login-username" class="focusable" placeholder="Nom d'utilisateur" autocomplete="username">
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="login-password">Mot de passe</label>
+                            <div class="input-wrapper">
+                                <span class="material-icons input-icon">lock</span>
+                                <input type="password" id="login-password" class="focusable" placeholder="••••••••" autocomplete="current-password">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="login-doh-wrapper">
+                        <label class="doh-checkbox-label">
+                            <input type="checkbox" id="login-doh-toggle" class="focusable" checked>
+                            <span>Activer le contournement DNS (DoH)</span>
+                        </label>
+                    </div>
+                    
+                    <button type="submit" id="btn-connect" class="focusable btn-primary">
+                        <span>Sauvegarder et Charger</span>
+                        <span class="material-icons">save</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 4. Screen: Main Portal Menu -->
+        <div id="portal-screen" class="screen hidden">
+            <div class="portal-container">
+                <div class="portal-header">
+                    <div class="brand-logo">
+                        <span class="material-icons logo-icon">shield</span>
+                        <h1>Shield<span>IPTV</span></h1>
+                    </div>
+                    <div class="portal-user-info">
+                        <span class="portal-username-label">Compte : <strong id="portal-username">Bilal</strong></span>
+                        <button class="focusable icon-btn" id="portal-btn-accounts" title="Gestion Comptes">
+                            <span class="material-icons">manage_accounts</span>
+                        </button>
+                        <button class="focusable icon-btn" id="portal-btn-speedtest" title="Test de Débit">
+                            <span class="material-icons">speed</span>
+                        </button>
+                        <button class="focusable icon-btn" id="portal-btn-linktester" title="Tester un lien">
+                            <span class="material-icons">link</span>
+                        </button>
+                        <button class="focusable icon-btn" id="portal-btn-streamtester" title="Testeur de flux">
+                            <span class="material-icons">smart_display</span>
+                        </button>
+                        <button class="focusable icon-btn" id="portal-btn-settings" title="Paramètres">
+                            <span class="material-icons">settings</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="portal-grid">
+                    <div class="focusable portal-card" id="portal-card-live" tabindex="0">
+                        <div class="portal-card-glow"></div>
+                        <span class="material-icons portal-card-icon">live_tv</span>
+                        <h3>LIVE TV</h3>
+                        <p>Chaînes en direct & EPG</p>
+                    </div>
+                    <div class="focusable portal-card" id="portal-card-movies" tabindex="0">
+                        <div class="portal-card-glow"></div>
+                        <span class="material-icons portal-card-icon">movie</span>
+                        <h3>FILMS</h3>
+                        <p>Films à la demande (VOD)</p>
+                    </div>
+                    <div class="focusable portal-card" id="portal-card-series" tabindex="0">
+                        <div class="portal-card-glow"></div>
+                        <span class="material-icons portal-card-icon">tv</span>
+                        <h3>SÉRIES</h3>
+                        <p>Séries TV & Saisons</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Screen: Sub-Dashboard (Categories Grid) -->
+        <div id="home-screen" class="screen hidden">
+            <!-- Main Content Area (Now takes full width, no sidebar) -->
+            <div id="main-content" class="main-content">
+                <!-- Top Header Bar -->
+                <header class="content-header">
+                    <div class="breadcrumb">
+                        <button class="focusable btn-back-round" id="btn-header-back" title="Retour au menu principal">
+                            <span class="material-icons">arrow_back</span>
+                        </button>
+                        <span id="breadcrumb-section">Live TV</span>
+                        <span class="separator material-icons">chevron_right</span>
+                        <span id="breadcrumb-category">Toutes</span>
+                    </div>
+                    <div class="header-actions">
+                        <div class="search-wrapper">
+                            <span class="material-icons">search</span>
+                            <input type="text" id="search-bar" class="focusable" placeholder="Rechercher...">
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Dynamic Grid Wrapper -->
+                <div class="content-body">
+                    <!-- Left category list inside section -->
+                    <div id="category-sidebar" class="category-sidebar glass">
+                        <div class="category-search-wrapper">
+                            <input type="text" id="category-search-bar" class="focusable" placeholder="Rechercher un bouquet...">
+                        </div>
+                        <div class="category-list" id="category-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Middle/Right media items grid -->
+                    <div id="media-grid-container" class="media-grid-container">
+                        <!-- Browser Warning Banner -->
+                        <div id="browser-warning-banner" class="warning-banner glass hidden">
+                            <span class="material-icons warning-icon">info</span>
+                            <div class="warning-content">
+                                <h3 id="browser-warning-title">Lecture limitée sur navigateur</h3>
+                                <p id="browser-warning-desc">Pour regarder le Direct et les Films, veuillez utiliser notre application dédiée. Seules les Séries sont disponibles sur le web.</p>
+                            </div>
+                        </div>
+                        <div class="media-grid" id="media-grid">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Right panel: Live TV Picture-in-Picture & EPG Preview (Only for Live) -->
+                    <div id="live-preview-panel" class="live-preview-panel glass hidden">
+                        <div class="preview-video-container focusable" id="preview-video-container" tabindex="0" title="Passer en plein écran">
+                            <video id="live-preview-video" playsinline autoplay></video>
+                            <div class="preview-overlay-btn">
+                                <span class="material-icons">fullscreen</span>
+                            </div>
+                            <div id="preview-loader" class="preview-loader hidden">
+                                <div class="loader-spinner-mini"></div>
+                            </div>
+                        </div>
+                        <div class="preview-epg-container">
+                            <h3>Guide des Programmes</h3>
+                            <div class="preview-epg-list" id="preview-epg-list">
+                                <!-- Dynamic EPG list loaded here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Settings Panel -->
+                    <div id="settings-panel" class="settings-panel glass hidden">
+                        <h2>Paramètres globaux</h2>
+                        <div class="settings-group">
+                            <h3>DNS over HTTPS (DoH)</h3>
+                            <p class="settings-desc">Permet de contourner les blocages DNS imposés par certains FAI pour lire les flux IPTV.</p>
+                            <div class="toggle-wrapper">
+                                <label for="setting-doh-toggle">Activer DoH</label>
+                                <input type="checkbox" id="setting-doh-toggle" class="focusable" checked>
+                            </div>
+                            <div class="input-group">
+                                <label for="setting-doh-url">Résolveur DoH</label>
+                                <select id="setting-doh-url" class="focusable">
+                                    <option value="https://dns.google/resolve">Google DNS (Recommandé)</option>
+                                    <option value="https://cloudflare-dns.com/dns-query">Cloudflare DNS</option>
+                                    <option value="https://dns.adguard.com/dns-query">AdGuard DNS</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="settings-group">
+                            <h3 id="settings-lang-title">Langue / Language</h3>
+                            <p class="settings-desc">Sélectionnez la langue de l'interface.</p>
+                            <div class="input-group">
+                                <label for="setting-lang-select" id="settings-lang-label">Langue</label>
+                                <select id="setting-lang-select" class="focusable">
+                                    <option value="fr">Français</option>
+                                    <option value="en">English</option>
+                                    <option value="es">Español</option>
+                                    <option value="it">Italiano</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="settings-group">
+                            <h3>Informations de l'abonnement</h3>
+                            <div class="info-grid">
+                                <div class="info-label">Statut du compte :</div>
+                                <div class="info-value text-success" id="info-status">Actif</div>
+                                <div class="info-label">Date d'expiration :</div>
+                                <div class="info-value" id="info-exp">N/A</div>
+                                <div class="info-label">Connexions Max :</div>
+                                <div class="info-value" id="info-max-connections">N/A</div>
+                                <div class="info-label">Serveur IPTV :</div>
+                                <div class="info-value" id="info-server-url">N/A</div>
+                            </div>
+                        </div>
+
+                        <div class="settings-group">
+                            <h3 id="settings-about-title">À Propos &amp; Mentions Légales</h3>
+                            <p class="settings-desc" id="settings-about-desc">Informations sur l'application et support technique.</p>
+                            <div class="about-grid">
+                                <div class="about-row">
+                                    <span class="about-label" id="about-label-version">Version de l'application :</span>
+                                    <span class="about-value">Build 1.0.5 (Corporate Utility)</span>
+                                </div>
+                                <div class="about-row">
+                                    <span class="about-label" id="about-label-privacy">Politique de Confidentialité :</span>
+                                    <span class="about-value">
+                                        <a href="https://shieldiptvplayer.com/privacy" target="_blank" class="focusable about-link">shieldiptvplayer.com/privacy</a>
+                                    </span>
+                                </div>
+                                <div class="about-row">
+                                    <span class="about-label" id="about-label-support">Email de contact / Support :</span>
+                                    <span class="about-value">
+                                        <a href="mailto:support@shieldiptvplayer.com" class="focusable about-link">support@shieldiptvplayer.com</a>
+                                    </span>
+                                </div>
+                                <div class="about-row">
+                                    <span class="about-label" id="about-label-credits">Licences Open Source :</span>
+                                    <span class="about-value">mpegts.js, Google Fonts, Material Icons</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="btn-logout" class="focusable btn-danger">
+                            <span class="material-icons">logout</span>
+                            <span>Se déconnecter</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Screen: Series Details Screen -->
+        <div id="series-details-screen" class="screen hidden">
+            <div id="series-backdrop" class="series-backdrop"></div>
+            <div class="series-details-container">
+                <!-- Header with Back Button -->
+                <div class="series-header">
+                    <button class="focusable btn-back-round" id="series-btn-back" title="Retour">
+                        <span class="material-icons">arrow_back</span>
+                    </button>
+                    <span class="series-header-title">Fiche de la Série</span>
+                </div>
+                
+                <!-- Metadata Info Section -->
+                <div class="series-info-section">
+                    <div class="series-poster-container">
+                        <img id="series-poster" src="" alt="Poster" onerror="this.src='https://placehold.co/300x450/111827/ffffff?text=Series'">
+                    </div>
+                    <div class="series-metadata">
+                        <h1 id="series-title">Nom de la Série</h1>
+                        <div class="series-stats">
+                            <span class="badge" id="series-category">Catégorie</span>
+                            <span class="series-rating-wrapper">
+                                <span class="material-icons">star</span>
+                                <span id="series-rating">0.0</span>
+                            </span>
+                            <span id="series-release">N/A</span>
+                        </div>
+                        <p id="series-plot">Synopsis non disponible.</p>
+                        <div class="series-credits">
+                            <p><strong>Acteurs :</strong> <span id="series-cast">N/A</span></p>
+                            <p><strong>Réalisateur :</strong> <span id="series-director">N/A</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seasons Selector Bar (Horizontal scrollable) -->
+                <div class="seasons-section">
+                    <h3>Saisons</h3>
+                    <div class="seasons-bar" id="seasons-bar">
+                        <!-- Dynamic season buttons: Saison 1, Saison 2... -->
+                    </div>
+                </div>
+
+                <!-- Episodes List Section -->
+                <div class="episodes-section">
+                    <h3>Épisodes</h3>
+                    <div class="episodes-grid-wrapper">
+                        <div class="episodes-list" id="episodes-list">
+                            <!-- Dynamic episodes list -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. Screen: Fullscreen Video Player -->
+        <div id="player-screen" class="screen hidden">
+            <!-- Native HTML5 Video Element -->
+            <video id="video-player" playsinline autoplay></video>
+
+            <!-- Video Loading Spinner -->
+            <div id="player-loader" class="player-loader">
+                <div class="loader-spinner"></div>
+                <div class="player-loader-text">Chargement du flux...</div>
+                <button id="player-loader-vlc" class="focusable vlc-btn-loader hidden">
+                    <span class="material-icons">play_circle_filled</span>
+                    <span>Ouvrir dans VLC</span>
+                </button>
+            </div>
+
+            <!-- Custom Remote Control Overlay -->
+            <div id="player-overlay" class="player-overlay-container">
+                <!-- Top Bar: Channel Details -->
+                <div class="player-top-bar">
+                    <button class="focusable player-btn" id="player-btn-back" title="Retour">
+                        <span class="material-icons">arrow_back</span>
+                    </button>
+                    <div class="player-logo-wrapper">
+                        <img id="player-channel-logo" src="" alt="" onerror="this.style.display='none'">
+                    </div>
+                    <div class="player-channel-info">
+                        <h2 id="player-channel-name">Nom de la chaîne</h2>
+                        <p id="player-now-playing">Programme en cours...</p>
+                    </div>
+                </div>
+
+                <!-- Bottom Bar: Playback Controls & Progress -->
+                <div class="player-bottom-bar">
+                    <div class="player-timeline-container" id="player-timeline-container">
+                        <span id="player-time-current">0:00</span>
+                        <div class="player-progress-bar focusable" id="player-progress-bar" tabindex="0">
+                            <!-- Floating time tooltip during scrubbing -->
+                            <div class="player-progress-tooltip hidden" id="player-progress-tooltip">0:00</div>
+                            <div class="player-progress-hover" id="player-progress-hover"></div>
+                            <div class="player-progress-fill" id="player-progress-fill"></div>
+                        </div>
+                        <span id="player-time-total">0:00</span>
+                    </div>
+
+                    <div class="player-control-row">
+                        <!-- Left controls: Zap list trigger -->
+                        <div class="left-controls">
+                            <button class="focusable player-btn" id="player-btn-channels" title="Liste des chaînes">
+                                <span class="material-icons">format_list_bulleted</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Center controls: Centered control buttons -->
+                        <div class="player-center-controls">
+                            <button class="focusable player-btn" id="player-btn-prev" title="Précédent">
+                                <span class="material-icons" id="player-icon-prev">skip_previous</span>
+                            </button>
+                            <button class="focusable player-btn" id="player-btn-play" title="Lecture/Pause">
+                                <span class="material-icons" id="player-icon-play">pause</span>
+                            </button>
+                            <button class="focusable player-btn" id="player-btn-next-channel" title="Suivant">
+                                <span class="material-icons" id="player-icon-next">skip_next</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Right controls: Fullscreen trigger -->
+                        <div class="right-controls">
+                            <button class="focusable player-btn" id="player-btn-vlc" title="Ouvrir dans VLC">
+                                <span class="material-icons">open_in_new</span>
+                            </button>
+                            <button class="focusable player-btn" id="player-btn-fullscreen" title="Plein Écran">
+                                <span class="material-icons">fullscreen</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Channels List Drawer (Zap Drawer) -->
+            <div id="zap-drawer" class="zap-drawer glass hidden">
+                <h3>Zapping rapide</h3>
+                <div class="zap-list" id="zap-list">
+                    <!-- Dynamic channels list -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Standalone Screen: Speed Test -->
+        <div id="speedtest-screen" class="screen hidden">
+            <div class="diagnostic-container-fullscreen glass">
+                <div class="login-header-bar">
+                    <button class="focusable btn-back-round" id="btn-speedtest-back" title="Retour au portail">
+                        <span class="material-icons">arrow_back</span>
+                    </button>
+                    <h2 id="screen-speedtest-title">Test de débit</h2>
+                </div>
+                
+                <div class="diagnostic-item" style="margin-top: auto; margin-bottom: auto; background: transparent; border: none; align-items: center; justify-content: center; display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="speedtest-display" style="justify-content: center; margin-bottom: 2rem;">
+                        <div class="speed-value" id="speed-value" style="font-size: 8rem;">--</div>
+                        <div class="speed-unit" id="speed-unit" style="font-size: 2.2rem; margin-left: 0.8rem; align-self: flex-end; margin-bottom: 1.5rem;">Mbps</div>
+                    </div>
+                    <button type="button" id="btn-run-speedtest" class="focusable btn-primary" style="padding: 1.25rem 3rem; font-size: 1.25rem; margin: 0 auto; width: auto; min-width: 260px;">
+                        <span id="btn-label-speedtest">Lancer le test</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Standalone Screen: Link Tester -->
+        <div id="linktester-screen" class="screen hidden">
+            <div class="diagnostic-container-fullscreen glass">
+                <div class="login-header-bar">
+                    <button class="focusable btn-back-round" id="btn-linktester-back" title="Retour au portail">
+                        <span class="material-icons">arrow_back</span>
+                    </button>
+                    <h2 id="screen-linktester-title">Vérificateur de lien</h2>
+                </div>
+                
+                <div class="diagnostic-item" style="margin-top: auto; margin-bottom: auto; max-width: 650px; width: 100%; margin-left: auto; margin-right: auto; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 20px; padding: 2.5rem; text-align: left; gap: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                    <p class="settings-desc" id="screen-linktester-desc" style="color: var(--text-muted); font-size: 1rem;">Testez si un lien de flux vidéo est actuellement actif et en ligne.</p>
+                    
+                    <div class="input-group" style="margin-bottom: 0; width: 100%;">
+                        <label for="link-test-url" style="font-size: 0.9rem; font-weight: 500;">URL du flux</label>
+                        <div class="input-wrapper">
+                            <span class="material-icons input-icon" style="top: 50%; transform: translateY(-50%);">link</span>
+                            <input type="url" id="link-test-url" class="focusable" placeholder="http://domain.com/live/stream.ts" style="padding: 1rem 1rem 1rem 3rem; font-size: 1rem; border-radius: 12px; height: auto;">
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="btn-run-linktest" class="focusable btn-primary" style="padding: 1.1rem 2rem; font-size: 1.15rem; width: 100%; border-radius: 12px; font-weight: 600;">
+                        <span id="btn-label-linktester">Tester le lien</span>
+                    </button>
+                    
+                    <div id="link-test-result" class="link-test-result hidden" style="width: 100%; text-align: center; padding: 1.1rem; border-radius: 12px; font-size: 1.1rem; font-weight: 600;">Prêt</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Standalone Screen: Stream Tester (Sandbox) -->
+        <div id="streamtester-screen" class="screen hidden">
+            <div class="diagnostic-container-fullscreen glass" style="height: 100vh; display: flex; flex-direction: column;">
+                <div class="login-header-bar">
+                    <button class="focusable btn-back-round" id="btn-streamtester-back" title="Retour au portail">
+                        <span class="material-icons">arrow_back</span>
+                    </button>
+                    <h2>Testeur de Flux (Sandbox)</h2>
+                </div>
+                
+                <div class="streamtester-layout">
+                    <!-- Left Column: Inputs and Parameters -->
+                    <div class="streamtester-left">
+                        <p class="settings-desc" style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.25rem;">
+                            Testez et analysez la lecture de vos flux vidéo en direct (M3U8 / TS / MP4).
+                        </p>
+                        
+                        <div class="input-group" style="margin-bottom: 1rem;">
+                            <label for="stream-test-url">URL du flux</label>
+                            <div class="input-wrapper">
+                                <span class="material-icons input-icon">link</span>
+                                <input type="url" id="stream-test-url" class="focusable" placeholder="https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/master.m3u8" style="padding: 0.85rem 1rem 0.85rem 2.75rem; font-size: 0.95rem;">
+                            </div>
+                        </div>
+                        
+                        <div class="input-group" style="margin-bottom: 1.25rem;">
+                            <label for="stream-test-engine">Moteur de lecture</label>
+                            <div class="input-wrapper">
+                                <span class="material-icons input-icon" style="color: var(--text-muted);">smart_display</span>
+                                <select id="stream-test-engine" class="focusable" style="width: 100%; padding: 0.85rem 1rem 0.85rem 2.75rem; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); color: white; font-size: 0.95rem;">
+                                    <option value="auto">Automatique (Détecter)</option>
+                                    <option value="hls">HLS.js (Recommandé M3U8)</option>
+                                    <option value="mpegts">MPEG-TS.js (TS)</option>
+                                    <option value="native">HTML5 Natif</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="login-doh-wrapper" style="margin-bottom: 1.5rem; padding-bottom: 0;">
+                            <label class="doh-checkbox-label" style="font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="checkbox" id="stream-test-doh-toggle" class="focusable" style="width: 18px; height: 18px; margin: 0;">
+                                <span>Activer le contournement DNS DoH</span>
+                            </label>
+                        </div>
+                        
+                        <button type="button" id="btn-run-streamtest" class="focusable btn-primary" style="padding: 1rem; font-size: 1.1rem; width: 100%; border-radius: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: auto;">
+                            <span class="material-icons">play_circle_filled</span>
+                            <span>Lancer la lecture</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Right Column: Video player & Console Logs -->
+                    <div class="streamtester-right" style="display: flex; flex-direction: column; gap: 1rem; height: 100%;">
+                        <!-- Sandbox Video element -->
+                        <div id="streamtester-video-wrapper" style="position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+                            <video id="streamtester-video" playsinline controls style="width: 100%; height: 100%; object-fit: contain;"></video>
+                            <div id="streamtester-video-loader" class="hidden" style="position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:0.5rem; z-index:5;">
+                                <div class="loader-spinner-mini" style="border: 2px solid rgba(255,255,255,0.1); border-top: 2px solid var(--primary); border-radius: 50%; width: 28px; height: 28px; animation: spin 0.8s linear infinite;"></div>
+                                <div style="font-size: 0.9rem; color: var(--text-muted); font-weight: 500;">Chargement du flux...</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Console Diagnostic Log -->
+                        <div style="display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; min-height: 200px;">
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; text-align: left;">Console de diagnostic</label>
+                            <pre id="streamtester-console" style="width: 100%; flex-grow: 1; overflow-y: auto; background: #020305; border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem; font-family: monospace; font-size: 0.85rem; color: #00ff66; white-space: pre-wrap; margin-bottom: 0.5rem; user-select: text; -webkit-user-select: text; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8); text-align: left;"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Logic - Sequential Standard Script Imports (shares global window scope, fully compatible with file:// WebView protocols) -->
+    <script src="js/state.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/playlist.js"></script>
+    <script src="js/content.js"></script>
+    <script src="js/diagnostics.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

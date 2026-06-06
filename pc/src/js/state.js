@@ -2,8 +2,7 @@
    SHIELDIPTV APP STATE & CONSTANTS
    ========================================================================== */
 
-const isTvWrapper = window.location.protocol === 'file:' || 
-                    window.cordova || 
+const isTvWrapper = window.cordova || 
                     /SmartTV|GoogleTV|AppleTV|AndroidTV/i.test(navigator.userAgent);
 
 // Fallback dynamic placeholder SVG Data-URIs

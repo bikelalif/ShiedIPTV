@@ -272,6 +272,33 @@ function setupSpatialNavigation() {
             resetPlayerActivity();
         }
         
+        if (!isTvWrapper) {
+            // PC & Web: disable D-pad spatial navigation, only keep media player controls
+            if (activeScreenId() === "player-screen") {
+                if (key.toLowerCase() === 'f') {
+                    e.preventDefault();
+                    toggleFullscreen();
+                } else if (key === ' ' || key === 'Spacebar') {
+                    e.preventDefault();
+                    togglePlayPause();
+                } else if (key === 'ArrowLeft' || key === 'ArrowRight') {
+                    const video = document.getElementById("video-player");
+                    if (video && video.duration) {
+                        e.preventDefault();
+                        if (key === 'ArrowLeft') {
+                            video.currentTime = Math.max(0, video.currentTime - 10);
+                        } else {
+                            video.currentTime = Math.min(video.duration, video.currentTime + 10);
+                        }
+                    }
+                } else if (key === 'Escape') {
+                    e.preventDefault();
+                    closeVideoPlayer();
+                }
+            }
+            return;
+        }
+
         if (key.toLowerCase() === 'f') {
             if (activeScreenId() === "player-screen") {
                 e.preventDefault();
@@ -287,30 +314,6 @@ function setupSpatialNavigation() {
         }
         
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(key)) {
-            if (!isTvWrapper) {
-                if (key === 'Enter') {
-                    const active = document.activeElement;
-                    if (active && active.classList.contains("focusable")) {
-                        if (active.tagName !== 'INPUT' && active.tagName !== 'SELECT') {
-                            e.preventDefault();
-                            active.click();
-                        }
-                    }
-                }
-                if ((key === 'ArrowLeft' || key === 'ArrowRight') && activeScreenId() === "player-screen") {
-                    const video = document.getElementById("video-player");
-                    if (video && video.duration) {
-                        e.preventDefault();
-                        if (key === 'ArrowLeft') {
-                            video.currentTime = Math.max(0, video.currentTime - 10);
-                        } else {
-                            video.currentTime = Math.min(video.duration, video.currentTime + 10);
-                        }
-                    }
-                }
-                return;
-            }
-
             const active = document.activeElement;
             const container = document.getElementById(activeScreenId());
             const activeOverlay = document.querySelector(".screen-overlay:not(.hidden)");
