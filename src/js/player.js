@@ -76,6 +76,11 @@ async function loadEPG(streamId) {
 }
 
 function launchVideoPlayer(url, title, logoUrl) {
+    if (window.AndroidApp) {
+        console.log("[Android Wrapper] Delegating video play to native ExoPlayer:", url);
+        window.AndroidApp.playStream(url, title, logoUrl || "");
+        return;
+    }
     state.currentPlayingStreamUrl = url;
     destroyPreviewMpegtsPlayer();
     
@@ -363,12 +368,24 @@ async function loadLivePreview(item) {
     const loader = document.getElementById("preview-loader");
     const t = TRANSLATIONS[state.language || 'fr'];
     
-    if (loader) loader.classList.remove("hidden");
-    
     const epgListEl = document.getElementById("preview-epg-list");
     if (epgListEl) epgListEl.innerHTML = `<div class="preview-epg-loading">${t.epgLoading}</div>`;
     
     destroyPreviewMpegtsPlayer();
+    
+    if (window.AndroidApp) {
+        // Skip video loading on TV WebView to save resources and prevent crashes
+        if (video) {
+            video.pause();
+            video.removeAttribute("src");
+            try { video.load(); } catch(e){}
+        }
+        if (loader) loader.classList.add("hidden");
+        fetchAndRenderPreviewEPG(item, epgListEl, t);
+        return;
+    }
+    
+    if (loader) loader.classList.remove("hidden");
     
     const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.ts`;
     
@@ -426,49 +443,7 @@ async function loadLivePreview(item) {
         console.warn("[Preview] Error playing stream in preview");
     };
     
-    try {
-        const epgData = await makeApiCall('get_short_epg', `&stream_id=${item.stream_id}`);
-        if (epgListEl) {
-            epgListEl.innerHTML = "";
-            
-            if (epgData && epgData.epg_listings && epgData.epg_listings.length > 0) {
-                epgData.epg_listings.forEach(listing => {
-                    const title = listing.title ? decodeUtf8Base64(listing.title) : t.untitled;
-                    const desc = listing.description ? decodeUtf8Base64(listing.description) : "";
-                    
-                    const startStr = listing.start.split(" ")[1]?.substring(0, 5) || "";
-                    const endStr = listing.end.split(" ")[1]?.substring(0, 5) || "";
-                    
-                    const itemEl = document.createElement("div");
-                    itemEl.className = "preview-epg-item";
-                    
-                    const timeEl = document.createElement("span");
-                    timeEl.className = "preview-epg-time";
-                    timeEl.innerText = `${startStr} - ${endStr}`;
-                    itemEl.appendChild(timeEl);
-                    
-                    const titleEl = document.createElement("span");
-                    titleEl.className = "preview-epg-title";
-                    titleEl.innerText = title;
-                    itemEl.appendChild(titleEl);
-                    
-                    if (desc) {
-                        const descEl = document.createElement("p");
-                        descEl.className = "preview-epg-desc";
-                        descEl.innerText = desc;
-                        itemEl.appendChild(descEl);
-                    }
-                    
-                    epgListEl.appendChild(itemEl);
-                });
-            } else {
-                epgListEl.innerHTML = `<div class="preview-epg-empty">${t.epgEmpty}</div>`;
-            }
-        }
-    } catch (e) {
-        console.warn("Preview EPG load failed:", e);
-        if (epgListEl) epgListEl.innerHTML = `<div class="preview-epg-empty">${t.epgUnavailable}</div>`;
-    }
+    await fetchAndRenderPreviewEPG(item, epgListEl, t);
 }
 
 function destroyPreviewMpegtsPlayer() {
@@ -741,4 +716,50 @@ function closeZapDrawer() {
     
     const playBtn = document.getElementById("player-btn-play");
     if (playBtn) playBtn.focus();
+}
+
+async function fetchAndRenderPreviewEPG(item, epgListEl, t) {
+    try {
+        const epgData = await makeApiCall('get_short_epg', `&stream_id=${item.stream_id}`);
+        if (epgListEl) {
+            epgListEl.innerHTML = "";
+            
+            if (epgData && epgData.epg_listings && epgData.epg_listings.length > 0) {
+                epgData.epg_listings.forEach(listing => {
+                    const title = listing.title ? decodeUtf8Base64(listing.title) : t.untitled;
+                    const desc = listing.description ? decodeUtf8Base64(listing.description) : "";
+                    
+                    const startStr = listing.start.split(" ")[1]?.substring(0, 5) || "";
+                    const endStr = listing.end.split(" ")[1]?.substring(0, 5) || "";
+                    
+                    const itemEl = document.createElement("div");
+                    itemEl.className = "preview-epg-item";
+                    
+                    const timeEl = document.createElement("span");
+                    timeEl.className = "preview-epg-time";
+                    timeEl.innerText = `${startStr} - ${endStr}`;
+                    itemEl.appendChild(timeEl);
+                    
+                    const titleEl = document.createElement("span");
+                    titleEl.className = "preview-epg-title";
+                    titleEl.innerText = title;
+                    itemEl.appendChild(titleEl);
+                    
+                    if (desc) {
+                        const descEl = document.createElement("p");
+                        descEl.className = "preview-epg-desc";
+                        descEl.innerText = desc;
+                        itemEl.appendChild(descEl);
+                    }
+                    
+                    epgListEl.appendChild(itemEl);
+                });
+            } else {
+                epgListEl.innerHTML = `<div class="preview-epg-empty">${t.epgEmpty}</div>`;
+            }
+        }
+    } catch (e) {
+        console.warn("Preview EPG load failed:", e);
+        if (epgListEl) epgListEl.innerHTML = `<div class="preview-epg-empty">${t.epgUnavailable}</div>`;
+    }
 }
