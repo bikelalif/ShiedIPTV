@@ -903,8 +903,26 @@ function applyLanguage(lang) {
     if (warningTitle) warningTitle.innerText = t.browserWarningTitle;
     if (warningDesc) warningDesc.innerText = t.browserWarningDesc;
     
-    const onboardingH2 = document.querySelector("#cgu-modal h2");
+    const onboardingH2 = document.getElementById("cgu-modal-title") || document.querySelector("#cgu-modal h2");
     if (onboardingH2) onboardingH2.innerText = t.cguTitle;
+    
+    const cguLangText = document.getElementById("cgu-lang-text");
+    if (cguLangText) {
+        const langNames = { fr: "Français", en: "English", es: "Español", it: "Italiano" };
+        cguLangText.innerText = langNames[lang] || "Français";
+    }
+    
+    const pmSpeedtest = document.getElementById("pm-btn-speedtest");
+    if (pmSpeedtest) pmSpeedtest.title = t.diagSpeedtest;
+    
+    const pmLinktester = document.getElementById("pm-btn-linktester");
+    if (pmLinktester) pmLinktester.title = t.diagLinktester;
+    
+    const pmStreamtester = document.getElementById("pm-btn-streamtester");
+    if (pmStreamtester) pmStreamtester.title = lang === 'fr' ? "Testeur de flux" : "Stream Tester";
+    
+    const pmSettings = document.getElementById("pm-btn-settings");
+    if (pmSettings) pmSettings.title = t.settingsTitle;
     
     const cguContent = document.querySelector("#cgu-modal .cgu-content");
     if (cguContent) {

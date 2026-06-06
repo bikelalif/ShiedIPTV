@@ -9,6 +9,7 @@ function initApp() {
     }
     setupEventListeners();
     setupSpatialNavigation();
+    initTvInputs();
     
     // Restore settings
     const savedSettings = localStorage.getItem("shield_iptv_settings");
@@ -130,6 +131,18 @@ function setupEventListeners() {
         });
     }
 
+    const btnCguLang = document.getElementById("btn-cgu-lang");
+    if (btnCguLang) {
+        btnCguLang.addEventListener("click", () => {
+            const cycle = ['fr', 'en', 'es', 'it'];
+            const currentIndex = cycle.indexOf(state.language || 'fr');
+            const nextIndex = (currentIndex + 1) % cycle.length;
+            const nextLang = cycle[nextIndex];
+            applyLanguage(nextLang);
+            btnCguLang.focus();
+        });
+    }
+
     // Login tab selector switcher
     const tabXtream = document.getElementById("tab-xtream");
     const tabM3u = document.getElementById("tab-m3u");
@@ -212,51 +225,71 @@ function setupEventListeners() {
     document.getElementById("portal-card-series").addEventListener("click", () => {
         switchSection("series");
     });
-    document.getElementById("portal-btn-speedtest").addEventListener("click", () => {
-        showScreen("speedtest-screen");
-    });
-    document.getElementById("portal-btn-linktester").addEventListener("click", () => {
-        showScreen("linktester-screen");
-        const resEl = document.getElementById("link-test-result");
-        if (resEl) resEl.classList.add("hidden");
-    });
-    document.getElementById("portal-btn-streamtester").addEventListener("click", () => {
-        showScreen("streamtester-screen");
-        initStreamTesterUI();
-    });
+    const pmBtnSpeedtest = document.getElementById("pm-btn-speedtest");
+    if (pmBtnSpeedtest) {
+        pmBtnSpeedtest.addEventListener("click", () => {
+            showScreen("speedtest-screen");
+        });
+    }
+    const pmBtnLinktester = document.getElementById("pm-btn-linktester");
+    if (pmBtnLinktester) {
+        pmBtnLinktester.addEventListener("click", () => {
+            showScreen("linktester-screen");
+            const resEl = document.getElementById("link-test-result");
+            if (resEl) resEl.classList.add("hidden");
+        });
+    }
+    const pmBtnStreamtester = document.getElementById("pm-btn-streamtester");
+    if (pmBtnStreamtester) {
+        pmBtnStreamtester.addEventListener("click", () => {
+            showScreen("streamtester-screen");
+            initStreamTesterUI();
+        });
+    }
+    const pmBtnSettings = document.getElementById("pm-btn-settings");
+    if (pmBtnSettings) {
+        pmBtnSettings.addEventListener("click", () => {
+            switchSection("settings");
+        });
+    }
     document.getElementById("portal-btn-accounts").addEventListener("click", () => {
         showScreen("playlist-manager-screen");
         renderPlaylistsGrid();
-    });
-    document.getElementById("portal-btn-settings").addEventListener("click", () => {
-        switchSection("settings");
     });
 
     // Standalone Diagnostic Screens Back Buttons
     const btnSpeedtestBack = document.getElementById("btn-speedtest-back");
     if (btnSpeedtestBack) {
         btnSpeedtestBack.addEventListener("click", () => {
-            showScreen("portal-screen");
+            showScreen("playlist-manager-screen");
+            focusFirst();
         });
     }
 
     const btnLinktesterBack = document.getElementById("btn-linktester-back");
     if (btnLinktesterBack) {
         btnLinktesterBack.addEventListener("click", () => {
-            showScreen("portal-screen");
+            showScreen("playlist-manager-screen");
+            focusFirst();
         });
     }
 
     const btnStreamtesterBack = document.getElementById("btn-streamtester-back");
     if (btnStreamtesterBack) {
         btnStreamtesterBack.addEventListener("click", () => {
-            showScreen("portal-screen");
+            showScreen("playlist-manager-screen");
+            focusFirst();
         });
     }
     
-    // Back to portal
+    // Back to portal / playlist manager
     document.getElementById("btn-header-back").addEventListener("click", () => {
-        showScreen("portal-screen");
+        if (state.currentSection === "settings") {
+            showScreen("playlist-manager-screen");
+            focusFirst();
+        } else {
+            showScreen("portal-screen");
+        }
     });
     
     // Preview Video Container trigger for fullscreen
@@ -512,4 +545,23 @@ function setupEventListeners() {
     if (btnStreamtest) {
         btnStreamtest.addEventListener("click", runStreamTesterTest);
     }
+}
+
+function initTvInputs() {
+    if (!isTvWrapper) return;
+    const textInputs = document.querySelectorAll('input[type="text"], input[type="url"], input[type="password"]');
+    textInputs.forEach(input => {
+        input.setAttribute('readonly', 'true');
+        
+        input.addEventListener('click', function() {
+            if (this.hasAttribute('readonly')) {
+                this.removeAttribute('readonly');
+                this.focus();
+            }
+        });
+        
+        input.addEventListener('blur', function() {
+            this.setAttribute('readonly', 'true');
+        });
+    });
 }
