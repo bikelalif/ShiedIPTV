@@ -47,6 +47,9 @@ class MainActivity : ComponentActivity() {
         val defaultUserAgent = settings.userAgentString
         settings.userAgentString = "$defaultUserAgent; AndroidTV"
 
+        // Add JavaScript Interface for ExoPlayer integration
+        webView.addJavascriptInterface(WebAppInterface(this), "AndroidApp")
+
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
@@ -63,5 +66,17 @@ class MainActivity : ComponentActivity() {
             return true
         }
         return super.onKeyDown(keyCode, event)
+    }
+}
+
+class WebAppInterface(private val activity: MainActivity) {
+    @android.webkit.JavascriptInterface
+    fun playStream(url: String, title: String, logoUrl: String) {
+        val intent = android.content.Intent(activity, PlayerActivity::class.java).apply {
+            putExtra("STREAM_URL", url)
+            putExtra("STREAM_TITLE", title)
+            putExtra("LOGO_URL", logoUrl)
+        }
+        activity.startActivity(intent)
     }
 }
