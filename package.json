@@ -1,5 +1,6 @@
 {
   "name": "shieldiptv-pc",
+  "productName": "Shield IPTV Player",
   "version": "1.0.0",
   "description": "ShieldIPTV PC Client",
   "main": "main.js",
