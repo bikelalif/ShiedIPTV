@@ -48,7 +48,20 @@
                     <p>En tant qu'utilisateur, vous devez fournir vos propres flux vidéo (liens de playlists légaux, comptes Xtream Codes, etc.). ShieldIPTV n'approuve pas, ne fournit pas et ne facilite pas l'accès à du contenu protégé par le droit d'auteur sans l'accord des ayants droit.</p>
                     <p>En continuant, vous confirmez posséder les droits d'utilisation des flux et contenus que vous importerez dans ce lecteur.</p>
                 </div>
-                <button id="btn-cgu-close" class="focusable btn-primary" style="margin-top: 1rem;">
+                
+                <!-- Onboarding Actions (Force Accept/Decline) -->
+                <div id="cgu-actions-container" class="cgu-actions hidden" style="display: flex; gap: 1rem; width: 100%; margin-top: 1.5rem;">
+                    <button id="btn-cgu-decline" class="focusable btn-secondary" style="flex: 1; padding: 0.8rem; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--error); border-radius: 12px; color: var(--error); cursor: pointer;">
+                        <span>Refuser</span>
+                    </button>
+                    <button id="btn-cgu-accept" class="focusable btn-primary" style="flex: 1; padding: 0.8rem; border-radius: 12px;">
+                        <span>Accepter et Continuer</span>
+                        <span class="material-icons">check</span>
+                    </button>
+                </div>
+
+                <!-- Simple Close Button (Standard View) -->
+                <button id="btn-cgu-close" class="focusable btn-primary hidden" style="margin-top: 1.5rem; width: 100%; border-radius: 12px;">
                     <span>Fermer</span>
                     <span class="material-icons">close</span>
                 </button>

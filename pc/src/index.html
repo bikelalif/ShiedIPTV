@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shield IPTV Player</title>
+    <title>ShieldIPTV</title>
     <!-- Google Fonts: Outfit & Material Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Material+Icons&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
@@ -35,57 +35,33 @@
             </div>
         </div>
 
-        <!-- CGU Acceptance Screen (First Launch Only) -->
-        <div id="cgu-screen" class="screen hidden">
-            <div class="cgu-acceptance-container glass">
-                <div class="brand-logo">
-                    <span class="material-icons logo-icon">shield</span>
-                    <h1>Shield<span>IPTV</span></h1>
-                </div>
-                <h2>Conditions Générales d'Utilisation</h2>
-                <div class="cgu-content">
-                    <div class="cgu-scroll-box">
-                        <h3>1. Présentation</h3>
-                        <p><strong>ShieldIPTV Player</strong> est un lecteur multimédia vidéo générique. L'application est fournie « en l'état », sans aucun contenu, flux média ou abonnement inclus.</p>
-                        
-                        <h3>2. Responsabilité de l'utilisateur</h3>
-                        <p>En tant qu'utilisateur, vous êtes seul responsable des flux vidéo et contenus que vous importez dans l'application (liens M3U, identifiants Xtream Codes, etc.). Vous devez vous assurer que vous disposez des droits légaux d'accès et de visionnage de ces contenus.</p>
-                        
-                        <h3>3. Clause de non-responsabilité</h3>
-                        <p>ShieldIPTV <strong>n'approuve pas</strong>, <strong>ne fournit pas</strong> et <strong>ne facilite pas</strong> l'accès à du contenu protégé par le droit d'auteur sans l'accord des ayants droit. L'application ne stocke, ne redistribue et ne diffuse aucun contenu multimédia.</p>
-                        
-                        <h3>4. Utilisation légale</h3>
-                        <p>Vous vous engagez à utiliser cette application conformément aux lois et réglementations en vigueur dans votre pays de résidence. Toute utilisation illicite relève de votre entière responsabilité.</p>
-                        
-                        <h3>5. Données personnelles</h3>
-                        <p>L'application stocke vos identifiants et préférences uniquement en local sur votre appareil. Aucune donnée n'est transmise à des serveurs tiers par ShieldIPTV.</p>
-                    </div>
-                </div>
-                <label class="cgu-checkbox-label" for="cgu-accept-checkbox">
-                    <input type="checkbox" id="cgu-accept-checkbox" class="focusable">
-                    <span>J'ai lu et j'accepte les Conditions Générales d'Utilisation</span>
-                </label>
-                <button id="btn-cgu-accept" class="focusable btn-primary cgu-accept-btn" disabled>
-                    <span>Accéder à l'application</span>
-                    <span class="material-icons">arrow_forward</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- CGU Modal Dialog (View from settings) -->
+        <!-- CGU Modal Dialog (Optional View) -->
         <div id="cgu-modal" class="screen-overlay hidden">
             <div class="onboarding-container glass">
                 <div class="brand-logo">
                     <span class="material-icons logo-icon">shield</span>
                     <h1>Shield<span>IPTV</span></h1>
                 </div>
-                <h2>Conditions Générales d'Utilisation</h2>
+                <h2>Avertissement Légal &amp; Conditions</h2>
                 <div class="cgu-content">
                     <p><strong>ShieldIPTV Player</strong> est un lecteur multimédia vidéo générique. L'application est fournie sans aucun contenu ni flux média.</p>
                     <p>En tant qu'utilisateur, vous devez fournir vos propres flux vidéo (liens de playlists légaux, comptes Xtream Codes, etc.). ShieldIPTV n'approuve pas, ne fournit pas et ne facilite pas l'accès à du contenu protégé par le droit d'auteur sans l'accord des ayants droit.</p>
                     <p>En continuant, vous confirmez posséder les droits d'utilisation des flux et contenus que vous importerez dans ce lecteur.</p>
                 </div>
-                <button id="btn-cgu-close" class="focusable btn-primary" style="margin-top: 1rem;">
+                
+                <!-- Onboarding Actions (Force Accept/Decline) -->
+                <div id="cgu-actions-container" class="cgu-actions hidden" style="display: flex; gap: 1rem; width: 100%; margin-top: 1.5rem;">
+                    <button id="btn-cgu-decline" class="focusable btn-secondary" style="flex: 1; padding: 0.8rem; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--error); border-radius: 12px; color: var(--error); cursor: pointer;">
+                        <span>Refuser</span>
+                    </button>
+                    <button id="btn-cgu-accept" class="focusable btn-primary" style="flex: 1; padding: 0.8rem; border-radius: 12px;">
+                        <span>Accepter et Continuer</span>
+                        <span class="material-icons">check</span>
+                    </button>
+                </div>
+
+                <!-- Simple Close Button (Standard View) -->
+                <button id="btn-cgu-close" class="focusable btn-primary hidden" style="margin-top: 1.5rem; width: 100%; border-radius: 12px;">
                     <span>Fermer</span>
                     <span class="material-icons">close</span>
                 </button>
