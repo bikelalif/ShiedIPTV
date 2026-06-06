@@ -1,0 +1,25 @@
+{
+  "name": "shieldiptv-pc",
+  "version": "1.0.0",
+  "description": "ShieldIPTV PC Client",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "keywords": [
+    "iptv",
+    "player",
+    "desktop"
+  ],
+  "author": "Bilal",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^30.5.1",
+    "electron-builder": "^24.13.0"
+  },
+  "allowScripts": {
+    "electron@30.5.1": true
+  }
+}
