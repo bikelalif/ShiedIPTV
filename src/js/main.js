@@ -36,24 +36,39 @@ function initApp() {
     showScreen("intro-screen");
     
     setTimeout(() => {
-        const isNewSession = !sessionStorage.getItem("shield_session_active");
-        sessionStorage.setItem("shield_session_active", "true");
-        
-        const activePlaylistId = isNewSession ? null : localStorage.getItem("shield_active_playlist_id");
-        if (activePlaylistId) {
-            const playlists = loadSavedPlaylists();
-            const activePlaylist = playlists.find(p => p.id === activePlaylistId);
-            if (activePlaylist) {
-                connectPlaylist(activePlaylist, true);
-            } else {
-                showScreen("playlist-manager-screen");
-                renderPlaylistsGrid();
-            }
+        const cguAccepted = localStorage.getItem("shield_cgu_accepted") === "true";
+        if (!cguAccepted) {
+            const actionsContainer = document.getElementById("cgu-actions-container");
+            const closeBtn = document.getElementById("btn-cgu-close");
+            if (actionsContainer) actionsContainer.classList.remove("hidden");
+            if (closeBtn) closeBtn.classList.add("hidden");
+            
+            const modal = document.getElementById("cgu-modal");
+            if (modal) modal.classList.remove("hidden");
+        } else {
+            proceedAfterCgu();
+        }
+    }, 1800);
+}
+
+function proceedAfterCgu() {
+    const isNewSession = !sessionStorage.getItem("shield_session_active");
+    sessionStorage.setItem("shield_session_active", "true");
+    
+    const activePlaylistId = isNewSession ? null : localStorage.getItem("shield_active_playlist_id");
+    if (activePlaylistId) {
+        const playlists = loadSavedPlaylists();
+        const activePlaylist = playlists.find(p => p.id === activePlaylistId);
+        if (activePlaylist) {
+            connectPlaylist(activePlaylist, true);
         } else {
             showScreen("playlist-manager-screen");
             renderPlaylistsGrid();
         }
-    }, 1800);
+    } else {
+        showScreen("playlist-manager-screen");
+        renderPlaylistsGrid();
+    }
 }
 
 // UI Interaction Handlers
@@ -75,6 +90,11 @@ function setupEventListeners() {
     const btnViewCgu = document.getElementById("btn-view-cgu");
     if (btnViewCgu) {
         btnViewCgu.addEventListener("click", () => {
+            const actionsContainer = document.getElementById("cgu-actions-container");
+            const closeBtn = document.getElementById("btn-cgu-close");
+            if (actionsContainer) actionsContainer.classList.add("hidden");
+            if (closeBtn) closeBtn.classList.remove("hidden");
+            
             const modal = document.getElementById("cgu-modal");
             if (modal) modal.classList.remove("hidden");
         });
@@ -85,6 +105,26 @@ function setupEventListeners() {
         btnCguClose.addEventListener("click", () => {
             const modal = document.getElementById("cgu-modal");
             if (modal) modal.classList.add("hidden");
+        });
+    }
+
+    const btnCguAccept = document.getElementById("btn-cgu-accept");
+    if (btnCguAccept) {
+        btnCguAccept.addEventListener("click", () => {
+            localStorage.setItem("shield_cgu_accepted", "true");
+            const modal = document.getElementById("cgu-modal");
+            if (modal) modal.classList.add("hidden");
+            proceedAfterCgu();
+        });
+    }
+
+    const btnCguDecline = document.getElementById("btn-cgu-decline");
+    if (btnCguDecline) {
+        btnCguDecline.addEventListener("click", () => {
+            if (window.close) {
+                window.close();
+            }
+            alert("Vous devez accepter les conditions d'utilisation pour accéder à l'application.");
         });
     }
 
