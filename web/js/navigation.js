@@ -476,7 +476,7 @@ function moveFocus(direction) {
         
         let isDirectional = false;
         let distance = 0;
-        const margin = 5;
+        const margin = 2;
         
         if (direction === 'left') {
             isDirectional = (centerCandidate.x < centerActive.x - margin);

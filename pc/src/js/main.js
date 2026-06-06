@@ -380,10 +380,13 @@ function setupEventListeners() {
     }
     
     // DoH
-    const loginDoh = document.getElementById("login-doh-toggle");
-    if (loginDoh) {
-        loginDoh.addEventListener("change", (e) => {
-            state.isDohEnabled = e.target.checked;
+    const loginDohLabel = document.getElementById("login-doh-label");
+    const loginDohToggle = document.getElementById("login-doh-toggle");
+    if (loginDohLabel && loginDohToggle) {
+        loginDohLabel.addEventListener("click", (e) => {
+            e.preventDefault();
+            loginDohToggle.checked = !loginDohToggle.checked;
+            state.isDohEnabled = loginDohToggle.checked;
             const mainDoh = document.getElementById("setting-doh-toggle");
             if (mainDoh) mainDoh.checked = state.isDohEnabled;
             saveSettings();
