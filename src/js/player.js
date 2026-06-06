@@ -373,18 +373,6 @@ async function loadLivePreview(item) {
     
     destroyPreviewMpegtsPlayer();
     
-    if (window.AndroidApp) {
-        // Skip video loading on TV WebView to save resources and prevent crashes
-        if (video) {
-            video.pause();
-            video.removeAttribute("src");
-            try { video.load(); } catch(e){}
-        }
-        if (loader) loader.classList.add("hidden");
-        fetchAndRenderPreviewEPG(item, epgListEl, t);
-        return;
-    }
-    
     if (loader) loader.classList.remove("hidden");
     
     const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.ts`;
