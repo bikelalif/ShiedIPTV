@@ -4,8 +4,7 @@ ShieldIPTV est un client IPTV moderne, rapide et élégant pour le web, spécial
 
 ## Structure du Dépôt
 
-*   `web/` : Contient l'application web monopage (HTML, CSS, Vanilla JS) avec décodeur de flux vidéo TS (`mpegts.js`), guide de programmes (EPG), zapping rapide et support DNS-over-HTTPS (DoH).
-*   `androidtv/` : Contient les configurations et fichiers spécifiques à la version Android TV.
+*   `shieldiptv_web/` : Contient l'application web monopage (HTML, CSS, Vanilla JS) avec décodeur de flux vidéo TS (`mpegts.js`), guide de programmes (EPG), zapping rapide et support DNS-over-HTTPS (DoH).
 *   `README.md` : Ce fichier de description globale.
 
 ## Fonctionnalités Clés
