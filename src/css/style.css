@@ -229,6 +229,19 @@ body.tv-mode .focusable:focus-visible, body.tv-mode .focusable.focused {
     background: rgba(255, 255, 255, 0.08) !important;
 }
 
+.cgu-content.focusable:focus {
+    outline: none;
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 15px var(--focus-glow) !important;
+}
+body.tv-mode .cgu-content.focusable:focus-visible,
+body.tv-mode .cgu-content.focusable.focused {
+    transform: none !important;
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 20px var(--focus-glow) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+}
+
 /* Safe, non-scaling focus state for inputs and select elements on PC/Web to avoid clipping/overflow */
 input.focusable:focus, select.focusable:focus {
     border-color: var(--primary) !important;

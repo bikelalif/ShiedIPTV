@@ -268,6 +268,16 @@ function setupSpatialNavigation() {
     window.addEventListener("keydown", (e) => {
         const key = e.key;
         
+        // Prevent key events from moving focus or triggering form actions if editing an input
+        const activeEl = document.activeElement;
+        if (activeEl && activeEl.tagName === 'INPUT' && !activeEl.hasAttribute('readonly')) {
+            if (key === 'Enter') {
+                e.preventDefault();
+                activeEl.blur();
+            }
+            return;
+        }
+        
         if (activeScreenId() === "player-screen") {
             resetPlayerActivity();
         }
@@ -328,6 +338,30 @@ function setupSpatialNavigation() {
 
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
             const active = document.activeElement;
+            
+            // Handle CGU scrollbox scrolling
+            if (active && active.classList.contains("cgu-content")) {
+                const scrollSpeed = 40;
+                const isScrollable = active.scrollHeight > active.clientHeight;
+                if (isScrollable) {
+                    if (key === 'ArrowDown') {
+                        const isAtBottom = active.scrollTop + active.clientHeight >= active.scrollHeight - 5;
+                        if (!isAtBottom) {
+                            e.preventDefault();
+                            active.scrollTop += scrollSpeed;
+                            return;
+                        }
+                    } else if (key === 'ArrowUp') {
+                        const isAtTop = active.scrollTop <= 5;
+                        if (!isAtTop) {
+                            e.preventDefault();
+                            active.scrollTop -= scrollSpeed;
+                            return;
+                        }
+                    }
+                }
+            }
+            
             if (active && active.id === 'player-progress-bar') {
                 const video = document.getElementById("video-player");
                 if (video.duration && (key === 'ArrowLeft' || key === 'ArrowRight')) {
@@ -347,7 +381,13 @@ function setupSpatialNavigation() {
         } else if (key === 'Enter') {
             const active = document.activeElement;
             if (active && active.classList.contains("focusable")) {
-                if (active.tagName !== 'INPUT' && active.tagName !== 'SELECT') {
+                if (active.tagName === 'INPUT') {
+                    if (active.hasAttribute('readonly')) {
+                        e.preventDefault();
+                        active.removeAttribute('readonly');
+                        active.focus();
+                    }
+                } else if (active.tagName !== 'SELECT') {
                     e.preventDefault();
                     active.click();
                 }
@@ -377,9 +417,18 @@ function moveFocus(direction) {
         return;
     }
     
-    const candidates = Array.from(document.querySelectorAll(
-        '.screen:not(.hidden) .focusable, .screen-overlay:not(.hidden) .focusable, .zap-drawer:not(.hidden) .focusable'
-    ));
+    const activeOverlay = document.querySelector(".screen-overlay:not(.hidden)");
+    const zapDrawer = document.getElementById("zap-drawer");
+    const isZapDrawerOpen = zapDrawer && !zapDrawer.classList.contains("hidden");
+    
+    let candidates = [];
+    if (activeOverlay) {
+        candidates = Array.from(activeOverlay.querySelectorAll(".focusable"));
+    } else if (isZapDrawerOpen) {
+        candidates = Array.from(zapDrawer.querySelectorAll(".focusable"));
+    } else {
+        candidates = Array.from(document.querySelectorAll('.screen:not(.hidden) .focusable'));
+    }
     
     const activeRect = active.getBoundingClientRect();
     let bestCandidate = null;
@@ -488,8 +537,9 @@ function handleBackButton() {
         }
     } else if (screenId === "home-screen") {
         showScreen("portal-screen");
-    } else if (screenId === "settings-panel" || screenId === "home-screen" && state.currentSection === "settings" || screenId === "speedtest-screen" || screenId === "linktester-screen") {
-        showScreen("portal-screen");
+    } else if (screenId === "settings-panel" || (screenId === "home-screen" && state.currentSection === "settings") || screenId === "speedtest-screen" || screenId === "linktester-screen" || screenId === "streamtester-screen") {
+        showScreen("playlist-manager-screen");
+        focusFirst();
     } else if (screenId === "login-screen") {
         showScreen("playlist-manager-screen");
         renderPlaylistsGrid();
