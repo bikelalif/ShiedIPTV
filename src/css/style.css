@@ -345,6 +345,11 @@ body.tv-mode #btn-view-cgu:focus-visible, body.tv-mode #btn-view-cgu.focused {
     font-size: 0.95rem;
     color: var(--text-muted);
     user-select: none;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    transition: var(--transition-smooth);
 }
 
 .doh-checkbox-label span {
@@ -362,17 +367,18 @@ body.tv-mode #btn-view-cgu:focus-visible, body.tv-mode #btn-view-cgu.focused {
     transition: var(--transition-smooth);
 }
 
-body.tv-mode .login-doh-wrapper input[type="checkbox"]:focus-visible,
-body.tv-mode .login-doh-wrapper input[type="checkbox"].focused {
-    outline: 2px solid var(--border-focus);
-    outline-offset: 2px;
-    box-shadow: 0 0 10px var(--focus-glow) !important;
-    transform: scale(1.1);
+body.tv-mode .doh-checkbox-label.focusable:focus-visible,
+body.tv-mode .doh-checkbox-label.focusable.focused {
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 15px var(--focus-glow) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    transform: scale(1.02);
 }
 
-.login-doh-wrapper input[type="checkbox"]:focus {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
+.doh-checkbox-label.focusable:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 10px var(--primary-glow) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
 }
 
 /* 5. Portal Screen CSS */
