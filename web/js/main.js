@@ -547,7 +547,12 @@ function setupEventListeners() {
     
     // Player screen activity listeners
     const playerScreen = document.getElementById("player-screen");
-    playerScreen.addEventListener("mousemove", () => {
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    playerScreen.addEventListener("mousemove", (e) => {
+        if (e.clientX === lastMouseX && e.clientY === lastMouseY) return;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
         resetPlayerActivity();
     });
     playerScreen.addEventListener("click", (e) => {

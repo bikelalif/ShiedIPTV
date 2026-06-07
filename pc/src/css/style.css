@@ -2584,6 +2584,7 @@ body.tv-mode .media-grid-container {
 body.tv-mode .media-grid {
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
     gap: 1.5rem !important;
+    padding: 1.5rem 0.5rem !important;
 }
 
 body.tv-mode .live-preview-panel {
@@ -2682,6 +2683,8 @@ body.tv-mode .streamtester-left {
 body.tv-mode #home-screen[data-section="movies"] .media-grid,
 body.tv-mode #home-screen[data-section="series"] .media-grid {
     grid-template-columns: repeat(3, 1fr) !important;
+    max-width: 820px !important;
+    margin: 0 auto !important;
 }
 
 /* Safe non-scaling focus state for text inputs, checkboxes, and select boxes in TV mode to prevent clipping and glow overflow */
