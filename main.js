@@ -1,6 +1,9 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
+// Disable SSL certificate verification to allow connecting to private IPTV portals with self-signed/expired/invalid certificates
+app.commandLine.appendSwitch('ignore-certificate-errors');
+
 function createWindow() {
     const win = new BrowserWindow({
         width: 1280,
