@@ -547,10 +547,16 @@ function setupEventListeners() {
     
     // Player screen activity listeners
     const playerScreen = document.getElementById("player-screen");
-    let lastMouseX = 0;
-    let lastMouseY = 0;
+    let lastMouseX = null;
+    let lastMouseY = null;
     playerScreen.addEventListener("mousemove", (e) => {
-        if (e.clientX === lastMouseX && e.clientY === lastMouseY) return;
+        if (isTvWrapper) return; // Completely ignore mousemove on Android TV wrapper
+        
+        if (lastMouseX !== null && lastMouseY !== null) {
+            const deltaX = Math.abs(e.clientX - lastMouseX);
+            const deltaY = Math.abs(e.clientY - lastMouseY);
+            if (deltaX < 15 && deltaY < 15) return;
+        }
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
         resetPlayerActivity();
