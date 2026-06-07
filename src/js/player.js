@@ -603,6 +603,10 @@ function resetPlayerActivity() {
         overlay.classList.add("hidden");
         playerScreen.style.cursor = "none";
         
+        if (document.activeElement && overlay.contains(document.activeElement)) {
+            document.activeElement.blur();
+        }
+        
         if (state.zapDrawerOpen) {
             closeZapDrawer();
         }
