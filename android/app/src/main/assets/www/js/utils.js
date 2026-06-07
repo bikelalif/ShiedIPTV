@@ -55,24 +55,51 @@ async function resolveUrlWithDoH(url) {
     return url;
 }
 
+// Generic fetch handler with DNS-over-HTTPS (DoH) resolution and fallback to original URL on failure
+async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
+    const resolvedUrl = await resolveUrlWithDoH(url);
+    
+    const tryFetch = async (targetUrl) => {
+        const controller = new AbortController();
+        const signal = options.signal || controller.signal;
+        
+        let timeoutId;
+        if (!options.signal) {
+            timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        }
+        
+        try {
+            const fetchOptions = { ...options, signal };
+            const response = await fetch(targetUrl, fetchOptions);
+            if (timeoutId) clearTimeout(timeoutId);
+            return response;
+        } catch (err) {
+            if (timeoutId) clearTimeout(timeoutId);
+            throw err;
+        }
+    };
+    
+    try {
+        return await tryFetch(resolvedUrl);
+    } catch (error) {
+        if (resolvedUrl !== url) {
+            console.warn(`[DoH] Fetch failed for resolved URL (${resolvedUrl}). Retrying with original URL (${url})...`, error);
+            return await tryFetch(url);
+        }
+        throw error;
+    }
+}
+
 // API Request Handler
 async function makeApiCall(action = '', additionalParams = '') {
     const rawUrl = `${state.serverUrl}/player_api.php?username=${state.username}&password=${state.password}${action ? `&action=${action}` : ''}${additionalParams}`;
-    const resolvedUrl = await resolveUrlWithDoH(rawUrl);
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
     
     try {
-        const response = await fetch(resolvedUrl, {
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
+        const response = await fetchWithFallback(rawUrl, {}, 20000);
         
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return await response.json();
     } catch (error) {
-        clearTimeout(timeoutId);
         console.error(`API Error on action: ${action}`, error);
         // Give a human-readable error message based on error type
         if (error.name === 'AbortError') {

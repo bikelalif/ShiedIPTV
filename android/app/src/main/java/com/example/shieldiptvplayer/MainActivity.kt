@@ -7,6 +7,8 @@ import android.view.WindowManager
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.net.http.SslError
+import android.webkit.SslErrorHandler
 import androidx.activity.ComponentActivity
 
 class MainActivity : ComponentActivity() {
@@ -37,6 +39,8 @@ class MainActivity : ComponentActivity() {
         settings.databaseEnabled = true
         settings.allowFileAccess = true
         settings.allowContentAccess = true
+        settings.allowUniversalAccessFromFileURLs = true
+        settings.allowFileAccessFromFileURLs = true
         
         settings.setSupportZoom(false)
         settings.builtInZoomControls = false
@@ -54,6 +58,10 @@ class MainActivity : ComponentActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 webView.evaluateJavascript("document.body.style.overflow = 'hidden';", null)
+            }
+
+            override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
+                handler?.proceed()
             }
         }
 

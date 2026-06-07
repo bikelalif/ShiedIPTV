@@ -98,21 +98,15 @@ async function connectPlaylist(playlist, isAuto = false) {
     } else if (playlist.type === 'm3u') {
         showLoader(t.toastM3uLoad || "Chargement de la playlist M3U...");
         try {
-            const resolvedM3uUrl = await resolveUrlWithDoH(playlist.url);
-            
-            const m3uController = new AbortController();
-            const m3uTimeout = setTimeout(() => m3uController.abort(), 30000);
             let response;
             try {
-                response = await fetch(resolvedM3uUrl, { signal: m3uController.signal });
+                response = await fetchWithFallback(playlist.url, {}, 30000);
             } catch (fetchErr) {
-                clearTimeout(m3uTimeout);
                 if (fetchErr.name === 'AbortError') {
                     throw new Error('D\u00e9lai d\u00e9pass\u00e9 \u2014 le serveur M3U ne r\u00e9pond pas');
                 }
                 throw new Error('Serveur M3U injoignable \u2014 v\u00e9rifiez l\'URL et votre connexion r\u00e9seau');
             }
-            clearTimeout(m3uTimeout);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const text = await response.text();
             
@@ -366,21 +360,15 @@ async function addM3UPlaylist(name, url) {
     const cleanUrl = url.trim();
     
     try {
-        const resolvedM3uUrl = await resolveUrlWithDoH(cleanUrl);
-        
-        const m3uController = new AbortController();
-        const m3uTimeout = setTimeout(() => m3uController.abort(), 30000);
         let response;
         try {
-            response = await fetch(resolvedM3uUrl, { signal: m3uController.signal });
+            response = await fetchWithFallback(cleanUrl, {}, 30000);
         } catch (fetchErr) {
-            clearTimeout(m3uTimeout);
             if (fetchErr.name === 'AbortError') {
                 throw new Error('D\u00e9lai d\u00e9pass\u00e9 \u2014 le serveur M3U ne r\u00e9pond pas');
             }
             throw new Error('Serveur M3U injoignable \u2014 v\u00e9rifiez l\'URL et votre connexion r\u00e9seau');
         }
-        clearTimeout(m3uTimeout);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const text = await response.text();
         
