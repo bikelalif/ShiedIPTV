@@ -5,11 +5,15 @@ import android.view.KeyEvent
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import androidx.media3.ui.AspectRatioFrameLayout
 
 class PlayerActivity : ComponentActivity() {
     private var player: ExoPlayer? = null
@@ -17,6 +21,13 @@ class PlayerActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Enable edge-to-edge layout & hide system bars for immersive fullscreen
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
 
         // Programmatic container layout matching parents
         val container = FrameLayout(this).apply {
@@ -33,6 +44,7 @@ class PlayerActivity : ComponentActivity() {
             )
             useController = true
             keepScreenOn = true
+            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
         }
         container.addView(playerView)
 
@@ -76,6 +88,11 @@ class PlayerActivity : ComponentActivity() {
             }
         }
         container.addView(backButton)
+
+        // Hide back button when player controller hides
+        playerView.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
+            backButton.visibility = visibility
+        })
 
         setContentView(container)
 
