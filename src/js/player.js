@@ -424,10 +424,17 @@ async function loadLivePreview(item) {
         }
     });
     
-    video.onwaiting = () => { if (loader) loader.classList.remove("hidden"); };
-    video.onplaying = () => { if (loader) loader.classList.add("hidden"); };
+    video.onwaiting = () => { 
+        if (loader) loader.classList.remove("hidden"); 
+        video.classList.remove("video-active");
+    };
+    video.onplaying = () => { 
+        if (loader) loader.classList.add("hidden"); 
+        video.classList.add("video-active");
+    };
     video.onerror = () => {
         if (loader) loader.classList.add("hidden");
+        video.classList.remove("video-active");
         console.warn("[Preview] Error playing stream in preview");
     };
     
@@ -437,6 +444,8 @@ async function loadLivePreview(item) {
 function destroyPreviewMpegtsPlayer() {
     const video = document.getElementById("live-preview-video");
     if (!video) return;
+    
+    video.classList.remove("video-active");
     
     if (state.previewMpegtsPlayer) {
         console.log("[Preview] Destroying previous preview mpegts player");

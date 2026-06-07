@@ -3,6 +3,10 @@
    ========================================================================== */
 
 function showScreen(screenId) {
+    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+    }
+
     document.querySelectorAll(".screen").forEach(screen => {
         screen.classList.add("hidden");
     });
