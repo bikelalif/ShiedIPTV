@@ -687,7 +687,7 @@ body.tv-mode .btn-search:focus, body.tv-mode .btn-search.focused {
 .category-list {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.3rem;
     height: 100%;
     overflow-y: auto;
     padding-right: 0.25rem;
@@ -737,14 +737,14 @@ body.tv-mode .btn-search:focus, body.tv-mode .btn-search.focused {
 .category-item {
     display: block;
     width: 100%;
-    padding: 0.95rem 1.25rem;
-    line-height: 1.45;
+    padding: 0.65rem 1rem;
+    line-height: 1.35;
     text-align: left;
     background: transparent;
     border: 1px solid transparent;
-    border-radius: 12px;
+    border-radius: 8px;
     color: var(--text-muted);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 500;
     cursor: pointer;
     overflow: hidden;
@@ -1018,10 +1018,25 @@ body.tv-mode .preview-overlay-btn:focus-visible {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.6);
+    background: #000;
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 10;
+}
+
+.preview-loader .loader-spinner-mini {
+    display: none !important;
+}
+
+/* Hide video element by default when loading/stopped to prevent native play placeholder graphic */
+#live-preview-video, #streamtester-video {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#live-preview-video.video-active, #streamtester-video.video-active {
+    opacity: 1;
 }
 
 .loader-spinner-mini {
@@ -2556,9 +2571,9 @@ body.tv-mode .category-list {
 body.tv-mode .category-item {
     width: 100% !important;
     white-space: nowrap !important;
-    padding: 0.95rem 1.25rem !important;
-    font-size: 0.95rem !important;
-    border-radius: 12px !important;
+    padding: 0.65rem 1rem !important;
+    font-size: 0.9rem !important;
+    border-radius: 10px !important;
 }
 
 body.tv-mode .media-grid-container {
@@ -2648,4 +2663,38 @@ body.tv-mode button.btn-primary#btn-connect {
     padding: 0.65rem !important;
     font-size: 0.9rem !important;
     border-radius: 10px !important;
+}
+
+/* Stream Tester padding and layout fixes */
+.streamtester-left {
+    padding: 0 1rem;
+}
+
+body.tv-mode .diagnostic-container-fullscreen {
+    padding: 2rem 2.5rem !important;
+}
+
+body.tv-mode .streamtester-left {
+    padding: 0 1rem !important;
+}
+
+/* VOD and Series forced 3 columns layout in TV mode */
+body.tv-mode #home-screen[data-section="movies"] .media-grid,
+body.tv-mode #home-screen[data-section="series"] .media-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+}
+
+/* Safe non-scaling focus state for text inputs, checkboxes, and select boxes in TV mode to prevent clipping and glow overflow */
+body.tv-mode input.focusable:focus-visible,
+body.tv-mode input.focusable.focused,
+body.tv-mode select.focusable:focus-visible,
+body.tv-mode select.focusable.focused,
+body.tv-mode .doh-checkbox-label.focusable:focus-visible,
+body.tv-mode .doh-checkbox-label.focusable.focused {
+    transform: none !important;
+    box-shadow: 0 0 12px var(--focus-glow) !important;
+}
+
+body.tv-mode .category-list {
+    gap: 0.3rem !important;
 }

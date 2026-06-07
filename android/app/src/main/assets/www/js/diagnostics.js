@@ -172,6 +172,8 @@ function destroyTesterPlayer() {
     const video = document.getElementById("streamtester-video");
     if (!video) return;
     
+    video.classList.remove("video-active");
+    
     if (state.testerHlsPlayer) {
         console.log("[Tester] Destroying tester Hls player");
         try {
@@ -246,18 +248,29 @@ async function runStreamTesterTest() {
     const video = document.getElementById("streamtester-video");
     if (!video) return;
     
-    video.onloadstart = () => testerLog("Vidéo : Chargement démarré (loadstart)", "debug");
+    video.onloadstart = () => {
+        testerLog("Vidéo : Chargement démarré (loadstart)", "debug");
+        video.classList.remove("video-active");
+    };
     video.onplay = () => testerLog("Vidéo : Lecture demandée (play)", "info");
     video.onplaying = () => {
         testerLog("Vidéo : Lecture en cours (playing)", "info");
+        video.classList.add("video-active");
         if (loader) loader.classList.add("hidden");
     };
     video.onpause = () => testerLog("Vidéo : En pause (pause)", "warn");
-    video.onwaiting = () => testerLog("Vidéo : Mise en mémoire tampon (waiting)...", "warn");
+    video.onwaiting = () => {
+        testerLog("Vidéo : Mise en mémoire tampon (waiting)...", "warn");
+        video.classList.remove("video-active");
+    };
     video.onstalled = () => testerLog("Vidéo : Ralentissement détecté (stalled)", "warn");
-    video.onended = () => testerLog("Vidéo : Fin de lecture (ended)", "info");
+    video.onended = () => {
+        testerLog("Vidéo : Fin de lecture (ended)", "info");
+        video.classList.remove("video-active");
+    };
     video.onerror = () => {
         if (loader) loader.classList.add("hidden");
+        video.classList.remove("video-active");
         const err = video.error;
         let message = "Inconnue";
         if (err) {
