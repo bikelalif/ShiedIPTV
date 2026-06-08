@@ -5,6 +5,16 @@ plugins {
 android {
     namespace = "com.example.shieldiptvplayer"
     compileSdk = 34
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("shield-upload-key.jks")
+            storePassword = "shield123"
+            keyAlias = "shield-key-alias"
+            keyPassword = "shield123"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.shieldiptv.app"
         minSdk = 24
@@ -17,6 +27,7 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
