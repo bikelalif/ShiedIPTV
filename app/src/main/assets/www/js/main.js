@@ -52,6 +52,16 @@ function initApp() {
             proceedAfterCgu();
         }
     }, 1800);
+
+    // Check if HTTPS is being forced by browser/network (after redirect loop was prevented)
+    if (sessionStorage.getItem('http_redirect_failed') === 'true') {
+        setTimeout(() => {
+            const warningMsg = state.language === 'fr' 
+                ? "Attention : HTTPS est forcé par votre navigateur. Certains flux IPTV (non sécurisés) risquent de ne pas se charger."
+                : "Warning: HTTPS is forced by your browser. Some (insecure) IPTV streams might fail to load.";
+            showToast(warningMsg, 8000);
+        }, 2500);
+    }
 }
 
 function proceedAfterCgu() {
