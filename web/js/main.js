@@ -135,7 +135,7 @@ function setupEventListeners() {
     if (btnCguLang) {
         btnCguLang.addEventListener("click", () => {
             const cycle = ['fr', 'en', 'es', 'it'];
-            const currentIndex = cycle.indexOf(state.language || 'fr');
+            const currentIndex = cycle.indexOf(state.language || 'en');
             const nextIndex = (currentIndex + 1) % cycle.length;
             const nextLang = cycle[nextIndex];
             applyLanguage(nextLang);
@@ -158,7 +158,7 @@ function setupEventListeners() {
             tabM3u.classList.remove("active-tab");
             if (playlistTypeInput) playlistTypeInput.value = "xtream";
             
-            const t = TRANSLATIONS[state.language || 'fr'];
+            const t = TRANSLATIONS[state.language || 'en'];
             if (labelUrl) labelUrl.innerText = t.serverUrl;
             if (iconUrl) iconUrl.innerText = "dns";
             if (loginUrl) {
@@ -176,7 +176,7 @@ function setupEventListeners() {
             tabXtream.classList.remove("active-tab");
             if (playlistTypeInput) playlistTypeInput.value = "m3u";
             
-            const t = TRANSLATIONS[state.language || 'fr'];
+            const t = TRANSLATIONS[state.language || 'en'];
             if (labelUrl) labelUrl.innerText = t.pmUrlM3uLabel;
             if (iconUrl) iconUrl.innerText = "link";
             if (loginUrl) {
@@ -398,14 +398,14 @@ function setupEventListeners() {
         const loginDohToggle = document.getElementById("login-doh-toggle");
         if (loginDohToggle) loginDohToggle.checked = state.isDohEnabled;
         saveSettings();
-        const t = TRANSLATIONS[state.language || 'fr'];
+        const t = TRANSLATIONS[state.language || 'en'];
         showToast(state.isDohEnabled ? t.dohEnabledToast : t.dohDisabledToast, 2000);
     });
     
     document.getElementById("setting-doh-url").addEventListener("change", (e) => {
         state.dohResolver = e.target.value;
         saveSettings();
-        const t = TRANSLATIONS[state.language || 'fr'];
+        const t = TRANSLATIONS[state.language || 'en'];
         showToast(t.dohUpdatedToast, 2000);
     });
     

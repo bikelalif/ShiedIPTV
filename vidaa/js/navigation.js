@@ -39,7 +39,7 @@ function activeScreenId() {
 }
 
 function showLoader(text) {
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     document.getElementById("loader-text").innerText = text || t.loaderDefault;
     document.getElementById("loader").classList.remove("hidden");
 }
@@ -87,7 +87,7 @@ async function switchSection(section) {
         catSearchBar.value = "";
     }
 
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
 
     if (section === 'settings') {
         state.currentSection = 'settings';
@@ -141,7 +141,7 @@ function renderCategories(cats) {
         cats = [];
     }
     
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     
     cats.forEach(cat => {
         const btn = document.createElement("button");
@@ -200,7 +200,7 @@ function renderGrid(items, section) {
     }
     
     if (items.length === 0) {
-        const t = TRANSLATIONS[state.language || 'fr'];
+        const t = TRANSLATIONS[state.language || 'en'];
         gridEl.innerHTML = `<div class="empty-state">${t.toastEmptyCategory}</div>`;
         return;
     }
@@ -219,7 +219,7 @@ function renderGrid(items, section) {
 
 function appendItemsToGrid(batch, section) {
     const gridEl = document.getElementById("media-grid");
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     
     batch.forEach(item => {
         const card = document.createElement("div");
