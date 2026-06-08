@@ -107,4 +107,128 @@ document.addEventListener('DOMContentLoaded', () => {
             observer.observe(el);
         });
     }
+
+    // 5. TV Remote Control Spatial Navigation
+    const isTvWrapper = window.cordova || 
+                        window.location.protocol === 'file:' || 
+                        /SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV|Tizen/i.test(navigator.userAgent) ||
+                        (window.innerWidth === 1920 && window.innerHeight === 1080);
+                        
+    if (isTvWrapper) {
+        document.body.classList.add("tv-mode");
+        
+        // Auto-focus first focusable element
+        setTimeout(() => {
+            focusFirst();
+        }, 1200);
+        
+        setupSpatialNavigation();
+    }
+    
+    function setupSpatialNavigation() {
+        window.addEventListener("keydown", (e) => {
+            const key = e.key;
+            
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(key)) {
+                const active = document.activeElement;
+                if (!active || active === document.body || !active.classList.contains("focusable")) {
+                    e.preventDefault();
+                    focusFirst();
+                    return;
+                }
+            }
+            
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+                e.preventDefault();
+                const direction = key.replace('Arrow', '').toLowerCase();
+                moveFocus(direction);
+            } else if (key === 'Enter') {
+                const active = document.activeElement;
+                if (active && active.classList.contains("focusable")) {
+                    e.preventDefault();
+                    active.click();
+                }
+            }
+        });
+    }
+
+    function focusFirst() {
+        const first = document.querySelector('.focusable');
+        if (first) {
+            first.focus();
+            first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function moveFocus(direction) {
+        const active = document.activeElement;
+        if (!active || !active.classList.contains('focusable')) {
+            focusFirst();
+            return;
+        }
+        
+        const candidates = Array.from(document.querySelectorAll('.focusable'));
+        const activeRect = active.getBoundingClientRect();
+        let bestCandidate = null;
+        let minDistance = Infinity;
+        
+        candidates.forEach(candidate => {
+            if (candidate === active) return;
+            
+            const rect = candidate.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return;
+            
+            const centerActive = {
+                x: activeRect.left + activeRect.width / 2,
+                y: activeRect.top + activeRect.height / 2
+            };
+            
+            const centerCandidate = {
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2
+            };
+            
+            const deltaX = centerCandidate.x - centerActive.x;
+            const deltaY = centerCandidate.y - centerActive.y;
+            
+            const overlapX = (rect.left < activeRect.right && rect.right > activeRect.left);
+            const overlapY = (rect.top < activeRect.bottom && rect.bottom > activeRect.top);
+            
+            const effDeltaX = overlapX ? deltaX * 0.1 : deltaX;
+            const effDeltaY = overlapY ? deltaY * 0.1 : deltaY;
+            
+            let isDirectional = false;
+            let distance = 0;
+            const margin = 2;
+            
+            if (direction === 'left') {
+                isDirectional = (centerCandidate.x < centerActive.x - margin);
+                distance = Math.abs(deltaX) + Math.abs(effDeltaY) * 2.5; 
+            } else if (direction === 'right') {
+                isDirectional = (centerCandidate.x > centerActive.x + margin);
+                distance = Math.abs(deltaX) + Math.abs(effDeltaY) * 2.5;
+            } else if (direction === 'up') {
+                isDirectional = (centerCandidate.y < centerActive.y - margin);
+                distance = Math.abs(deltaY) + Math.abs(effDeltaX) * 2.5;
+            } else if (direction === 'down') {
+                isDirectional = (centerCandidate.y > centerActive.y + margin);
+                distance = Math.abs(deltaY) + Math.abs(effDeltaX) * 2.5;
+            }
+            
+            if (isDirectional && distance < minDistance) {
+                minDistance = distance;
+                bestCandidate = candidate;
+            }
+        });
+        
+        if (bestCandidate) {
+            bestCandidate.focus();
+            bestCandidate.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'nearest'
+            });
+        }
+    }
 });
+

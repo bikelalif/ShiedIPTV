@@ -920,5 +920,32 @@ footer.site-footer {
     }
     .cgu-card {
         padding: 2rem 1.5rem;
-    }
 }
+
+/* Focus outlines for TV remote navigation */
+.focusable:focus {
+    outline: 3px solid var(--border-focus) !important;
+    outline-offset: 4px;
+    box-shadow: 0 0 20px var(--focus-glow) !important;
+    transform: scale(1.04);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    background: rgba(255, 255, 255, 0.05);
+}
+.btn.focusable:focus {
+    background: var(--primary) !important;
+    border-color: var(--border-focus) !important;
+    color: white !important;
+    box-shadow: 0 0 25px var(--focus-glow) !important;
+}
+.btn.btn-secondary.focusable:focus {
+    background: rgba(59, 130, 246, 0.15) !important;
+    border-color: var(--border-focus) !important;
+}
+nav ul li a.focusable:focus {
+    background: transparent !important;
+    color: var(--border-focus) !important;
+    outline: none !important;
+    box-shadow: none !important;
+    transform: scale(1.08);
+}
+
