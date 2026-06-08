@@ -1,0 +1,18 @@
+{
+  "name": "shieldiptv-root",
+  "version": "1.0.5",
+  "description": "ShieldIPTV Multi-platform Workspace",
+  "scripts": {
+    "sync:webos": "node scripts/sync-platforms.js --platform webos",
+    "sync:pc": "node scripts/sync-platforms.js --platform pc",
+    "sync:android": "node scripts/sync-platforms.js --platform android",
+    "sync:vidaa": "node scripts/sync-platforms.js --platform vidaa",
+    "sync:all": "node scripts/sync-platforms.js",
+    "resize:android": "powershell -ExecutionPolicy Bypass -File scripts/resize-apk-images.ps1",
+    "resize:pc": "powershell -ExecutionPolicy Bypass -File scripts/resize-pc-images.ps1",
+    "resize:vidaa": "powershell -ExecutionPolicy Bypass -File scripts/resize-vidaa-images.ps1",
+    "build:vidaa": "powershell -Command \"Compress-Archive -Path .\\vidaa\\* -DestinationPath .\\com.shieldiptv.app.zip -Force\""
+  },
+  "author": "Bilal",
+  "license": "ISC"
+}

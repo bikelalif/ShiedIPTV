@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldIPTV - Lecteur IPTV Premium Multi-plateforme</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Material+Icons&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/landing.css">
+    
+    <!-- Hash Router to redirect to the web app -->
+    <script>
+        function checkHashRoute() {
+            if (window.location.hash === '#/frwebapp' || window.location.hash === '#/app' || window.location.hash === '#/webapp') {
+                window.location.replace('./web/index.html');
+            }
+        }
+        checkHashRoute();
+        window.addEventListener('hashchange', checkHashRoute);
+    </script>
+</head>
+<body>
+
+    <!-- Header / Navbar -->
+    <header class="site-header">
+        <div class="container nav-wrapper">
+            <a href="#" class="logo">
+                <span class="material-icons logo-icon">shield</span>
+                <h1>Shield<span>IPTV</span></h1>
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="#features">Fonctionnalités</a></li>
+                    <li><a href="#downloads">Téléchargements</a></li>
+                    <li><a href="./cgu.html">CGU</a></li>
+                    <li><a href="#/frwebapp" class="btn btn-primary btn-nav">Lancer l'App Web</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <div class="hero-content">
+                <div class="badge">Lecteur IPTV Haute Performance</div>
+                <h2>Shield<span>IPTV</span> : L'Expérience Télévisuelle Ultime</h2>
+                <p>
+                    Une interface fluide, moderne et épurée, spécialement optimisée pour vos téléviseurs connectés (Smart TV) et vos ordinateurs PC. Importez vos playlists et commencez à regarder vos flux en un instant.
+                </p>
+                <div class="hero-actions">
+                    <a href="#downloads" class="btn btn-primary">
+                        <span class="material-icons">download</span>Télécharger le Client
+                    </a>
+                    <a href="#/frwebapp" class="btn btn-secondary">
+                        <span class="material-icons">launch</span>Lancer l'App Web (HTTP)
+                    </a>
+                </div>
+            </div>
+
+            <!-- Dynamic Mockup TV Interface -->
+            <div class="demo-wrapper">
+                <div class="mock-player glass">
+                    <div class="mock-gui">
+                        <!-- Sidebar -->
+                        <div class="mock-sidebar">
+                            <span class="material-icons mock-logo">shield</span>
+                            <span class="material-icons mock-nav-item active">home</span>
+                            <span class="material-icons mock-nav-item">live_tv</span>
+                            <span class="material-icons mock-nav-item">movie</span>
+                            <span class="material-icons mock-nav-item">tv</span>
+                            <span class="material-icons mock-nav-item" style="margin-top: auto;">settings</span>
+                        </div>
+                        <!-- Main Panel -->
+                        <div class="mock-body">
+                            <div class="mock-header">
+                                <span class="mock-title">Tableau de bord</span>
+                                <span class="mock-user">Playlist : Premium IPTV (Xtream API)</span>
+                            </div>
+                            <div class="mock-grid">
+                                <div class="mock-card">
+                                    <span class="material-icons mock-card-icon live">live_tv</span>
+                                    <h4>DIRECT TV</h4>
+                                    <p>Accéder aux chaînes en direct</p>
+                                </div>
+                                <div class="mock-card">
+                                    <span class="material-icons mock-card-icon movies">movie</span>
+                                    <h4>FILMS (VOD)</h4>
+                                    <p>Visionner vos films à la demande</p>
+                                </div>
+                                <div class="mock-card">
+                                    <span class="material-icons mock-card-icon series">tv</span>
+                                    <h4>SÉRIES</h4>
+                                    <p>Parcourir vos séries par saisons</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features-section">
+        <div class="container">
+            <div class="section-header">
+                <h3>Une Technologie de Pointe</h3>
+                <p>Découvrez les atouts qui font de ShieldIPTV le meilleur lecteur de flux multimédias pour vos écrans.</p>
+            </div>
+            <div class="features-grid">
+                <!-- Card 1 -->
+                <div class="feature-card glass">
+                    <div class="feature-icon-wrapper">
+                        <span class="material-icons">devices</span>
+                    </div>
+                    <h4>Multi-plateforme Natif</h4>
+                    <p>
+                        Disponible sur Windows, Android TV, LG webOS et Hisense Vidaa OS. L'application s'adapte à 100% à l'ergonomie de chaque support.
+                    </p>
+                </div>
+                <!-- Card 2 -->
+                <div class="feature-card glass">
+                    <div class="feature-icon-wrapper">
+                        <span class="material-icons">bolt</span>
+                    </div>
+                    <h4>Zapping Ultra-Rapide</h4>
+                    <p>
+                        Notre moteur de lecture est optimisé pour charger instantanément les listes de chaînes volumineuses et zapper sans délai de mise en mémoire tampon.
+                    </p>
+                </div>
+                <!-- Card 3 -->
+                <div class="feature-card glass">
+                    <div class="feature-icon-wrapper">
+                        <span class="material-icons">settings_remote</span>
+                    </div>
+                    <h4>Navigation Spatiale (D-pad)</h4>
+                    <p>
+                        Entièrement contrôlable avec les télécommandes de télévision de vos Smart TV. Clavier ou télécommande, naviguez confortablement de touche en touche.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Video Preview Section -->
+    <section class="preview-section">
+        <div class="container preview-grid">
+            <div class="preview-text">
+                <h3>Zappez comme sur une <span>Vraie Box TV</span></h3>
+                <p>
+                    Plus besoin de souris ou d'écran tactile. ShieldIPTV intègre une gestion avancée du focus visuel qui reproduit fidèlement l'expérience des box TV traditionnelles.
+                </p>
+                <div class="preview-points">
+                    <div class="preview-point">
+                        <span class="material-icons point-icon">check_circle</span>
+                        <p>Retour au direct instantané en un clic avec la touche <strong>Back/Retour</strong>.</p>
+                    </div>
+                    <div class="preview-point">
+                        <span class="material-icons point-icon">check_circle</span>
+                        <p>Menu de navigation latéral rétractable pour maximiser l'espace d'affichage.</p>
+                    </div>
+                    <div class="preview-point">
+                        <span class="material-icons point-icon">check_circle</span>
+                        <p>Lecteur intégré prenant en charge le changement de ratio d'aspect (16:9, 4:3, zoom, auto).</p>
+                    </div>
+                </div>
+            </div>
+            <div class="preview-mockup-wrapper">
+                <div style="background: radial-gradient(circle at center, #1e293b, #020617); width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 1rem; color: #cbd5e1; padding: 2rem;">
+                    <span class="material-icons" style="font-size: 5rem; color: var(--primary);">tv</span>
+                    <span style="font-size: 1.2rem; font-weight: 700; color: white;">Interface Utilisateur Premium</span>
+                    <span style="font-size: 0.85rem; color: var(--text-dark); text-align: center; max-width: 350px;">Un design sobre en verre acrylique flouté (Glassmorphism) qui met en valeur vos flux vidéos.</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Downloads Section -->
+    <section id="downloads" class="download-section">
+        <div class="container">
+            <div class="section-header">
+                <h3>Télécharger ShieldIPTV</h3>
+                <p>Choisissez la version adaptée à votre appareil et suivez le guide d'installation.</p>
+            </div>
+            <div class="download-grid">
+                <!-- Card PC -->
+                <div class="download-card glass">
+                    <div>
+                        <span class="material-icons platform-icon-wrapper">computer</span>
+                        <h4>Windows PC</h4>
+                        <span class="version">v1.0.5 (Desktop)</span>
+                        <p class="details">
+                            Application bureau optimisée pour Windows 10 & 11. Support complet du clavier et de la souris.
+                        </p>
+                    </div>
+                    <a href="https://github.com/bikelalif/ShiedIPTV/releases/download/v1.0.5/ShieldIPTV-Setup-1.0.5.exe" class="btn btn-secondary btn-dl">
+                        <span class="material-icons">download</span>Installer (.exe)
+                    </a>
+                </div>
+
+                <!-- Card Android TV -->
+                <div class="download-card glass">
+                    <div>
+                        <span class="material-icons platform-icon-wrapper">android</span>
+                        <h4>Android TV / Firestick</h4>
+                        <span class="version">v1.0.5 (APK)</span>
+                        <p class="details">
+                            Optimisé pour Nvidia Shield, Xiaomi Mi Box, Chromecast avec Google TV et Amazon Fire TV Stick.
+                        </p>
+                    </div>
+                    <a href="./android-tv/ShieldIPTV-AndroidTV.apk" class="btn btn-secondary btn-dl">
+                        <span class="material-icons">download</span>Télécharger l'APK
+                    </a>
+                </div>
+
+                <!-- Card webOS -->
+                <div class="download-card glass">
+                    <div>
+                        <span class="material-icons platform-icon-wrapper">smart_display</span>
+                        <h4>LG Smart TV (webOS)</h4>
+                        <span class="version">v1.0.5 (IPK)</span>
+                        <p class="details">
+                            Package natif pour téléviseurs LG. Installation via le mode développeur ou par clé USB externe.
+                        </p>
+                    </div>
+                    <a href="./com.shieldiptv.app_1.0.5_all.ipk" class="btn btn-secondary btn-dl">
+                        <span class="material-icons">download</span>Package (.ipk)
+                    </a>
+                </div>
+
+                <!-- Card Vidaa OS -->
+                <div class="download-card glass">
+                    <div>
+                        <span class="material-icons platform-icon-wrapper">live_tv</span>
+                        <h4>Hisense TV (Vidaa OS)</h4>
+                        <span class="version">v1.0.5 (ZIP)</span>
+                        <p class="details">
+                            Package zippé d'application pour téléviseurs connectés Hisense et Toshiba sous Vidaa OS.
+                        </p>
+                    </div>
+                    <a href="./com.shieldiptv.app.zip" class="btn btn-secondary btn-dl">
+                        <span class="material-icons">download</span>Package (.zip)
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Web CTA Callout Card -->
+    <section class="web-cta-section">
+        <div class="container">
+            <div class="web-cta-card glass">
+                <div class="web-cta-content">
+                    <h3>Accès Direct Sans Installation</h3>
+                    <p>
+                        Vous pouvez également utiliser ShieldIPTV directement depuis votre navigateur web standard. Lancez l'application en HTTP et commencez à regarder vos chaînes immédiatement.
+                    </p>
+                    <a href="#/frwebapp" class="btn btn-primary btn-huge">
+                        <span class="material-icons">launch</span>Lancer le Lecteur Web
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top">
+                <div class="footer-info">
+                    <a href="#" class="logo">
+                        <span class="material-icons logo-icon">shield</span>
+                        <h1>Shield<span>IPTV</span></h1>
+                    </a>
+                    <p>
+                        Une application de lecture multimédia fluide et moderne développée par Bilal. Conçue pour simplifier le zapping et le visionnage de vos flux télévisés.
+                    </p>
+                </div>
+                <div class="footer-links">
+                    <h5>Légal</h5>
+                    <ul>
+                        <li><a href="./cgu.html">Conditions Générales d'Utilisation</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-disclaimer">
+                <strong>Avertissement important de non-fourniture de contenu :</strong> ShieldIPTV est un lecteur de flux vidéo indépendant. Nous ne fournissons aucun canal de télévision, flux en direct, playlist IPTV ou abonnement de diffusion de quelque nature que ce soit. Les utilisateurs doivent se connecter avec leurs propres accès fournis légalement par un distributeur officiel. ShieldIPTV n'a aucune affiliation avec des prestataires de flux IPTV et décline toute responsabilité quant au contenu importé et visualisé dans l'application.
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2026 ShieldIPTV. Tous droits réservés.</p>
+                <p>Développé avec passion pour Smart TV & PC.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="./js/landing.js"></script>
+</body>
+</html>

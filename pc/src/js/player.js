@@ -6,7 +6,7 @@ async function playMedia(item, section) {
     const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
                         window.location.protocol !== 'file:' && 
                         !window.cordova && 
-                        !/SmartTV|GoogleTV|AppleTV|AndroidTV/i.test(navigator.userAgent) && 
+                        !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
                         window.location.hostname !== 'localhost' && 
                         window.location.hostname !== '127.0.0.1';
     if (isMobileWeb && (section === 'live' || section === 'movies')) {
@@ -730,8 +730,8 @@ async function fetchAndRenderPreviewEPG(item, epgListEl, t) {
                     const title = listing.title ? decodeUtf8Base64(listing.title) : t.untitled;
                     const desc = listing.description ? decodeUtf8Base64(listing.description) : "";
                     
-                    const startStr = listing.start.split(" ")[1]?.substring(0, 5) || "";
-                    const endStr = listing.end.split(" ")[1]?.substring(0, 5) || "";
+                    const startStr = (listing.start && listing.start.split(" ")[1]) ? listing.start.split(" ")[1].substring(0, 5) : "";
+                    const endStr = (listing.end && listing.end.split(" ")[1]) ? listing.end.split(" ")[1].substring(0, 5) : "";
                     
                     const itemEl = document.createElement("div");
                     itemEl.className = "preview-epg-item";

@@ -3,7 +3,7 @@
    ========================================================================== */
 
 const isTvWrapper = window.cordova || 
-                    /SmartTV|GoogleTV|AppleTV|AndroidTV/i.test(navigator.userAgent);
+                    /SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent);
 
 // Fallback dynamic placeholder SVG Data-URIs
 const PLACEHOLDERS = {
@@ -951,7 +951,8 @@ function applyLanguage(lang) {
     const loginNameLabel = document.querySelector('label[for="login-name"]');
     if (loginNameLabel) loginNameLabel.innerText = t.pmNameLabel;
     
-    const inputType = document.getElementById("playlist-type")?.value || "xtream";
+    const playlistTypeEl = document.getElementById("playlist-type");
+    const inputType = playlistTypeEl ? playlistTypeEl.value : "xtream";
     const labelUrlEl = document.getElementById("label-url");
     if (labelUrlEl) labelUrlEl.innerText = inputType === 'xtream' ? t.serverUrl : t.pmUrlM3uLabel;
     

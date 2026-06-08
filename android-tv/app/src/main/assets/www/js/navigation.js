@@ -64,7 +64,7 @@ async function switchSection(section) {
     const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
                         window.location.protocol !== 'file:' && 
                         !window.cordova && 
-                        !/SmartTV|GoogleTV|AppleTV|AndroidTV/i.test(navigator.userAgent) && 
+                        !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
                         window.location.hostname !== 'localhost' && 
                         window.location.hostname !== '127.0.0.1';
     console.log(`[Browser Check] Section: ${section}, isMobileWeb: ${isMobileWeb}, Width: ${window.innerWidth}, UA: ${navigator.userAgent}`);
@@ -417,7 +417,7 @@ function setupSpatialNavigation() {
                     active.click();
                 }
             }
-        } else if (key === 'Escape' || key === 'Back' || key === 'Backspace' && document.activeElement.tagName !== 'INPUT') {
+        } else if (key === 'Escape' || key === 'Back' || e.keyCode === 461 || e.keyCode === 10009 || key === 'Backspace' && document.activeElement.tagName !== 'INPUT') {
             e.preventDefault();
             handleBackButton();
         }
@@ -604,7 +604,11 @@ function handleBackButton() {
         showScreen("playlist-manager-screen");
         renderPlaylistsGrid();
     } else if (screenId === "playlist-manager-screen") {
-        showToast("Appuyez sur Accueil pour quitter", 2000);
+        if (typeof window.webOS !== 'undefined' || /webOS/i.test(navigator.userAgent)) {
+            window.close();
+        } else {
+            showToast("Appuyez sur Accueil pour quitter", 2000);
+        }
     }
 }
 

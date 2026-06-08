@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldIPTV - Platform Asset Resizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Material+Icons&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #00E5FF;
+            --primary-hover: #00B2CC;
+            --text-main: #f8fafc;
+            --text-muted: #64748b;
+        }
+
+        body {
+            margin: 0;
+            padding: 2rem;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            max-width: 1100px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        header {
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            margin: 0;
+            font-weight: 700;
+        }
+
+        header h1 span {
+            color: var(--primary);
+        }
+
+        header p {
+            color: var(--text-muted);
+            margin: 0.5rem 0 0 0;
+            font-size: 1.1rem;
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: 1.2fr 1.8fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 992px) {
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            box-sizing: border-box;
+        }
+
+        .drop-zone {
+            border: 2px dashed rgba(0, 229, 255, 0.2);
+            border-radius: 15px;
+            width: 100%;
+            min-height: 350px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            padding: 1.5rem;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(0, 229, 255, 0.02);
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.05);
+        }
+
+        .drop-zone .icon {
+            font-size: 3.5rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .drop-zone h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.2rem;
+        }
+
+        .drop-zone p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .editor-container {
+            width: 100%;
+            display: none;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .crop-area-wrapper {
+            position: relative;
+            width: 100%;
+            background: #020305;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+        }
+
+        #source-image {
+            max-width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+        }
+
+        .preview-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .section-title {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--primary);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 0.5rem;
+            text-align: left;
+        }
+
+        .grid-previews {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .preview-box {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            text-align: left;
+            transition: background 0.2s ease;
+        }
+
+        .preview-box:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .preview-canvas-wrapper {
+            background: #020305;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .preview-info {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .preview-info h4 {
+            margin: 0 0 0.15rem 0;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .preview-info p {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .btn-download {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 0.45rem 1rem;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            font-size: 0.85rem;
+            width: fit-content;
+        }
+
+        .btn-download:hover {
+            background: var(--primary-hover);
+            box-shadow: 0 4px 10px rgba(0, 229, 255, 0.2);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .actions-row {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .tabs-header {
+            display: flex;
+            gap: 1.25rem;
+            margin-bottom: 1.5rem;
+            width: 100%;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            padding: 0.75rem 0;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 500;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Shield<span>IPTV</span> Asset Resizer</h1>
+            <p>Créez, cadrez et redimensionnez vos logos pour les versions <strong>Android APK</strong>, <strong>PC (Electron)</strong>, <strong>webOS</strong> et <strong>Vidaa OS</strong>.</p>
+        </header>
+
+        <div class="workspace">
+            <!-- Left panel: Image Loader & Preview Source -->
+            <div class="panel" id="editor-panel">
+                <div class="drop-zone" id="drop-zone">
+                    <span class="material-icons icon">cloud_upload</span>
+                    <h3>Glissez votre image d'origine</h3>
+                    <p>Fichiers supportés : PNG, JPG, WebP</p>
+                    <p style="margin-top: 0.5rem;">Ou cliquez pour chercher</p>
+                    <input type="file" id="file-input" accept="image/*">
+                </div>
+
+                <div class="editor-container" id="editor-container">
+                    <div class="crop-area-wrapper">
+                        <img id="source-image" src="" alt="Source image">
+                    </div>
+                    <div class="actions-row">
+                        <button class="btn-secondary" id="btn-reset">Changer d'image</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right panel: Crop Targets with Tabs -->
+            <div class="panel">
+                <div class="tabs-header">
+                    <button class="tab-btn active" onclick="switchTab('android')">Android APK</button>
+                    <button class="tab-btn" onclick="switchTab('pc')">PC Client (Electron)</button>
+                    <button class="tab-btn" onclick="switchTab('webos')">webOS (LG TV)</button>
+                    <button class="tab-btn" onclick="switchTab('vidaa')">Vidaa OS (Hisense)</button>
+                </div>
+
+                <!-- Android APK Previews -->
+                <div class="preview-panel" id="android-tab">
+                    <div class="section-title">Icônes de l'application (Mipmaps)</div>
+                    <div class="grid-previews">
+                        
+                        <!-- 1. Google Play Console Icon (512x512) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 70px; height: 70px;">
+                                <canvas id="canvas-512" width="512" height="512" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>play_store_icon.png</h4>
+                                <p>512 x 512 px (Fiche Google Play / HQ Icon)</p>
+                                <button class="btn-download" id="btn-dl-512">Enregistrer</button>
+                            </div>
+                        </div>
+
+                        <!-- 2. mipmap-xxxhdpi (192x192) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 60px; height: 60px;">
+                                <canvas id="canvas-192" width="192" height="192" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>ic_launcher.png (xxxhdpi)</h4>
+                                <p>192 x 192 px (mipmap-xxxhdpi)</p>
+                                <button class="btn-download" id="btn-dl-192">Enregistrer</button>
+                            </div>
+                        </div>
+
+                        <!-- 3. mipmap-xxhdpi (144x144) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 50px; height: 50px;">
+                                <canvas id="canvas-144" width="144" height="144" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>ic_launcher.png (xxhdpi)</h4>
+                                <p>144 x 144 px (mipmap-xxhdpi)</p>
+                                <button class="btn-download" id="btn-dl-144">Enregistrer</button>
+                            </div>
+                        </div>
+
+                        <!-- 4. mipmap-xhdpi (96x96) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 40px; height: 40px;">
+                                <canvas id="canvas-96" width="96" height="96" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>ic_launcher.png (xhdpi)</h4>
+                                <p>96 x 96 px (mipmap-xhdpi)</p>
+                                <button class="btn-download" id="btn-dl-96">Enregistrer</button>
+                            </div>
+                        </div>
+
+                        <!-- 5. Android TV leanback banner (320x180) -->
+                        <div class="section-title" style="margin-top: 1.5rem;">Bannière TV (Leanback Home)</div>
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 120px; height: 67px;">
+                                <canvas id="canvas-banner" width="320" height="180" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>banner.png (Format 16:9)</h4>
+                                <p>320 x 180 px (Bannière pour l'accueil Android TV)</p>
+                                <button class="btn-download" id="btn-dl-banner">Enregistrer</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PC Client Previews -->
+                <div class="preview-panel" id="pc-tab" style="display: none;">
+                    <div class="section-title">Visuels PC Client (Electron)</div>
+                    <div class="grid-previews">
+                        
+                        <!-- 1. PC Installer Icon (256x256) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 80px; height: 80px;">
+                                <canvas id="canvas-pc-build" width="256" height="256" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>icon.png (Installer & App Executable)</h4>
+                                <p>256 x 256 px (Placer dans <code>pc/build/icon.png</code>)</p>
+                                <button class="btn-download" id="btn-dl-pc-build">Enregistrer</button>
+                            </div>
+                        </div>
+
+                        <!-- 2. PC App Window Icon (64x64) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 64px; height: 64px;">
+                                <canvas id="canvas-pc-app" width="64" height="64" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>icon.png (Window Titlebar)</h4>
+                                <p>64 x 64 px (Placer dans <code>pc/src/assets/icon.png</code>)</p>
+                                <button class="btn-download" id="btn-dl-pc-app">Enregistrer</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- webOS Previews -->
+                <div class="preview-panel" id="webos-tab" style="display: none;">
+                    <div class="section-title">Icônes LG webOS TV</div>
+                    <div class="grid-previews">
+                        
+                        <!-- 1. icon.png (80x80) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 80px; height: 80px;">
+                                <canvas id="canvas-80" width="80" height="80"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>icon.png</h4>
+                                <p>80 x 80 px (Icône liste d'applications LG TV)</p>
+                                <button class="btn-download" id="btn-dl-80">Enregistrer</button>
+                            </div>
+                        </div>
+
+                        <!-- 2. largeIcon.png (130x130) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 130px; height: 130px;">
+                                <canvas id="canvas-130" width="130" height="130"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>largeIcon.png</h4>
+                                <p>130 x 130 px (Grande icône webOS)</p>
+                                <button class="btn-download" id="btn-dl-130">Enregistrer</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vidaa OS Previews -->
+                <div class="preview-panel" id="vidaa-tab" style="display: none;">
+                    <div class="section-title">Visuels Hisense Vidaa OS</div>
+                    <div class="grid-previews">
+                        
+                        <!-- 1. Vidaa App Icon (512x512) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 80px; height: 80px;">
+                                <canvas id="canvas-vidaa-icon" width="512" height="512" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>icon.png (Vidaa App Store Icon)</h4>
+                                <p>512 x 512 px (Placer dans <code>vidaa/assets/icon.png</code>)</p>
+                                <button class="btn-download" id="btn-dl-vidaa-icon">Enregistrer</button>
+                            </div>
+                        </div>
+
+                        <!-- 2. Vidaa App Store Banner (1280x720) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 120px; height: 67px;">
+                                <canvas id="canvas-vidaa-banner" width="1280" height="720" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>banner.png (Vidaa Store Feature Banner)</h4>
+                                <p>1280 x 720 px (Placer dans <code>vidaa/assets/banner.png</code>)</p>
+                                <button class="btn-download" id="btn-dl-vidaa-banner">Enregistrer</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const editorContainer = document.getElementById('editor-container');
+        const sourceImage = document.getElementById('source-image');
+        const btnReset = document.getElementById('btn-reset');
+        
+        // Android Canvases
+        const canvas512 = document.getElementById('canvas-512');
+        const canvas192 = document.getElementById('canvas-192');
+        const canvas144 = document.getElementById('canvas-144');
+        const canvas96 = document.getElementById('canvas-96');
+        const canvasBanner = document.getElementById('canvas-banner');
+        
+        // Android Download buttons
+        const btnDl512 = document.getElementById('btn-dl-512');
+        const btnDl192 = document.getElementById('btn-dl-192');
+        const btnDl144 = document.getElementById('btn-dl-144');
+        const btnDl96 = document.getElementById('btn-dl-96');
+        const btnDlBanner = document.getElementById('btn-dl-banner');
+
+        // PC Canvases
+        const canvasPcBuild = document.getElementById('canvas-pc-build');
+        const canvasPcApp = document.getElementById('canvas-pc-app');
+        
+        // PC Download buttons
+        const btnDlPcBuild = document.getElementById('btn-dl-pc-build');
+        const btnDlPcApp = document.getElementById('btn-dl-pc-app');
+
+        // webOS Canvases
+        const canvas80 = document.getElementById('canvas-80');
+        const canvas130 = document.getElementById('canvas-130');
+        
+        // webOS Download buttons
+        const btnDl80 = document.getElementById('btn-dl-80');
+        const btnDl130 = document.getElementById('btn-dl-130');
+
+        // Vidaa Canvases
+        const canvasVidaaIcon = document.getElementById('canvas-vidaa-icon');
+        const canvasVidaaBanner = document.getElementById('canvas-vidaa-banner');
+        
+        // Vidaa Download buttons
+        const btnDlVidaaIcon = document.getElementById('btn-dl-vidaa-icon');
+        const btnDlVidaaBanner = document.getElementById('btn-dl-vidaa-banner');
+
+        let loadedImage = null;
+
+        // Tabs
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.preview-panel').forEach(panel => panel.style.display = 'none');
+            
+            if (tabName === 'android') {
+                document.querySelector('.tab-btn[onclick="switchTab(\'android\')"]').classList.add('active');
+                document.getElementById('android-tab').style.display = 'flex';
+            } else if (tabName === 'pc') {
+                document.querySelector('.tab-btn[onclick="switchTab(\'pc\')"]').classList.add('active');
+                document.getElementById('pc-tab').style.display = 'flex';
+            } else if (tabName === 'webos') {
+                document.querySelector('.tab-btn[onclick="switchTab(\'webos\')"]').classList.add('active');
+                document.getElementById('webos-tab').style.display = 'flex';
+            } else if (tabName === 'vidaa') {
+                document.querySelector('.tab-btn[onclick="switchTab(\'vidaa\')"]').classList.add('active');
+                document.getElementById('vidaa-tab').style.display = 'flex';
+            }
+        }
+
+        // Drop zone interaction
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleFile(files[0]);
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Fichier non valide.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                sourceImage.src = e.target.result;
+                loadedImage = new Image();
+                loadedImage.src = e.target.result;
+                loadedImage.onload = () => {
+                    generateResizedImages();
+                    dropZone.style.display = 'none';
+                    editorContainer.style.display = 'flex';
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        btnReset.addEventListener('click', () => {
+            fileInput.value = '';
+            dropZone.style.display = 'flex';
+            editorContainer.style.display = 'none';
+            loadedImage = null;
+        });
+
+        function generateResizedImages() {
+            if (!loadedImage) return;
+
+            // Generate Square icons (Center cropped)
+            cropSquare(loadedImage, canvas512, 512);
+            cropSquare(loadedImage, canvas192, 192);
+            cropSquare(loadedImage, canvas144, 144);
+            cropSquare(loadedImage, canvas96, 96);
+            cropSquare(loadedImage, canvas80, 80);
+            cropSquare(loadedImage, canvas130, 130);
+            
+            // PC specific
+            cropSquare(loadedImage, canvasPcBuild, 256);
+            cropSquare(loadedImage, canvasPcApp, 64);
+
+            // Vidaa specific
+            cropSquare(loadedImage, canvasVidaaIcon, 512);
+            crop169(loadedImage, canvasVidaaBanner, 1280, 720);
+
+            // Generate 16:9 Banner
+            crop169(loadedImage, canvasBanner, 320, 180);
+
+            // Setup download triggers
+            setupDownload(canvas512, btnDl512, 'play_store_icon.png');
+            setupDownload(canvas192, btnDl192, 'ic_launcher.png');
+            setupDownload(canvas144, btnDl144, 'ic_launcher.png');
+            setupDownload(canvas96, btnDl96, 'ic_launcher.png');
+            setupDownload(canvasBanner, btnDlBanner, 'banner.png');
+            
+            // PC Download setups
+            setupDownload(canvasPcBuild, btnDlPcBuild, 'icon.png');
+            setupDownload(canvasPcApp, btnDlPcApp, 'icon.png');
+            
+            // webOS Download setups
+            setupDownload(canvas80, btnDl80, 'icon.png');
+            setupDownload(canvas130, btnDl130, 'largeIcon.png');
+
+            // Vidaa Download setups
+            setupDownload(canvasVidaaIcon, btnDlVidaaIcon, 'icon.png');
+            setupDownload(canvasVidaaBanner, btnDlVidaaBanner, 'banner.png');
+        }
+
+        function cropSquare(img, canvas, targetSize) {
+            const ctx = canvas.getContext('2d');
+            let srcX = 0, srcY = 0, srcSize = img.width;
+
+            if (img.width > img.height) {
+                srcSize = img.height;
+                srcX = (img.width - img.height) / 2;
+            } else if (img.height > img.width) {
+                srcSize = img.width;
+                srcY = (img.height - img.width) / 2;
+            }
+
+            ctx.clearRect(0, 0, targetSize, targetSize);
+            ctx.drawImage(img, srcX, srcY, srcSize, srcSize, 0, 0, targetSize, targetSize);
+        }
+
+        function crop169(img, canvas, targetW, targetH) {
+            const ctx = canvas.getContext('2d');
+            
+            // Calculate a 16:9 crop area from source image
+            let srcW = img.width;
+            let srcH = img.width * (9 / 16);
+            let srcX = 0;
+            let srcY = (img.height - srcH) / 2;
+
+            if (srcH > img.height) {
+                srcH = img.height;
+                srcW = img.height * (16 / 9);
+                srcX = (img.width - srcW) / 2;
+                srcY = 0;
+            }
+
+            ctx.clearRect(0, 0, targetW, targetH);
+            ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH);
+        }
+
+        function setupDownload(canvas, button, filename) {
+            button.onclick = () => {
+                const link = document.createElement('a');
+                link.download = filename;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            };
+        }
+    </script>
+</body>
+</html>

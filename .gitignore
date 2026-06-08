@@ -1,0 +1,3 @@
+# Ignore large executable Windows build to stay within GitHub's 100MB file size limit.
+# The user will host the exe on GitHub Releases.
+pc/ShieldIPTV-Setup-1.0.0.exe
