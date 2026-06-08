@@ -11,7 +11,8 @@
     <script>
         function checkHashRoute() {
             if (window.location.hash === '#/frwebapp' || window.location.hash === '#/app' || window.location.hash === '#/webapp') {
-                window.location.replace('./web/index.html');
+                // Force HTTP protocol to allow browser to load insecure IPTV streams (mixed content)
+                window.location.replace('http://shieldiptvplayer.com/web/index.html' + window.location.hash);
             }
         }
         checkHashRoute();
@@ -61,38 +62,46 @@
             <div class="demo-wrapper">
                 <div class="mock-player glass">
                     <div class="mock-gui">
-                        <!-- Sidebar -->
-                        <div class="mock-sidebar">
-                            <span class="material-icons mock-logo">shield</span>
-                            <span class="material-icons mock-nav-item active">home</span>
-                            <span class="material-icons mock-nav-item">live_tv</span>
-                            <span class="material-icons mock-nav-item">movie</span>
-                            <span class="material-icons mock-nav-item">tv</span>
-                            <span class="material-icons mock-nav-item" style="margin-top: auto;">settings</span>
+                        <!-- Top Bar / Header -->
+                        <div class="mock-top-bar">
+                            <div class="mock-brand">
+                                <span class="material-icons mock-brand-icon">shield</span>
+                                <span class="mock-brand-text">Shield<span>IPTV</span></span>
+                            </div>
+                            <div class="mock-top-actions">
+                                <span class="mock-account">Compte : <span>Démo</span></span>
+                                <div class="mock-action-btns">
+                                    <span class="material-icons mock-action-btn">manage_accounts</span>
+                                    <span class="material-icons mock-action-btn">speed</span>
+                                    <span class="material-icons mock-action-btn">link</span>
+                                    <span class="material-icons mock-action-btn">play_circle</span>
+                                    <span class="material-icons mock-action-btn">settings</span>
+                                </div>
+                            </div>
                         </div>
-                        <!-- Main Panel -->
-                        <div class="mock-body">
-                            <div class="mock-header">
-                                <span class="mock-title">Tableau de bord</span>
-                                <span class="mock-user">Playlist : Premium IPTV (Xtream API)</span>
+                        
+                        <!-- Grid Content -->
+                        <div class="mock-grid">
+                            <div class="mock-card">
+                                <span class="material-icons mock-card-icon">live_tv</span>
+                                <h4>LIVE TV</h4>
+                                <p>Chaînes en direct & EPG</p>
                             </div>
-                            <div class="mock-grid">
-                                <div class="mock-card">
-                                    <span class="material-icons mock-card-icon live">live_tv</span>
-                                    <h4>DIRECT TV</h4>
-                                    <p>Accéder aux chaînes en direct</p>
-                                </div>
-                                <div class="mock-card">
-                                    <span class="material-icons mock-card-icon movies">movie</span>
-                                    <h4>FILMS (VOD)</h4>
-                                    <p>Visionner vos films à la demande</p>
-                                </div>
-                                <div class="mock-card">
-                                    <span class="material-icons mock-card-icon series">tv</span>
-                                    <h4>SÉRIES</h4>
-                                    <p>Parcourir vos séries par saisons</p>
-                                </div>
+                            <div class="mock-card">
+                                <span class="material-icons mock-card-icon">movie</span>
+                                <h4>FILMS</h4>
+                                <p>Films à la demande (VOD)</p>
                             </div>
+                            <div class="mock-card">
+                                <span class="material-icons mock-card-icon">desktop_windows</span>
+                                <h4>SÉRIES</h4>
+                                <p>Séries TV & Saisons</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Bottom Status Pill -->
+                        <div class="mock-footer">
+                            <div class="mock-status-pill">Playlist chargée avec succès !</div>
                         </div>
                     </div>
                 </div>
