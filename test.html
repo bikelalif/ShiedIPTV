@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldIPTV - Testeur de Flux (Sandbox)</title>
+    <!-- Google Fonts: Outfit & Material Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Material+Icons&display=swap" rel="stylesheet">
+    <script src="libs/mpegts.min.js"></script>
+    <script src="libs/hls.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #080b11;
+            --surface-color: rgba(17, 24, 39, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.4);
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.4);
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text-color: #f3f4f6;
+            --text-muted: #9ca3af;
+            --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.08) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-color);
+            font-family: var(--font-family);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            flex-grow: 1;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: var(--text-color);
+        }
+
+        .brand-logo .logo-icon {
+            font-size: 2.2rem;
+            color: var(--primary);
+            text-shadow: 0 0 12px var(--primary-glow);
+        }
+
+        .brand-logo h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .brand-logo h1 span {
+            color: var(--primary);
+        }
+
+        .btn-back-main {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.2rem;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-back-main:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--text-muted);
+            transform: translateX(-2px);
+        }
+
+        .sandbox-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            flex-grow: 1;
+        }
+
+        @media (min-width: 900px) {
+            .sandbox-grid {
+                grid-template-columns: 420px 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--surface-color);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .panel-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.75rem;
+        }
+
+        .panel-title span.material-icons {
+            color: var(--primary);
+        }
+
+        .presets-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .presets-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .presets-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .btn-preset {
+            padding: 0.6rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: all 0.15s ease;
+        }
+
+        .btn-preset:hover {
+            background: rgba(59, 130, 246, 0.08);
+            border-color: var(--primary);
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .input-group label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper span.material-icons {
+            position: absolute;
+            left: 0.85rem;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            pointer-events: none;
+        }
+
+        .input-wrapper input, .input-wrapper select {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            color: white;
+            font-family: var(--font-family);
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .input-wrapper select {
+            appearance: none;
+            cursor: pointer;
+            color-scheme: dark !important;
+        }
+
+        select option {
+            background-color: #0b0f19 !important;
+            color: #ffffff !important;
+            padding: 12px !important;
+        }
+
+        .input-wrapper input:focus, .input-wrapper select:focus {
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        .checkbox-wrapper label {
+            font-size: 0.85rem;
+            color: var(--text-color);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .actions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .btn-action {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.8rem;
+            border-radius: 12px;
+            font-family: var(--font-family);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-play {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 4px 15px var(--success-glow);
+        }
+
+        .btn-play:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-stop {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--danger);
+            color: #fca5a5;
+        }
+
+        .btn-stop:hover {
+            background: rgba(239, 68, 68, 0.35);
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .video-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .video-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            background: #030509;
+            color: var(--text-muted);
+            z-index: 2;
+            transition: opacity 0.3s ease;
+        }
+
+        .video-placeholder span.material-icons {
+            font-size: 3.5rem;
+            color: var(--primary);
+            text-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .video-placeholder.hidden {
+            display: none;
+        }
+
+        .console-panel {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-height: 200px;
+        }
+
+        .console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .console-header-title {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .btn-clear-console {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-size: 0.8rem;
+            gap: 0.25rem;
+        }
+
+        .btn-clear-console:hover {
+            color: var(--text-color);
+        }
+
+        .console-body {
+            background: #020408;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            flex-grow: 1;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            overflow-y: auto;
+            max-height: 350px;
+            user-select: text;
+            -webkit-user-select: text;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);
+        }
+
+        .log-line {
+            margin-bottom: 0.35rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .log-time {
+            color: #64748b;
+            margin-right: 0.5rem;
+        }
+
+        .log-info {
+            color: #00ff66;
+        }
+
+        .log-warn {
+            color: #f59e0b;
+        }
+
+        .log-error {
+            color: #ef4444;
+            font-weight: bold;
+        }
+
+        .log-debug {
+            color: #3b82f6;
+        }
+
+        .cors-alert-box {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            padding: 0.85rem;
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .cors-alert-box span.material-icons {
+            color: var(--danger);
+            font-size: 1.5rem;
+        }
+
+        .cors-alert-box p {
+            font-size: 0.8rem;
+            line-height: 1.35;
+            color: #fca5a5;
+        }
+
+        .cors-alert-box a {
+            color: white;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="brand-logo">
+                <span class="material-icons logo-icon">shield</span>
+                <h1>Shield<span>IPTV</span></h1>
+            </a>
+            <a href="index.html" class="btn-back-main">
+                <span class="material-icons">keyboard_return</span>
+                <span>Retour au lecteur</span>
+            </a>
+        </header>
+
+        <div class="sandbox-grid">
+            <!-- Controls Panel -->
+            <div class="panel">
+                <div class="panel-title">
+                    <span class="material-icons">settings</span>
+                    <h2>Configuration du Flux</h2>
+                </div>
+
+                <!-- Presets -->
+                <div class="presets-wrapper">
+                    <div class="presets-label">Flux de démo préconfigurés</div>
+                    <div class="presets-grid">
+                        <button class="btn-preset" data-url="https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/master.m3u8" data-engine="native" title="Deutsche Welle">
+                            Deutsche Welle (HLS)
+                        </button>
+                        <button class="btn-preset" data-url="https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" data-engine="native" title="Mire HLS Mux">
+                            Mire HLS Mux
+                        </button>
+                        <button class="btn-preset" data-url="https://media.w3.org/2010/05/bunny/trailer.mp4" data-engine="native" title="Big Buck Bunny">
+                            BBB Trailer (MP4)
+                        </button>
+                        <button class="btn-preset" data-url="https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8" data-engine="native" title="Tears of Steel">
+                            Tears of Steel (HLS)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stream URL -->
+                <div class="input-group">
+                    <label for="stream-url">URL de votre flux direct ou VOD</label>
+                    <div class="input-wrapper">
+                        <span class="material-icons">link</span>
+                        <input type="url" id="stream-url" placeholder="http://domain.com/stream.m3u8" value="https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/master.m3u8">
+                    </div>
+                </div>
+
+                <!-- Engine Selection -->
+                <div class="input-group">
+                    <label for="engine-select">Moteur de décodage</label>
+                    <div class="input-wrapper">
+                        <span class="material-icons">smart_display</span>
+                        <select id="engine-select">
+                            <option value="auto">Automatique (Détection extension)</option>
+                            <option value="hls">HLS.js (Recommandé .m3u8)</option>
+                            <option value="mpegts">MPEG-TS.js (.ts / live TS)</option>
+                            <option value="native">HTML5 Natif (.mp4, Safari HLS)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- DoH Settings -->
+                <div class="input-group" style="border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 0.85rem;">
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="doh-toggle" checked>
+                        <label for="doh-toggle">Contourner DNS local (DNS over HTTPS)</label>
+                    </div>
+                </div>
+
+                <div class="input-group" id="doh-server-group">
+                    <label for="doh-resolver">Résolveur DoH</label>
+                    <div class="input-wrapper">
+                        <span class="material-icons">dns</span>
+                        <select id="doh-resolver">
+                            <option value="https://dns.google/resolve">Google DNS (Recommandé)</option>
+                            <option value="https://cloudflare-dns.com/dns-query">Cloudflare DNS</option>
+                            <option value="https://dns.adguard.com/dns-query">AdGuard DNS</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Play/Stop Actions -->
+                <div class="actions-grid">
+                    <button class="btn-action btn-play" id="btn-play">
+                        <span class="material-icons">play_arrow</span>
+                        <span>Lancer</span>
+                    </button>
+                    <button class="btn-action btn-stop" id="btn-stop">
+                        <span class="material-icons">stop</span>
+                        <span>Arrêter</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Player & Console Panel -->
+            <div class="right-panel">
+                <div class="video-container">
+                    <div class="video-placeholder" id="placeholder">
+                        <span class="material-icons">smart_display</span>
+                        <p>Aucun flux en cours de lecture</p>
+                    </div>
+                    <video id="test-video" controls playsinline></video>
+                </div>
+
+                <div class="panel console-panel">
+                    <div class="console-header">
+                        <div class="console-header-title">
+                            <span class="material-icons" style="font-size: 1.15rem;">terminal</span>
+                            <span>Journal de Diagnostic</span>
+                        </div>
+                        <button class="btn-clear-console" id="btn-clear-console">
+                            <span class="material-icons" style="font-size: 0.95rem;">delete_sweep</span>
+                            <span>Effacer</span>
+                        </button>
+                    </div>
+                    <div class="console-body" id="console-output"></div>
+                </div>
+
+                <!-- CORS Warning Box -->
+                <div class="cors-alert-box hidden" id="cors-warning">
+                    <span class="material-icons">warning</span>
+                    <div>
+                        <p><strong>Alerte CORS détectée :</strong> Si le flux fonctionne sur VLC mais échoue ici, le serveur de streaming bloque les requêtes provenant d'un navigateur web (entête <code>Access-Control-Allow-Origin</code> manquante). VLC ignore ces règles de sécurité, contrairement aux navigateurs.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const streamUrlInput = document.getElementById("stream-url");
+        const engineSelect = document.getElementById("engine-select");
+        const dohToggle = document.getElementById("doh-toggle");
+        const dohResolver = document.getElementById("doh-resolver");
+        const dohServerGroup = document.getElementById("doh-server-group");
+        const btnPlay = document.getElementById("btn-play");
+        const btnStop = document.getElementById("btn-stop");
+        const btnClearConsole = document.getElementById("btn-clear-console");
+        const consoleOutput = document.getElementById("console-output");
+        const videoElement = document.getElementById("test-video");
+        const placeholder = document.getElementById("placeholder");
+        const corsWarning = document.getElementById("cors-warning");
+        const presetButtons = document.querySelectorAll(".btn-preset");
+
+        // Player Instances
+        let hlsPlayer = null;
+        let mpegtsPlayer = null;
+
+        // Toggle DoH server select visibility
+        dohToggle.addEventListener("change", (e) => {
+            if (e.target.checked) {
+                dohServerGroup.style.display = "flex";
+            } else {
+                dohServerGroup.style.display = "none";
+            }
+        });
+
+        // Preset stream loading
+        presetButtons.forEach(btn => {
+            btn.addEventListener("click", () => {
+                streamUrlInput.value = btn.getAttribute("data-url");
+                engineSelect.value = btn.getAttribute("data-engine");
+                log(`Chargement du raccourci : ${btn.innerText.trim()}`, "debug");
+            });
+        });
+
+        // Console logger helper
+        function log(message, type = "info") {
+            const time = new Date().toLocaleTimeString();
+            const logLine = document.createElement("div");
+            logLine.className = "log-line";
+            
+            const timeSpan = document.createElement("span");
+            timeSpan.className = "log-time";
+            timeSpan.innerText = `[${time}]`;
+            
+            const msgSpan = document.createElement("span");
+            msgSpan.className = `log-${type}`;
+            msgSpan.innerText = message;
+            
+            logLine.appendChild(timeSpan);
+            logLine.appendChild(msgSpan);
+            
+            consoleOutput.appendChild(logLine);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        btnClearConsole.addEventListener("click", () => {
+            consoleOutput.innerHTML = "";
+            log("Journal effacé.", "debug");
+        });
+
+        // DoH hostname resolution
+        async function resolveDoh(url) {
+            if (!dohToggle.checked) return url;
+            if (url.startsWith("https://")) {
+                log("[DoH] Ignoré pour HTTPS afin d'éviter la rupture du certificat SSL.", "debug");
+                return url;
+            }
+
+            try {
+                const parsedUrl = new URL(url);
+                const hostname = parsedUrl.hostname;
+                
+                // If already an IP address, return
+                if (/^[0-9.]+$/.test(hostname)) return url;
+
+                log(`[DoH] Résolution DNS de ${hostname}...`);
+                const resolverUrl = dohResolver.value;
+                const endpoint = `${resolverUrl}?name=${hostname}&type=A`;
+                
+                const response = await fetch(endpoint, {
+                    headers: { 'Accept': resolverUrl.includes("dns.google") ? 'application/json' : 'application/dns-json' }
+                });
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const dnsData = await response.json();
+                if (dnsData && dnsData.Answer && dnsData.Answer.length > 0) {
+                    const aRecord = dnsData.Answer.find(rec => rec.type === 1);
+                    if (aRecord) {
+                        const ip = aRecord.data;
+                        parsedUrl.hostname = ip;
+                        log(`[DoH] DNS résolu avec succès : ${hostname} -> ${ip}`, "info");
+                        return parsedUrl.toString();
+                    }
+                }
+                log(`[DoH] Aucun enregistrement A trouvé pour ${hostname}. Utilisation de l'URL brute.`, "warn");
+            } catch (err) {
+                log(`[DoH] Échec de la résolution DoH : ${err.message}. Passage à l'adresse brute.`, "warn");
+            }
+            return url;
+        }
+
+        // Destroy players
+        function destroyPlayers() {
+            if (hlsPlayer) {
+                log("Fermeture du lecteur HLS.js...");
+                hlsPlayer.destroy();
+                hlsPlayer = null;
+            }
+            if (mpegtsPlayer) {
+                log("Fermeture du lecteur MPEG-TS.js...");
+                try {
+                    mpegtsPlayer.pause();
+                    mpegtsPlayer.unload();
+                    mpegtsPlayer.detachMediaElement();
+                    mpegtsPlayer.destroy();
+                } catch(e) {}
+                mpegtsPlayer = null;
+            }
+            videoElement.pause();
+            videoElement.removeAttribute("src");
+            try { videoElement.load(); } catch(e){}
+            
+            placeholder.classList.remove("hidden");
+            corsWarning.classList.add("hidden");
+        }
+
+        // Run Stream Test
+        async function runStreamTest() {
+            destroyPlayers();
+            
+            const rawUrl = streamUrlInput.value.trim();
+            if (!rawUrl) {
+                log("Erreur : L'URL du flux est vide !", "error");
+                return;
+            }
+
+            placeholder.classList.add("hidden");
+            log(`Initialisation de la lecture : ${rawUrl}`);
+
+            // 1. Resolve URL with DoH
+            const finalUrl = await resolveDoh(rawUrl);
+
+            // 2. Detect engine
+            let engine = engineSelect.value;
+            if (engine === "auto") {
+                const urlPath = new URL(rawUrl).pathname.toLowerCase();
+                if (urlPath.includes(".m3u8")) {
+                    engine = "native";
+                } else if (urlPath.includes(".ts") || rawUrl.includes("/live/")) {
+                    engine = "mpegts";
+                } else {
+                    engine = "native";
+                }
+                log(`[Auto] Moteur détecté : ${engine.toUpperCase()}`, "debug");
+            }
+
+            // Bind video listeners
+            bindVideoEvents();
+
+            // 3. Launch with selected engine
+            if (engine === "hls") {
+                if (Hls.isSupported()) {
+                    log("Création de l'instance HLS.js...");
+                    hlsPlayer = new Hls({
+                        enableWorker: true,
+                        lowLatencyMode: true,
+                        maxMaxBufferLength: 10
+                    });
+                    
+                    log("Attachement de l'élément vidéo à HLS.js...");
+                    hlsPlayer.attachMediaElement(videoElement);
+                    
+                    hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
+                        log("Événement HLS.js : Média attaché. Chargement de la source...");
+                        hlsPlayer.loadSource(finalUrl);
+                    });
+
+                    hlsPlayer.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                        log(`Événement HLS.js : Manifeste chargé. ${data.levels.length} qualités disponibles. Lancement de la lecture...`);
+                        videoElement.play().catch(err => {
+                            log(`Lecture automatique bloquée par le navigateur : ${err.message}. Veuillez cliquer sur le bouton de lecture vidéo.`, "warn");
+                        });
+                    });
+
+                    hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                        log(`Erreur HLS.js : ${data.details} (${data.type})`, data.fatal ? "error" : "warn");
+                        if (data.fatal) {
+                            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                                log("Tentative de récupération d'erreur réseau HLS...", "warn");
+                                hlsPlayer.startLoad();
+                                checkCorsFailure(rawUrl);
+                            } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                                log("Tentative de récupération d'erreur média HLS...", "warn");
+                                hlsPlayer.recoverMediaError();
+                            } else {
+                                log("Erreur fatale non récupérable. Arrêt.", "error");
+                                destroyPlayers();
+                            }
+                        }
+                    });
+                } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                    log("HLS.js non supporté. Utilisation du lecteur HLS natif de Safari...");
+                    videoElement.src = finalUrl;
+                    videoElement.play().catch(e => log(`Lecture automatique impossible : ${e.message}`, "warn"));
+                } else {
+                    log("Erreur : Ce navigateur ne supporte pas la lecture de flux HLS (.m3u8).", "error");
+                }
+            } 
+            else if (engine === "mpegts") {
+                if (typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
+                    log("Création de l'instance MPEG-TS.js...");
+                    try {
+                        mpegtsPlayer = mpegts.createPlayer({
+                            type: 'mpegts',
+                            isLive: true,
+                            url: finalUrl
+                        }, {
+                            enableWorker: true,
+                            lazyLoadMaxDuration: 30,
+                            seekType: 'range'
+                        });
+
+                        mpegtsPlayer.attachMediaElement(videoElement);
+                        mpegtsPlayer.load();
+                        log("Chargement du flux MPEG-TS lancé...");
+                        mpegtsPlayer.play().catch(err => {
+                            log(`Lecture automatique bloquée : ${err.message}.`, "warn");
+                        });
+
+                        mpegtsPlayer.on(mpegts.Events.ERROR, (type, detail, info) => {
+                            log(`Erreur MPEG-TS.js : Type ${type}, Détail ${detail}.`, "error");
+                            checkCorsFailure(rawUrl);
+                        });
+                    } catch(err) {
+                        log(`Échec d'initialisation de MPEG-TS : ${err.message}. Passage en natif.`, "warn");
+                        videoElement.src = finalUrl;
+                        videoElement.play().catch(e => {});
+                    }
+                } else {
+                    log("Erreur : Votre navigateur ne supporte pas l'extension MSE pour MPEG-TS.", "error");
+                }
+            } 
+            else {
+                log("Moteur Natif HTML5 : Chargement de la source brute...");
+                videoElement.src = finalUrl;
+                videoElement.load();
+                videoElement.play().catch(err => {
+                    log(`Lecture automatique bloquée par le navigateur : ${err.message}`, "warn");
+                });
+            }
+        }
+
+        // Test if a network failure is due to CORS
+        async function checkCorsFailure(url) {
+            try {
+                log("Lancement d'une vérification CORS en tâche de fond...", "debug");
+                // Fetch with CORS mode, if it fails, it might be due to CORS
+                const controller = new AbortController();
+                setTimeout(() => controller.abort(), 4000);
+                
+                await fetch(url, { method: 'GET', mode: 'cors', signal: controller.signal });
+                log("Le serveur répond correctement aux requêtes HTTP (CORS Ok). L'erreur provient d'un codec ou d'une déconnexion physique.", "info");
+            } catch (err) {
+                // If it fails, check if we can reach it without CORS (no-cors)
+                try {
+                    const controller2 = new AbortController();
+                    setTimeout(() => controller2.abort(), 4000);
+                    await fetch(url, { method: 'GET', mode: 'no-cors', signal: controller2.signal });
+                    // No-cors succeeded but cors failed -> CORS issue!
+                    log("Alerte Détectée : Le serveur est accessible en mode 'no-cors' mais bloqué en mode 'cors'. Le flux est bloqué par la sécurité du navigateur web.", "error");
+                    corsWarning.classList.remove("hidden");
+                } catch (err2) {
+                    log("Le serveur est totalement inaccessible (serveur hors ligne, IP bloquée ou réseau déconnecté).", "error");
+                }
+            }
+        }
+
+        // HTML5 Video Event Listeners for logging
+        function bindVideoEvents() {
+            videoElement.onloadstart = () => log("Vidéo : Démarrage du chargement (loadstart)", "debug");
+            videoElement.onplay = () => log("Vidéo : Événement PLAY capturé", "info");
+            videoElement.onplaying = () => log("Vidéo : Lecture en cours (playing)", "info");
+            videoElement.onpause = () => log("Vidéo : Lecture suspendue (pause)", "warn");
+            videoElement.onwaiting = () => log("Vidéo : Mise en mémoire tampon (waiting)...", "warn");
+            videoElement.onstalled = () => log("Vidéo : Flux bloqué/ralenti (stalled)", "warn");
+            videoElement.onended = () => log("Vidéo : Fin de lecture (ended)", "info");
+            videoElement.onerror = () => {
+                const err = videoElement.error;
+                let message = "Inconnue";
+                if (err) {
+                    switch (err.code) {
+                        case 1: message = "MEDIA_ERR_ABORTED (Lecture annulée)"; break;
+                        case 2: message = "MEDIA_ERR_NETWORK (Erreur réseau de téléchargement)"; break;
+                        case 3: message = "MEDIA_ERR_DECODE (Erreur de décodage codec/format)"; break;
+                        case 4: message = "MEDIA_ERR_SRC_NOT_SUPPORTED (Format de flux non supporté)"; break;
+                    }
+                }
+                log(`Erreur de l'élément Vidéo HTML5 : ${message}`, "error");
+                checkCorsFailure(streamUrlInput.value.trim());
+            };
+        }
+
+        // Event listeners
+        btnPlay.addEventListener("click", runStreamTest);
+        btnStop.addEventListener("click", () => {
+            destroyPlayers();
+            log("Lecture arrêtée par l'utilisateur.", "warn");
+        });
+
+        // Auto-run default stream on page load
+        log("Testeur de flux initialisé. Sélectionnez un flux ou cliquez sur 'Lancer'.", "info");
+    </script>
+</body>
+</html>

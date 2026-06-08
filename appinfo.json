@@ -1,0 +1,14 @@
+{
+    "id": "com.shieldiptv.app",
+    "version": "1.0.5",
+    "vendor": "ShieldIPTV",
+    "type": "web",
+    "main": "index.html",
+    "title": "Shield IPTV",
+    "icon": "icon.png",
+    "largeIcon": "largeIcon.png",
+    "requiredPermissions": [
+        "localconnection"
+    ],
+    "resolution": "1920x1080"
+}
