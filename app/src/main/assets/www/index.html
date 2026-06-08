@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,7 +18,7 @@
         <div id="loader" class="screen-overlay hidden">
             <div class="spinner-container">
                 <div class="loader-spinner"></div>
-                <div id="loader-text">Chargement de votre univers IPTV...</div>
+                <div id="loader-text">Loading your IPTV universe...</div>
             </div>
         </div>
 
@@ -43,32 +43,32 @@
                     <h1>Shield<span>IPTV</span></h1>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; margin-bottom: 0.75rem;">
-                    <h2 id="cgu-modal-title" style="margin: 0; font-size: 1.4rem; text-align: left;">Avertissement Légal &amp; Conditions</h2>
+                    <h2 id="cgu-modal-title" style="margin: 0; font-size: 1.4rem; text-align: left;">Legal Disclaimer &amp; Conditions</h2>
                     <button id="btn-cgu-lang" class="focusable btn-secondary" style="padding: 0.45rem 0.9rem; width: auto; font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); color: white; cursor: pointer;">
                         <span class="material-icons" style="font-size: 1.15rem; color: var(--primary);">language</span>
-                        <span id="cgu-lang-text">Français</span>
+                        <span id="cgu-lang-text">English</span>
                     </button>
                 </div>
                 <div class="cgu-content focusable" tabindex="0">
-                    <p><strong>ShieldIPTV Player</strong> est un lecteur multimédia vidéo générique. L'application est fournie sans aucun contenu ni flux média.</p>
-                    <p>En tant qu'utilisateur, vous devez fournir vos propres flux vidéo (liens de playlists légaux, comptes Xtream Codes, etc.). ShieldIPTV n'approuve pas, ne fournit pas et ne facilite pas l'accès à du contenu protégé par le droit d'auteur sans l'accord des ayants droit.</p>
-                    <p>En continuant, vous confirmez posséder les droits d'utilisation des flux et contenus que vous importerez dans ce lecteur.</p>
+                    <p><strong>ShieldIPTV Player</strong> is a generic video media player. The application is provided without any content or media streams.</p>
+                    <p>As a user, you must provide your own video streams (legal playlist links, Xtream Codes accounts, etc.). ShieldIPTV does not endorse, provide or facilitate access to copyrighted content without the consent of the rights holders.</p>
+                    <p>By continuing, you confirm that you possess the usage rights for the streams and content you import into this player.</p>
                 </div>
                 
                 <!-- Onboarding Actions (Force Accept/Decline) -->
                 <div id="cgu-actions-container" class="cgu-actions hidden" style="display: flex; gap: 1rem; width: 100%; margin-top: 1.5rem;">
                     <button id="btn-cgu-decline" class="focusable btn-secondary" style="flex: 1; padding: 0.8rem; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--error); border-radius: 12px; color: var(--error); cursor: pointer;">
-                        <span>Refuser</span>
+                        <span>Decline</span>
                     </button>
                     <button id="btn-cgu-accept" class="focusable btn-primary" style="flex: 1; padding: 0.8rem; border-radius: 12px;">
-                        <span>Accepter et Continuer</span>
+                        <span>Accept and Continue</span>
                         <span class="material-icons">check</span>
                     </button>
                 </div>
 
                 <!-- Simple Close Button (Standard View) -->
                 <button id="btn-cgu-close" class="focusable btn-primary hidden" style="margin-top: 1.5rem; width: 100%; border-radius: 12px;">
-                    <span>Fermer</span>
+                    <span>Close</span>
                     <span class="material-icons">close</span>
                 </button>
             </div>
@@ -83,19 +83,19 @@
                             <span class="material-icons logo-icon">shield</span>
                             <h1>Shield<span>IPTV</span></h1>
                         </div>
-                        <p style="text-align: left; margin: 0.25rem 0 0 0;">Sélectionnez ou ajoutez une playlist pour commencer</p>
+                        <p style="text-align: left; margin: 0.25rem 0 0 0;">Select or add a playlist to begin</p>
                     </div>
                     <div class="playlist-manager-utility-actions" style="display: flex; align-items: center; gap: 1rem;">
-                        <button class="focusable icon-btn" id="pm-btn-speedtest" title="Test de Débit">
+                        <button class="focusable icon-btn" id="pm-btn-speedtest" title="Speed Test">
                             <span class="material-icons">speed</span>
                         </button>
-                        <button class="focusable icon-btn" id="pm-btn-linktester" title="Tester un lien">
+                        <button class="focusable icon-btn" id="pm-btn-linktester" title="Link Checker">
                             <span class="material-icons">link</span>
                         </button>
-                        <button class="focusable icon-btn" id="pm-btn-streamtester" title="Testeur de flux">
+                        <button class="focusable icon-btn" id="pm-btn-streamtester" title="Stream Tester">
                             <span class="material-icons">smart_display</span>
                         </button>
-                        <button class="focusable icon-btn" id="pm-btn-settings" title="Paramètres">
+                        <button class="focusable icon-btn" id="pm-btn-settings" title="Settings">
                             <span class="material-icons">settings</span>
                         </button>
                     </div>
@@ -108,11 +108,11 @@
                 <div class="playlist-manager-actions" style="display: flex; gap: 1.5rem; justify-content: center; margin-top: 2rem; align-items: center;">
                     <button id="btn-quick-demo" class="focusable btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.9rem; width: auto; background: rgba(59, 130, 246, 0.25); border: 1px solid var(--primary); text-shadow: 0 0 10px rgba(59, 130, 246, 0.4);">
                         <span class="material-icons" style="font-size: 1.15rem; margin-right: 0.5rem; color: var(--primary);">stars</span>
-                        <span>Playlist Démo</span>
+                        <span>Demo Playlist</span>
                     </button>
                     <button id="btn-view-cgu" class="focusable btn-secondary" style="padding: 0.6rem 1.25rem; font-size: 0.9rem; width: auto; background: transparent; border: 1px solid var(--border-color);">
                         <span class="material-icons" style="font-size: 1.15rem; margin-right: 0.5rem; color: var(--text-muted);">description</span>
-                        <span>Conditions Générales</span>
+                        <span>Terms &amp; Conditions</span>
                     </button>
                 </div>
             </div>
@@ -122,30 +122,30 @@
         <div id="login-screen" class="screen hidden">
             <div class="login-container glass">
                 <div class="login-header-bar">
-                    <button class="focusable btn-back-round" id="btn-login-back" title="Retour aux playlists">
+                    <button class="focusable btn-back-round" id="btn-login-back" title="Back to playlists">
                         <span class="material-icons">arrow_back</span>
                     </button>
-                    <h2>Ajouter une Playlist</h2>
+                    <h2>Add a Playlist</h2>
                 </div>
                 
                 <div class="playlist-type-selector">
                     <button type="button" id="tab-xtream" class="focusable active-tab">Xtream Codes</button>
-                    <button type="button" id="tab-m3u" class="focusable">Lien M3U</button>
+                    <button type="button" id="tab-m3u" class="focusable">M3U Link</button>
                 </div>
                 
                 <form id="login-form">
                     <input type="hidden" id="playlist-type" value="xtream">
                     
                     <div class="input-group">
-                        <label for="login-name">Nom de la playlist</label>
+                        <label for="login-name">Playlist Name</label>
                         <div class="input-wrapper">
                             <span class="material-icons input-icon">label</span>
-                            <input type="text" id="login-name" class="focusable" placeholder="Ma Playlist" required>
+                            <input type="text" id="login-name" class="focusable" placeholder="My Playlist" required>
                         </div>
                     </div>
                     
                     <div class="input-group">
-                        <label for="login-url" id="label-url">URL du serveur</label>
+                        <label for="login-url" id="label-url">Server URL</label>
                         <div class="input-wrapper">
                             <span class="material-icons input-icon" id="icon-url">dns</span>
                             <input type="url" id="login-url" class="focusable" placeholder="http://domain.com:8080" required>
@@ -154,14 +154,14 @@
                     
                     <div class="xtream-fields">
                         <div class="input-group">
-                            <label for="login-username">Nom d'utilisateur</label>
+                            <label for="login-username">Username</label>
                             <div class="input-wrapper">
                                 <span class="material-icons input-icon">person</span>
-                                <input type="text" id="login-username" class="focusable" placeholder="Nom d'utilisateur" autocomplete="username">
+                                <input type="text" id="login-username" class="focusable" placeholder="Username" autocomplete="username">
                             </div>
                         </div>
                         <div class="input-group">
-                            <label for="login-password">Mot de passe</label>
+                            <label for="login-password">Password</label>
                             <div class="input-wrapper">
                                 <span class="material-icons input-icon">lock</span>
                                 <input type="password" id="login-password" class="focusable" placeholder="••••••••" autocomplete="current-password">
@@ -172,12 +172,12 @@
                     <div class="login-doh-wrapper">
                         <label for="login-doh-toggle" class="focusable doh-checkbox-label" tabindex="0" id="login-doh-label" style="width: 100%; display: flex; align-items: center; padding: 0.5rem 0.75rem; border-radius: 10px; border: 1px solid transparent; cursor: pointer;">
                             <input type="checkbox" id="login-doh-toggle" style="width: 18px; height: 18px; margin: 0; pointer-events: none; accent-color: var(--primary);" checked>
-                            <span style="margin-left: 0.75rem;">Activer le contournement DNS (DoH)</span>
+                            <span style="margin-left: 0.75rem;">Enable DNS Bypass (DoH)</span>
                         </label>
                     </div>
                     
                     <button type="submit" id="btn-connect" class="focusable btn-primary">
-                        <span>Sauvegarder et Charger</span>
+                        <span>Save and Load</span>
                         <span class="material-icons">save</span>
                     </button>
                 </form>
@@ -241,7 +241,7 @@
                 <!-- Top Header Bar -->
                 <header class="content-header">
                     <div class="breadcrumb">
-                        <button class="focusable btn-back-round" id="btn-header-back" title="Retour au menu principal">
+                        <button class="focusable btn-back-round" id="btn-header-back" title="Back to main menu">
                             <span class="material-icons">arrow_back</span>
                         </button>
                         <span id="breadcrumb-section">Live TV</span>
@@ -304,16 +304,16 @@
 
                     <!-- Settings Panel -->
                     <div id="settings-panel" class="settings-panel glass hidden">
-                        <h2>Paramètres globaux</h2>
+                        <h2>Global Settings</h2>
                         <div class="settings-group">
                             <h3>DNS over HTTPS (DoH)</h3>
-                            <p class="settings-desc">Permet de contourner les blocages DNS imposés par certains FAI pour lire les flux IPTV.</p>
+                            <p class="settings-desc">Allows bypassing DNS blocking imposed by some ISPs to play IPTV streams.</p>
                             <div class="toggle-wrapper">
-                                <label for="setting-doh-toggle">Activer DoH</label>
+                                <label for="setting-doh-toggle">Enable DoH</label>
                                 <input type="checkbox" id="setting-doh-toggle" class="focusable" checked>
                             </div>
                             <div class="input-group">
-                                <label for="setting-doh-url">Résolveur DoH</label>
+                                <label for="setting-doh-url">DoH Resolver</label>
                                 <select id="setting-doh-url" class="focusable">
                                     <option value="https://dns.google/resolve">Google DNS (Recommandé)</option>
                                     <option value="https://cloudflare-dns.com/dns-query">Cloudflare DNS</option>
@@ -323,9 +323,9 @@
                         </div>
                         <div class="settings-group">
                             <h3 id="settings-lang-title">Langue / Language</h3>
-                            <p class="settings-desc">Sélectionnez la langue de l'interface.</p>
+                            <p class="settings-desc">Select the interface language.</p>
                             <div class="input-group">
-                                <label for="setting-lang-select" id="settings-lang-label">Langue</label>
+                                <label for="setting-lang-select" id="settings-lang-label">Language</label>
                                 <select id="setting-lang-select" class="focusable">
                                     <option value="fr">Français</option>
                                     <option value="en">English</option>
@@ -335,15 +335,15 @@
                             </div>
                         </div>
                         <div class="settings-group">
-                            <h3>Informations de l'abonnement</h3>
+                            <h3>Subscription Information</h3>
                             <div class="info-grid">
-                                <div class="info-label">Statut du compte :</div>
-                                <div class="info-value text-success" id="info-status">Actif</div>
-                                <div class="info-label">Date d'expiration :</div>
+                                <div class="info-label">Account Status:</div>
+                                <div class="info-value text-success" id="info-status">Active</div>
+                                <div class="info-label">Expiration Date:</div>
                                 <div class="info-value" id="info-exp">N/A</div>
-                                <div class="info-label">Connexions Max :</div>
+                                <div class="info-label">Max Connections:</div>
                                 <div class="info-value" id="info-max-connections">N/A</div>
-                                <div class="info-label">Serveur IPTV :</div>
+                                <div class="info-label">IPTV Server:</div>
                                 <div class="info-value" id="info-server-url">N/A</div>
                             </div>
                         </div>
@@ -376,7 +376,7 @@
                         </div>
                         <button id="btn-logout" class="focusable btn-danger">
                             <span class="material-icons">logout</span>
-                            <span>Se déconnecter</span>
+                            <span>Logout</span>
                         </button>
                     </div>
                 </div>

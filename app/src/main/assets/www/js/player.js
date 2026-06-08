@@ -10,7 +10,7 @@ async function playMedia(item, section) {
                         window.location.hostname !== 'localhost' && 
                         window.location.hostname !== '127.0.0.1';
     if (isMobileWeb && (section === 'live' || section === 'movies')) {
-        const t = TRANSLATIONS[state.language || 'fr'];
+        const t = TRANSLATIONS[state.language || 'en'];
         showToast(t.browserPlayBlocked || "Ce contenu nécessite l'application ShieldIPTV pour être lu.", 5000);
         return;
     }
@@ -57,7 +57,7 @@ async function playMedia(item, section) {
 }
 
 async function loadEPG(streamId) {
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     try {
         const epgData = await makeApiCall('get_short_epg', `&stream_id=${streamId}`);
         const nowPlayingEl = document.getElementById("player-now-playing");
@@ -104,7 +104,7 @@ function launchVideoPlayer(url, title, logoUrl) {
     const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
     document.getElementById("player-timeline-container").style.display = isLive ? "none" : "flex";
     
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     const nowPlayingEl = document.getElementById("player-now-playing");
     if (state.currentPlayingStream) {
         const section = state.currentPlayingStream.section;
@@ -291,7 +291,7 @@ function attemptReconnection() {
     
     if (state.reconnectAttempts >= state.maxReconnectAttempts) {
         console.warn("[Player] Max reconnect attempts reached. Stopping.");
-        const t = TRANSLATIONS[state.language || 'fr'];
+        const t = TRANSLATIONS[state.language || 'en'];
         showToast(t.playerStreamError || "Erreur : Impossible de lire ce flux vidéo.", 5000);
         closeVideoPlayer();
         return;
@@ -366,7 +366,7 @@ function attemptReconnection() {
 async function loadLivePreview(item) {
     const video = document.getElementById("live-preview-video");
     const loader = document.getElementById("preview-loader");
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     
     const epgListEl = document.getElementById("preview-epg-list");
     if (epgListEl) epgListEl.innerHTML = `<div class="preview-epg-loading">${t.epgLoading}</div>`;
@@ -627,7 +627,7 @@ function showZapDrawer() {
         const seasonNum = state.currentPlayingStream ? state.currentPlayingStream.seasonNum : "1";
         const episodes = (state.currentSeriesDetails && state.currentSeriesDetails.episodes) ? (state.currentSeriesDetails.episodes[seasonNum] || []) : [];
         const seriesName = (state.currentSeriesDetails && state.currentSeriesDetails.info) ? (state.currentSeriesDetails.info.name || "") : "";
-        const t = TRANSLATIONS[state.language || 'fr'];
+        const t = TRANSLATIONS[state.language || 'en'];
         
         episodes.forEach(ep => {
             const btn = document.createElement("button");
