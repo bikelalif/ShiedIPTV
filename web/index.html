@@ -8,7 +8,14 @@
     <script>
         // Force HTTP protocol to allow loading insecure IPTV stream URLs (prevent mixed content block)
         if (window.location.protocol === 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-            window.location.replace('http://' + window.location.hostname + window.location.pathname + window.location.hash);
+            if (sessionStorage.getItem('http_redirect_failed') !== 'true') {
+                sessionStorage.setItem('http_redirect_failed', 'true');
+                window.location.replace('http://' + window.location.hostname + window.location.pathname + window.location.hash);
+            } else {
+                console.warn("HTTPS is being forced by the browser/network. Staying on HTTPS to prevent redirect loop.");
+            }
+        } else if (window.location.protocol === 'http:') {
+            sessionStorage.removeItem('http_redirect_failed');
         }
     </script>
     <!-- Google Fonts: Outfit & Material Icons -->
