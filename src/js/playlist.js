@@ -25,7 +25,7 @@ function saveSettings() {
 }
 
 function logout() {
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     localStorage.removeItem("shield_iptv_session");
     localStorage.removeItem("shield_active_playlist_id");
     localStorage.removeItem("shield_last_screen");
@@ -42,7 +42,7 @@ function logout() {
 }
 
 async function connectPlaylist(playlist, isAuto = false) {
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     state.currentPlaylistType = playlist.type;
     localStorage.setItem("shield_active_playlist_id", playlist.id);
     
@@ -173,7 +173,7 @@ async function connectPlaylist(playlist, isAuto = false) {
 }
 
 async function performLogin(url, username, password, isAutoLogin = false) {
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     showLoader(t.toastLoginAuth);
     
     let cleanUrl = url.trim();
@@ -240,7 +240,7 @@ async function performLogin(url, username, password, isAutoLogin = false) {
 }
 
 async function preloadAllData() {
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     showLoader(t.toastPreloadCats);
     
     try {
@@ -270,7 +270,7 @@ async function preloadAllData() {
 }
 
 async function addXtreamCodesPlaylist(name, url, username, password) {
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     showLoader(t.toastLoginAuth);
     
     let cleanUrl = url.trim();
@@ -354,7 +354,7 @@ async function addXtreamCodesPlaylist(name, url, username, password) {
 }
 
 async function addM3UPlaylist(name, url) {
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     showLoader(t.toastM3uLoad || "Chargement de la playlist M3U...");
     
     const cleanUrl = url.trim();
@@ -451,7 +451,7 @@ function deletePlaylist(id) {
         localStorage.removeItem("shield_active_playlist_id");
     }
     
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     showToast(t.deletePlaylist || "Playlist supprimée.", 3000);
     renderPlaylistsGrid();
 }

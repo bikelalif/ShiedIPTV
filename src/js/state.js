@@ -100,7 +100,7 @@ const DEMO_PLAYLIST_DATA = {
 
 // Global State
 const state = {
-    language: 'fr',
+    language: 'en',
     currentPlaylistType: '',
     serverUrl: '',
     username: '',
@@ -702,19 +702,12 @@ function detectLanguage() {
         } catch (e) {}
     }
     
-    const browserLang = navigator.language || navigator.userLanguage;
-    if (browserLang) {
-        const code = browserLang.substring(0, 2).toLowerCase();
-        if (TRANSLATIONS[code]) {
-            return code;
-        }
-    }
-    
-    return 'fr';
+    // Default base language is English
+    return 'en';
 }
 
 function applyLanguage(lang) {
-    if (!TRANSLATIONS[lang]) lang = 'fr';
+    if (!TRANSLATIONS[lang]) lang = 'en';
     state.language = lang;
     
     const savedSettings = localStorage.getItem("shield_iptv_settings") || "{}";
@@ -1013,7 +1006,7 @@ function updateBreadcrumbs() {
     const breadcrumbCategory = document.getElementById("breadcrumb-category");
     if (!breadcrumbSection || !breadcrumbCategory) return;
     
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     
     if (state.currentSection === 'settings') {
         breadcrumbSection.innerText = t.breadcrumbSettings;

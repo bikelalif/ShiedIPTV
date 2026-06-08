@@ -4,7 +4,7 @@
 
 async function openSeriesDetails(item) {
     localStorage.setItem("shield_last_series_id", item.series_id || item.id);
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     
     if (state.currentPlaylistType === 'demo' || state.currentPlaylistType === 'm3u' || item.episodes) {
         state.currentSeriesDetails = {
@@ -93,7 +93,7 @@ async function openSeriesDetails(item) {
 }
 
 function renderSeasons(episodesMap) {
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     const seasonsBar = document.getElementById("seasons-bar");
     seasonsBar.innerHTML = "";
     
@@ -131,7 +131,7 @@ function renderSeasons(episodesMap) {
 }
 
 function renderEpisodes(epList, seasonNum) {
-    const t = TRANSLATIONS[state.language || 'fr'];
+    const t = TRANSLATIONS[state.language || 'en'];
     const episodesList = document.getElementById("episodes-list");
     episodesList.innerHTML = "";
     
