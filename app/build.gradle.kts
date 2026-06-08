@@ -6,7 +6,7 @@ android {
     namespace = "com.example.shieldiptvplayer"
     compileSdk = 34
     defaultConfig {
-        applicationId = "com.example.shieldiptvplayer"
+        applicationId = "com.shieldiptv.app"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
