@@ -242,9 +242,10 @@ async function performLogin(url, username, password, isAutoLogin = false) {
 async function preloadAllData() {
     const t = TRANSLATIONS[state.language || 'en'];
     showLoader(t.toastPreloadCats);
+    await new Promise(resolve => setTimeout(resolve, 50));
     
     try {
-        const [liveCats, movieCats, seriesCats] = await Promise.all([
+        const [liveCatsRaw, movieCatsRaw, seriesCatsRaw] = await Promise.all([
             makeApiCall('get_live_categories').catch((err) => {
                 console.error("Failed to load live categories:", err);
                 showToast("Catégories Live : " + err.message, 5000);
@@ -262,30 +263,40 @@ async function preloadAllData() {
             })
         ]);
         
+        const liveCats = ensureArray(liveCatsRaw);
+        const movieCats = ensureArray(movieCatsRaw);
+        const seriesCats = ensureArray(seriesCatsRaw);
+
         state.categories.live = [{ category_id: "all", category_name: "Tout" }, ...liveCats];
         state.categories.movies = [{ category_id: "all", category_name: "Tout" }, ...movieCats];
         state.categories.series = [{ category_id: "all", category_name: "Tout" }, ...seriesCats];
         
         showLoader(t.toastPreloadLive);
-        state.streams.live = await makeApiCall('get_live_streams').catch((err) => {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const liveStreamsRaw = await makeApiCall('get_live_streams').catch((err) => {
             console.error("Failed to preload live streams:", err);
             showToast("Flux Live : " + err.message, 5000);
             return [];
         });
+        state.streams.live = ensureArray(liveStreamsRaw);
         
         showLoader(t.toastPreloadMovies);
-        state.streams.movies = await makeApiCall('get_vod_streams').catch((err) => {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const movieStreamsRaw = await makeApiCall('get_vod_streams').catch((err) => {
             console.error("Failed to preload VOD streams:", err);
             showToast("Flux Films : " + err.message, 5000);
             return [];
         });
+        state.streams.movies = ensureArray(movieStreamsRaw);
         
         showLoader(t.toastPreloadSeries);
-        state.streams.series = await makeApiCall('get_series').catch((err) => {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const seriesRaw = await makeApiCall('get_series').catch((err) => {
             console.error("Failed to preload Series:", err);
             showToast("Flux Séries : " + err.message, 5000);
             return [];
         });
+        state.streams.series = ensureArray(seriesRaw);
         
         console.log(`[Preload] Done. Live: ${state.streams.live.length}, Movies: ${state.streams.movies.length}, Series: ${state.streams.series.length}`);
     } catch (e) {
