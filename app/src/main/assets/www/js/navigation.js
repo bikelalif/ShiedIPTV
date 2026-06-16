@@ -3,53 +3,75 @@
    ========================================================================== */
 
 function showScreen(screenId) {
-    if (document.activeElement && typeof document.activeElement.blur === 'function') {
-        document.activeElement.blur();
-    }
-
-    document.querySelectorAll(".screen").forEach(screen => {
-        // DO NOT hide player-screen if it is in preview-mode and we are showing home-screen
-        if (screen.id === 'player-screen' && screen.classList.contains('preview-mode') && screenId === 'home-screen') {
-            return;
+    try {
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur();
         }
-        screen.classList.add("hidden");
-    });
-    const scr = document.getElementById(screenId);
-    if (scr) scr.classList.remove("hidden");
-    
-    // Make sure player-screen is not hidden if we are on home-screen and in preview-mode
-    if (screenId === 'home-screen') {
-        const playerScreen = document.getElementById('player-screen');
-        if (playerScreen && playerScreen.classList.contains('preview-mode')) {
-            playerScreen.classList.remove('hidden');
-            if (typeof updatePreviewVideoPosition === 'function') {
-                updatePreviewVideoPosition();
+
+        document.querySelectorAll(".screen").forEach(screen => {
+            // DO NOT hide player-screen if it is in preview-mode and we are showing home-screen
+            if (screen.id === 'player-screen' && screen.classList.contains('preview-mode') && screenId === 'home-screen') {
+                return;
+            }
+            screen.classList.add("hidden");
+        });
+        const scr = document.getElementById(screenId);
+        if (scr) scr.classList.remove("hidden");
+        
+        // Make sure player-screen is not hidden if we are on home-screen and in preview-mode
+        if (screenId === 'home-screen') {
+            const playerScreen = document.getElementById('player-screen');
+            if (playerScreen && playerScreen.classList.contains('preview-mode')) {
+                playerScreen.classList.remove('hidden');
+                if (typeof updatePreviewVideoPosition === 'function') {
+                    try {
+                        updatePreviewVideoPosition();
+                    } catch(e) {
+                        console.warn("Failed to update preview position:", e);
+                    }
+                }
             }
         }
-    }
-    
-    if (screenId !== 'home-screen' || state.currentSection !== 'live') {
-        // Stop the video completely if we navigate away to portal or settings
-        if (screenId !== 'player-screen' && screenId !== 'home-screen') {
-            if (typeof stopVideoPlaybackCompletely === 'function') {
-                stopVideoPlaybackCompletely();
+        
+        if (screenId !== 'home-screen' || state.currentSection !== 'live') {
+            // Stop the video completely if we navigate away to portal or settings
+            if (screenId !== 'player-screen' && screenId !== 'home-screen') {
+                if (typeof stopVideoPlaybackCompletely === 'function') {
+                    try {
+                        stopVideoPlaybackCompletely();
+                    } catch(e) {
+                        console.warn("Failed to stop video playback:", e);
+                    }
+                }
             }
         }
-    }
-    
-    if (screenId !== 'streamtester-screen') {
-        destroyTesterPlayer();
-    }
+        
+        if (screenId !== 'streamtester-screen') {
+            if (typeof destroyTesterPlayer === 'function') {
+                try {
+                    destroyTesterPlayer();
+                } catch(e) {
+                    console.warn("Failed to destroy tester player:", e);
+                }
+            }
+        }
 
-    if (screenId && screenId !== "intro-screen" && screenId !== "loader" && screenId !== "player-screen") {
-        safeStorage.local.setItem("shield_last_screen", screenId);
-    }
-    
-    // Automatically focus the first logical element of the screen for TV remote
-    if (isTvWrapper) {
-        setTimeout(() => {
-            focusFirst();
-        }, 50);
+        if (screenId && screenId !== "intro-screen" && screenId !== "loader" && screenId !== "player-screen") {
+            safeStorage.local.setItem("shield_last_screen", screenId);
+        }
+        
+        // Automatically focus the first logical element of the screen for TV remote
+        if (isTvWrapper) {
+            setTimeout(() => {
+                try {
+                    focusFirst();
+                } catch(e) {
+                    console.warn("Failed to focus first element:", e);
+                }
+            }, 50);
+        }
+    } catch (err) {
+        console.error("Error in showScreen:", err);
     }
 }
 
