@@ -2301,7 +2301,7 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
 }
 
 /* 12. Responsive adjustments for Mobile & Tablets */
-@media (max-width: 1200px) {
+@media (max-width: 1024px) {
     .content-body {
         flex-direction: column;
     }
