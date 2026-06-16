@@ -854,7 +854,8 @@ body.tv-mode .category-item:focus-visible, body.tv-mode .category-item.focused {
     line-height: 1.3;
     padding: 0.5rem 0.75rem 0.75rem 0.75rem;
     text-align: center;
-    max-height: 4.2rem;
+    height: 3.6rem;
+    box-sizing: border-box;
 }
 
 .media-meta {

@@ -214,6 +214,19 @@ function launchVideoPlayer(url, title, logoUrl) {
         }
     });
     
+    bindFullscreenVideoHandlers();
+    
+    resetPlayerActivity();
+}
+
+function bindFullscreenVideoHandlers() {
+    const video = document.getElementById("video-player");
+    const playerLoader = document.getElementById("player-loader");
+    if (!video || !playerLoader) return;
+    
+    const t = TRANSLATIONS[state.language || 'en'];
+    const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
+    
     video.onwaiting = () => { 
         playerLoader.style.display = "flex"; 
         if (isLive && !state.reconnectTimer) {
@@ -233,14 +246,16 @@ function launchVideoPlayer(url, title, logoUrl) {
         
         const loaderText = playerLoader.querySelector(".player-loader-text");
         if (loaderText) {
-            loaderText.innerText = t.playerLoaderText;
+            loaderText.innerText = t.playerLoaderText || "Chargement du flux...";
         }
     };
     video.onplay = () => {
-        document.getElementById("player-icon-play").innerText = "pause";
+        const icon = document.getElementById("player-icon-play");
+        if (icon) icon.innerText = "pause";
     };
     video.onpause = () => {
-        document.getElementById("player-icon-play").innerText = "play_arrow";
+        const icon = document.getElementById("player-icon-play");
+        if (icon) icon.innerText = "play_arrow";
     };
     video.onerror = () => {
         if (isLive) {
@@ -253,23 +268,44 @@ function launchVideoPlayer(url, title, logoUrl) {
             }
         } else {
             playerLoader.style.display = "none";
-            showToast(t.playerStreamError, 5000);
+            showToast(t.playerStreamError || "Erreur de lecture du flux", 5000);
             closeVideoPlayer();
         }
     };
-    
     video.ontimeupdate = () => {
         if (video.duration) {
-            document.getElementById("player-timeline-container").style.display = "flex";
+            const container = document.getElementById("player-timeline-container");
+            if (container) container.style.display = "flex";
             const percent = (video.currentTime / video.duration) * 100;
-            document.getElementById("player-progress-fill").style.width = `${percent}%`;
+            const fill = document.getElementById("player-progress-fill");
+            if (fill) fill.style.width = `${percent}%`;
             
-            document.getElementById("player-time-current").innerText = formatTime(video.currentTime);
-            document.getElementById("player-time-total").innerText = formatTime(video.duration);
+            const current = document.getElementById("player-time-current");
+            if (current) current.innerText = formatTime(video.currentTime);
+            const total = document.getElementById("player-time-total");
+            if (total) total.innerText = formatTime(video.duration);
         }
     };
+}
+
+function bindPreviewVideoHandlers() {
+    const video = document.getElementById("video-player");
+    const loader = document.getElementById("preview-loader");
+    if (!video) return;
     
-    resetPlayerActivity();
+    video.onwaiting = () => { 
+        if (loader) loader.classList.remove("hidden"); 
+    };
+    video.onplaying = () => { 
+        if (loader) loader.classList.add("hidden"); 
+    };
+    video.onerror = () => {
+        if (loader) loader.classList.add("hidden");
+        console.warn("[Preview] Error playing preview stream");
+    };
+    video.onplay = null;
+    video.onpause = null;
+    video.ontimeupdate = null;
 }
 
 function destroyMpegtsPlayer() {
@@ -443,16 +479,7 @@ async function loadLivePreview(item) {
         }
     });
     
-    video.onwaiting = () => { 
-        if (loader) loader.classList.remove("hidden"); 
-    };
-    video.onplaying = () => { 
-        if (loader) loader.classList.add("hidden"); 
-    };
-    video.onerror = () => {
-        if (loader) loader.classList.add("hidden");
-        console.warn("[Preview] Error playing preview stream");
-    };
+    bindPreviewVideoHandlers();
     
     await fetchAndRenderPreviewEPG(item, epgListEl, t);
 }
@@ -519,6 +546,19 @@ function goFullscreenFromPreview() {
         video.muted = false;
     }
     
+    // Bind fullscreen event handlers
+    bindFullscreenVideoHandlers();
+    
+    // Adjust loader state immediately based on actual video state
+    const playerLoader = document.getElementById("player-loader");
+    if (playerLoader) {
+        if (video && !video.paused && !video.seeking && video.readyState >= 3) {
+            playerLoader.style.display = "none";
+        } else {
+            playerLoader.style.display = "flex";
+        }
+    }
+    
     resetPlayerActivity();
 }
 
@@ -549,6 +589,20 @@ function exitFullscreenToPreview() {
     if (epgListEl) {
         const t = TRANSLATIONS[state.language || 'en'];
         fetchAndRenderPreviewEPG(liveItem, epgListEl, t);
+    }
+    
+    // Bind preview event handlers
+    bindPreviewVideoHandlers();
+    
+    // Adjust preview loader state immediately
+    const loader = document.getElementById("preview-loader");
+    if (loader) {
+        const video = document.getElementById("video-player");
+        if (video && !video.paused && !video.seeking && video.readyState >= 3) {
+            loader.classList.add("hidden");
+        } else {
+            loader.classList.remove("hidden");
+        }
     }
 }
 
