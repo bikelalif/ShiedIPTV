@@ -1036,7 +1036,8 @@ function applyLanguage(lang) {
     if (labelSpeedtest) labelSpeedtest.innerText = t.diagSpeedtest;
     
     const btnLabelSpeedtest = document.getElementById("btn-label-speedtest");
-    if (btnLabelSpeedtest && !document.getElementById("btn-run-speedtest").disabled) {
+    const speedtestBtn = document.getElementById("btn-run-speedtest");
+    if (btnLabelSpeedtest && speedtestBtn && !speedtestBtn.disabled) {
         btnLabelSpeedtest.innerText = t.diagSpeedtestBtn;
     }
     
@@ -1044,7 +1045,8 @@ function applyLanguage(lang) {
     if (labelLinktester) labelLinktester.innerText = t.diagLinktester;
     
     const btnLabelLinktester = document.getElementById("btn-label-linktester");
-    if (btnLabelLinktester && !document.getElementById("btn-run-linktest").disabled) {
+    const linktestBtn = document.getElementById("btn-run-linktest");
+    if (btnLabelLinktester && linktestBtn && !linktestBtn.disabled) {
         btnLabelLinktester.innerText = t.diagLinktesterBtn;
     }
     

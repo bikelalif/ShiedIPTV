@@ -6,87 +6,143 @@ if (document.readyState === "loading") {
 }
 
 function initApp() {
-    if (isTvWrapper) {
-        document.body.classList.add("tv-mode");
-    }
-    
-    // Add is-webapp class if running as a hosted web page (not packaged local file/app)
-    const isWebappOnly = (window.location.protocol === 'http:' || window.location.protocol === 'https:') && 
-                         !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) &&
-                         !/Electron/i.test(navigator.userAgent);
-    if (isWebappOnly) {
-        document.body.classList.add("is-webapp");
-    }
-    
-    setupEventListeners();
-    setupSpatialNavigation();
-    initTvInputs();
-    
-    // Restore settings
-    const savedSettings = safeStorage.local.getItem("shield_iptv_settings");
-    if (savedSettings) {
+    try {
+        if (isTvWrapper) {
+            document.body.classList.add("tv-mode");
+        }
+        
+        // Add is-webapp class if running as a hosted web page (not packaged local file/app)
+        const isWebappOnly = (window.location.protocol === 'http:' || window.location.protocol === 'https:') && 
+                             !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) &&
+                             !/Electron/i.test(navigator.userAgent);
+        if (isWebappOnly) {
+            document.body.classList.add("is-webapp");
+        }
+        
         try {
-            const settings = JSON.parse(savedSettings);
-            state.isDohEnabled = settings.isDohEnabled !== undefined ? settings.isDohEnabled : true;
-            state.dohResolver = settings.dohResolver || 'https://dns.google/resolve';
-            
-            document.getElementById("setting-doh-toggle").checked = state.isDohEnabled;
-            document.getElementById("setting-doh-url").value = state.dohResolver;
+            setupEventListeners();
         } catch (e) {
-            console.error("Error reading settings", e);
+            console.error("Error in setupEventListeners:", e);
+        }
+        
+        try {
+            setupSpatialNavigation();
+        } catch (e) {
+            console.error("Error in setupSpatialNavigation:", e);
+        }
+        
+        try {
+            initTvInputs();
+        } catch (e) {
+            console.error("Error in initTvInputs:", e);
+        }
+        
+        // Restore settings
+        const savedSettings = safeStorage.local.getItem("shield_iptv_settings");
+        if (savedSettings) {
+            try {
+                const settings = JSON.parse(savedSettings);
+                state.isDohEnabled = settings.isDohEnabled !== undefined ? settings.isDohEnabled : true;
+                state.dohResolver = settings.dohResolver || 'https://dns.google/resolve';
+                
+                const toggleEl = document.getElementById("setting-doh-toggle");
+                if (toggleEl) toggleEl.checked = state.isDohEnabled;
+                const urlEl = document.getElementById("setting-doh-url");
+                if (urlEl) urlEl.value = state.dohResolver;
+            } catch (e) {
+                console.error("Error reading settings", e);
+            }
+        }
+        
+        // Detect and apply initial language
+        try {
+            const initialLang = detectLanguage();
+            applyLanguage(initialLang);
+        } catch (e) {
+            console.error("Error applying language:", e);
+        }
+        
+        const loginDoh = document.getElementById("login-doh-toggle");
+        if (loginDoh) loginDoh.checked = state.isDohEnabled;
+
+        // Show intro screen and setup transitions after 1.8 seconds
+        showScreen("intro-screen");
+        
+        setTimeout(() => {
+            try {
+                const cguAccepted = safeStorage.local.getItem("shield_cgu_accepted") === "true";
+                if (!cguAccepted) {
+                    showScreen("playlist-manager-screen");
+                    
+                    const actionsContainer = document.getElementById("cgu-actions-container");
+                    const closeBtn = document.getElementById("btn-cgu-close");
+                    if (actionsContainer) actionsContainer.classList.remove("hidden");
+                    if (closeBtn) closeBtn.classList.add("hidden");
+                    
+                    const modal = document.getElementById("cgu-modal");
+                    if (modal) modal.classList.remove("hidden");
+                } else {
+                    proceedAfterCgu();
+                }
+            } catch (transitionErr) {
+                console.error("Error during intro screen transition:", transitionErr);
+                // Fallback to playlist manager in case of transition failure
+                showScreen("playlist-manager-screen");
+                if (typeof renderPlaylistsGrid === 'function') {
+                    renderPlaylistsGrid();
+                }
+            }
+        }, 1800);
+    } catch (criticalErr) {
+        console.error("Critical error in initApp:", criticalErr);
+        if (window.onerror) {
+            window.onerror(criticalErr.message, "main.js", 8, 0, criticalErr);
         }
     }
-    
-    // Detect and apply initial language
-    const initialLang = detectLanguage();
-    applyLanguage(initialLang);
-    
-    const loginDoh = document.getElementById("login-doh-toggle");
-    if (loginDoh) loginDoh.checked = state.isDohEnabled;
-
-    // Show intro screen and setup transitions after 1.8 seconds
-    showScreen("intro-screen");
-    
-    setTimeout(() => {
-        const cguAccepted = safeStorage.local.getItem("shield_cgu_accepted") === "true";
-        if (!cguAccepted) {
-            showScreen("playlist-manager-screen");
-            
-            const actionsContainer = document.getElementById("cgu-actions-container");
-            const closeBtn = document.getElementById("btn-cgu-close");
-            if (actionsContainer) actionsContainer.classList.remove("hidden");
-            if (closeBtn) closeBtn.classList.add("hidden");
-            
-            const modal = document.getElementById("cgu-modal");
-            if (modal) modal.classList.remove("hidden");
-        } else {
-            proceedAfterCgu();
-        }
-    }, 1800);
 }
 
 function proceedAfterCgu() {
-    safeStorage.session.setItem("shield_session_active", "true");
-    
-    const activePlaylistId = safeStorage.local.getItem("shield_active_playlist_id");
-    if (activePlaylistId) {
-        const playlists = loadSavedPlaylists();
-        const activePlaylist = playlists.find(p => p.id === activePlaylistId);
-        if (activePlaylist) {
-            const t = TRANSLATIONS[state.language || 'en'];
-            showLoader(t.toastLoginAuth || "Connexion...");
-            
-            // Allow DOM paint tick to show the spinner before starting heavy connection logic
-            setTimeout(() => {
-                connectPlaylist(activePlaylist, true);
-            }, 50);
+    try {
+        safeStorage.session.setItem("shield_session_active", "true");
+        
+        const activePlaylistId = safeStorage.local.getItem("shield_active_playlist_id");
+        if (activePlaylistId) {
+            const playlists = loadSavedPlaylists();
+            const activePlaylist = Array.isArray(playlists) ? playlists.find(p => p && p.id === activePlaylistId) : null;
+            if (activePlaylist) {
+                const t = TRANSLATIONS[state.language || 'en'];
+                showLoader(t.toastLoginAuth || "Connexion...");
+                
+                // Allow DOM paint tick to show the spinner before starting heavy connection logic
+                setTimeout(() => {
+                    try {
+                        connectPlaylist(activePlaylist, true);
+                    } catch (connErr) {
+                        console.error("Failed to connect playlist on start:", connErr);
+                        showScreen("playlist-manager-screen");
+                        if (typeof renderPlaylistsGrid === 'function') {
+                            renderPlaylistsGrid();
+                        }
+                    }
+                }, 50);
+            } else {
+                showScreen("playlist-manager-screen");
+                if (typeof renderPlaylistsGrid === 'function') {
+                    renderPlaylistsGrid();
+                }
+            }
         } else {
             showScreen("playlist-manager-screen");
+            if (typeof renderPlaylistsGrid === 'function') {
+                renderPlaylistsGrid();
+            }
+        }
+    } catch (e) {
+        console.error("Error in proceedAfterCgu:", e);
+        showScreen("playlist-manager-screen");
+        if (typeof renderPlaylistsGrid === 'function') {
             renderPlaylistsGrid();
         }
-    } else {
-        showScreen("playlist-manager-screen");
-        renderPlaylistsGrid();
     }
 }
 

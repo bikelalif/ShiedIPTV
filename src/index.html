@@ -4,6 +4,101 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ShieldIPTV</title>
+    <script>
+        (function() {
+            function showError(message, source, lineno, colno, error) {
+                var overlay = document.getElementById('debug-error-overlay');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = 'debug-error-overlay';
+                    overlay.style.position = 'fixed';
+                    overlay.style.top = '0';
+                    overlay.style.left = '0';
+                    overlay.style.width = '100vw';
+                    overlay.style.height = '100vh';
+                    overlay.style.backgroundColor = 'rgba(17, 24, 39, 0.98)';
+                    overlay.style.color = '#ef4444';
+                    overlay.style.zIndex = '999999';
+                    overlay.style.padding = '2.5rem';
+                    overlay.style.boxSizing = 'border-box';
+                    overlay.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+                    overlay.style.overflow = 'auto';
+                    
+                    var container = document.createElement('div');
+                    container.style.maxWidth = '800px';
+                    container.style.margin = '0 auto';
+                    
+                    var title = document.createElement('h1');
+                    title.innerText = 'Application Startup Error';
+                    title.style.borderBottom = '2px solid #ef4444';
+                    title.style.paddingBottom = '1rem';
+                    title.style.marginTop = '0';
+                    title.style.fontSize = '2.2rem';
+                    title.style.fontWeight = '700';
+                    container.appendChild(title);
+                    
+                    var desc = document.createElement('p');
+                    desc.innerText = 'A critical error occurred during initialization. Please review the details below:';
+                    desc.style.color = '#d1d5db';
+                    desc.style.fontSize = '1.1rem';
+                    desc.style.lineHeight = '1.6';
+                    container.appendChild(desc);
+                    
+                    var details = document.createElement('pre');
+                    details.id = 'debug-error-details';
+                    details.style.whiteSpace = 'pre-wrap';
+                    details.style.fontSize = '0.95rem';
+                    details.style.lineHeight = '1.5';
+                    details.style.color = '#f9fafb';
+                    details.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
+                    details.style.padding = '1.5rem';
+                    details.style.borderRadius = '12px';
+                    details.style.border = '1px solid rgba(255,255,255,0.05)';
+                    details.style.fontFamily = 'Consolas, Monaco, monospace';
+                    container.appendChild(details);
+                    
+                    var subText = document.createElement('p');
+                    subText.innerText = 'Tips: Clear your browser cache / local storage or check the logs.';
+                    subText.style.color = '#6b7280';
+                    subText.style.marginTop = '2rem';
+                    subText.style.fontSize = '0.9rem';
+                    container.appendChild(subText);
+                    
+                    overlay.appendChild(container);
+                    document.body.appendChild(overlay);
+                }
+                
+                var detailsEl = document.getElementById('debug-error-details');
+                if (detailsEl) {
+                    var stack = error && error.stack ? error.stack : '';
+                    detailsEl.innerText += 'Error: ' + message + '\n' +
+                                           'Source: ' + source + ' (line ' + lineno + ', col ' + colno + ')\n' +
+                                           (stack ? 'Stack:\n' + stack : '') + '\n\n';
+                }
+            }
+            
+            window.onerror = function(message, source, lineno, colno, error) {
+                showError(message, source, lineno, colno, error);
+                return false;
+            };
+            
+            window.addEventListener('unhandledrejection', function(event) {
+                var reason = event.reason;
+                var message = reason && reason.message ? reason.message : String(reason);
+                var stack = reason && reason.stack ? reason.stack : '';
+                showError('Unhandled Promise Rejection: ' + message, 'Promise', 0, 0, reason);
+            });
+
+            // Capture resource loading errors (like script 404s) which do not bubble
+            window.addEventListener('error', function(event) {
+                var target = event.target;
+                if (target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK')) {
+                    var url = target.src || target.href;
+                    showError('Failed to load resource: ' + url, 'Network', 0, 0);
+                }
+            }, true);
+        })();
+    </script>
     <link rel="icon" type="image/png" href="assets/icon.png">
     <!-- Google Fonts: Outfit & Material Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Material+Icons&display=swap" rel="stylesheet">
