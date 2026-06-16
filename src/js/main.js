@@ -347,14 +347,37 @@ function setupEventListeners() {
     // Preview Video Container trigger for fullscreen
     const previewContainer = document.getElementById("preview-video-container");
     if (previewContainer) {
-        previewContainer.addEventListener("click", () => {
+        previewContainer.addEventListener("click", (e) => {
             if (state.currentPlayingStream && state.currentPlayingStream.section === 'live') {
-                const item = state.currentPlayingStream.item;
-                const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.ts`;
-                launchVideoPlayer(streamUrl, item.name, item.stream_icon || item.cover);
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof goFullscreenFromPreview === 'function') {
+                    goFullscreenFromPreview();
+                }
             }
         });
     }
+
+    // Handle click overlay on the player screen when in preview-mode
+    const playerScreen = document.getElementById("player-screen");
+    if (playerScreen) {
+        playerScreen.addEventListener("click", (e) => {
+            if (playerScreen.classList.contains("preview-mode")) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof goFullscreenFromPreview === 'function') {
+                    goFullscreenFromPreview();
+                }
+            }
+        });
+    }
+
+    // Update preview position on window resize
+    window.addEventListener("resize", () => {
+        if (typeof updatePreviewVideoPosition === 'function') {
+            updatePreviewVideoPosition();
+        }
+    });
     
     // Series Back
     document.getElementById("series-btn-back").addEventListener("click", () => {
