@@ -375,14 +375,20 @@ function attemptReconnection() {
 }
 
 async function loadLivePreview(item) {
-    const video = document.getElementById("live-preview-video");
+    const playerScreen = document.getElementById("player-screen");
+    const video = document.getElementById("video-player");
     const loader = document.getElementById("preview-loader");
     const t = TRANSLATIONS[state.language || 'en'];
     
     const epgListEl = document.getElementById("preview-epg-list");
     if (epgListEl) epgListEl.innerHTML = `<div class="preview-epg-loading">${t.epgLoading}</div>`;
     
-    destroyPreviewMpegtsPlayer();
+    // Set player screen to preview mode and make it visible
+    playerScreen.classList.add("preview-mode");
+    playerScreen.classList.remove("hidden");
+    updatePreviewVideoPosition();
+    
+    destroyMpegtsPlayer();
     
     if (loader) loader.classList.remove("hidden");
     
@@ -392,9 +398,9 @@ async function loadLivePreview(item) {
         const isTsStream = (resolvedUrl.includes('.ts') || resolvedUrl.includes('/live/')) && !resolvedUrl.includes('.m3u8');
         
         if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
-            console.log("[Preview] Initializing mpegts.js for preview stream:", resolvedUrl);
+            console.log("[Preview] Initializing mpegts.js for video-player in preview mode:", resolvedUrl);
             try {
-                state.previewMpegtsPlayer = mpegts.createPlayer({
+                state.mpegtsPlayer = mpegts.createPlayer({
                     type: 'mpegts',
                     isLive: true,
                     url: resolvedUrl
@@ -404,31 +410,33 @@ async function loadLivePreview(item) {
                     seekType: 'range'
                 });
                 
-                state.previewMpegtsPlayer.attachMediaElement(video);
-                state.previewMpegtsPlayer.load();
+                state.mpegtsPlayer.attachMediaElement(video);
+                state.mpegtsPlayer.load();
                 video.muted = false;
-                state.previewMpegtsPlayer.play().catch(e => {
-                    console.warn("[Preview] Autoplay unmuted failed, trying muted...", e);
+                state.mpegtsPlayer.play().catch(e => {
+                    console.warn("[Preview] Autoplay failed, trying muted...", e);
                     video.muted = true;
-                    state.previewMpegtsPlayer.play().catch(err => console.error(err));
+                    state.mpegtsPlayer.play().catch(err => console.error(err));
+                });
+                
+                state.mpegtsPlayer.on(mpegts.Events.ERROR, (type, detail, info) => {
+                    console.warn(`[mpegts.js] Preview player error: ${type}, ${detail}.`);
                 });
             } catch (err) {
                 console.error("[Preview] mpegts setup failed, fallback to native:", err);
                 video.src = resolvedUrl;
                 video.muted = false;
                 video.play().catch(e => {
-                    console.warn("[Preview] Native fallback autoplay unmuted failed, trying muted...", e);
                     video.muted = true;
                     video.play().catch(err => {});
                 });
             }
         } else {
-            console.log("[Preview] Launching native HTML5 source for preview:", resolvedUrl);
+            console.log("[Preview] Launching native HTML5 source in preview:", resolvedUrl);
             video.src = resolvedUrl;
             video.muted = false;
             video.load();
             video.play().catch(e => {
-                console.warn("[Preview] Native autoplay unmuted failed (non-ts), trying muted...", e);
                 video.muted = true;
                 video.play().catch(err => {});
             });
@@ -437,53 +445,134 @@ async function loadLivePreview(item) {
     
     video.onwaiting = () => { 
         if (loader) loader.classList.remove("hidden"); 
-        video.classList.remove("video-active");
     };
     video.onplaying = () => { 
         if (loader) loader.classList.add("hidden"); 
-        video.classList.add("video-active");
     };
     video.onerror = () => {
         if (loader) loader.classList.add("hidden");
-        video.classList.remove("video-active");
-        console.warn("[Preview] Error playing stream in preview");
+        console.warn("[Preview] Error playing preview stream");
     };
     
     await fetchAndRenderPreviewEPG(item, epgListEl, t);
 }
 
+function updatePreviewVideoPosition() {
+    const playerScreen = document.getElementById("player-screen");
+    const container = document.getElementById("preview-video-container");
+    if (!playerScreen || !container) return;
+    
+    if (playerScreen.classList.contains("preview-mode")) {
+        const rect = container.getBoundingClientRect();
+        const appRect = document.getElementById("app").getBoundingClientRect();
+        
+        const top = rect.top - appRect.top;
+        const left = rect.left - appRect.left;
+        
+        playerScreen.style.position = "absolute";
+        playerScreen.style.top = `${top}px`;
+        playerScreen.style.left = `${left}px`;
+        playerScreen.style.width = `${rect.width}px`;
+        playerScreen.style.height = `${rect.height}px`;
+        playerScreen.style.zIndex = "16";
+        playerScreen.style.borderRadius = "14px";
+        playerScreen.style.overflow = "hidden";
+        playerScreen.style.border = "1px solid var(--border-color)";
+    } else {
+        playerScreen.style.position = "";
+        playerScreen.style.top = "";
+        playerScreen.style.left = "";
+        playerScreen.style.width = "";
+        playerScreen.style.height = "";
+        playerScreen.style.zIndex = "";
+        playerScreen.style.borderRadius = "";
+        playerScreen.style.overflow = "";
+        playerScreen.style.border = "";
+    }
+}
+
+function goFullscreenFromPreview() {
+    const playerScreen = document.getElementById("player-screen");
+    if (!playerScreen || !state.currentPlayingStream) return;
+    
+    console.log("[Player] Transitioning from preview to fullscreen");
+    
+    playerScreen.classList.remove("preview-mode");
+    updatePreviewVideoPosition();
+    
+    showScreen("player-screen");
+    
+    const item = state.currentPlayingStream.item;
+    document.getElementById("player-channel-name").innerText = item.name;
+    document.getElementById("player-channel-logo").src = item.stream_icon || item.cover || "";
+    
+    const isLive = state.currentPlayingStream.section === 'live';
+    document.getElementById("player-timeline-container").style.display = isLive ? "none" : "flex";
+    
+    const t = TRANSLATIONS[state.language || 'en'];
+    const nowPlayingEl = document.getElementById("player-now-playing");
+    nowPlayingEl.innerText = t.playerNowPlaying;
+    loadEPG(item.stream_id);
+    
+    const video = document.getElementById("video-player");
+    if (video) {
+        video.muted = false;
+    }
+    
+    resetPlayerActivity();
+}
+
+function exitFullscreenToPreview() {
+    const playerScreen = document.getElementById("player-screen");
+    if (!playerScreen || !state.currentPlayingStream) return;
+    
+    console.log("[Player] Shrinking from fullscreen to preview mode");
+    
+    playerScreen.classList.add("preview-mode");
+    updatePreviewVideoPosition();
+    
+    showScreen("home-screen");
+    
+    const liveItem = state.currentPlayingStream.item;
+    document.getElementById("live-preview-panel").classList.remove("hidden");
+    
+    document.querySelectorAll(".media-card").forEach(el => {
+        el.classList.remove("active-playing");
+    });
+    
+    let activeCard = document.querySelector(`.media-card[data-id="${liveItem.stream_id}"]`);
+    if (activeCard) {
+        activeCard.classList.add("active-playing");
+    }
+    
+    const epgListEl = document.getElementById("preview-epg-list");
+    if (epgListEl) {
+        const t = TRANSLATIONS[state.language || 'en'];
+        fetchAndRenderPreviewEPG(liveItem, epgListEl, t);
+    }
+}
+
+function stopVideoPlaybackCompletely() {
+    console.log("[Player] Stopping video playback completely");
+    const video = document.getElementById("video-player");
+    if (video) {
+        video.pause();
+        video.removeAttribute("src");
+        try { video.load(); } catch(e){}
+    }
+    destroyMpegtsPlayer();
+    
+    const playerScreen = document.getElementById("player-screen");
+    if (playerScreen) {
+        playerScreen.classList.add("hidden");
+        playerScreen.classList.remove("preview-mode");
+        updatePreviewVideoPosition();
+    }
+    state.currentPlayingStream = null;
+}
+
 function destroyPreviewMpegtsPlayer() {
-    const video = document.getElementById("live-preview-video");
-    if (!video) return;
-    
-    video.classList.remove("video-active");
-    
-    if (state.previewMpegtsPlayer) {
-        console.log("[Preview] Destroying previous preview mpegts player");
-        try {
-            state.previewMpegtsPlayer.pause();
-            state.previewMpegtsPlayer.unload();
-            state.previewMpegtsPlayer.detachMediaElement();
-            state.previewMpegtsPlayer.destroy();
-        } catch (e) {
-            console.error("Preview mpegts destroy failed", e);
-        }
-        state.previewMpegtsPlayer = null;
-    }
-    if (state.previewHlsPlayer) {
-        console.log("[Preview] Destroying previous preview hls player");
-        try {
-            state.previewHlsPlayer.destroy();
-        } catch (e) {
-            console.error("Preview hls destroy failed", e);
-        }
-        state.previewHlsPlayer = null;
-    }
-    video.pause();
-    video.removeAttribute("src");
-    try {
-        video.load();
-    } catch(e){}
+    stopVideoPlaybackCompletely();
 }
 
 function closeVideoPlayer() {
@@ -497,6 +586,14 @@ function closeVideoPlayer() {
         document.exitFullscreen().catch(() => {});
     }
     
+    const wasLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
+    const liveItem = wasLive ? state.currentPlayingStream.item : null;
+    
+    if (wasLive && liveItem) {
+        exitFullscreenToPreview();
+        return;
+    }
+    
     const video = document.getElementById("video-player");
     video.pause();
     
@@ -507,12 +604,11 @@ function closeVideoPlayer() {
     
     const playerScreen = document.getElementById("player-screen");
     playerScreen.style.cursor = "default";
+    playerScreen.classList.remove("preview-mode");
+    updatePreviewVideoPosition();
     
     clearTimeout(state.overlayTimeout);
     document.getElementById("player-overlay").classList.add("hidden");
-    
-    const wasLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
-    const liveItem = wasLive ? state.currentPlayingStream.item : null;
     
     if (state.currentPlayingStream && state.currentPlayingStream.section === 'series') {
         showScreen("series-details-screen");
@@ -520,35 +616,7 @@ function closeVideoPlayer() {
         showScreen("home-screen");
     }
     
-    if (wasLive && liveItem) {
-        state.currentPlayingStream = { item: liveItem, section: 'live' };
-        document.getElementById("live-preview-panel").classList.remove("hidden");
-        
-        document.querySelectorAll(".media-card").forEach(el => {
-            el.classList.remove("active-playing");
-        });
-        
-        let activeCard = document.querySelector(`.media-card[data-id="${liveItem.stream_id}"]`);
-        if (!activeCard) {
-            const idx = state.currentGridItems.findIndex(item => (item.stream_id || item.series_id) === liveItem.stream_id);
-            if (idx !== -1) {
-                const itemsNeeded = idx + 1;
-                while (state.gridCurrentPage * state.gridItemsPerPage < itemsNeeded && (state.gridCurrentPage * state.gridItemsPerPage) < state.currentGridItems.length) {
-                    loadNextGridBatch('live');
-                }
-                activeCard = document.querySelector(`.media-card[data-id="${liveItem.stream_id}"]`);
-            }
-        }
-        
-        if (activeCard) {
-            activeCard.classList.add("active-playing");
-            state.lastFocusedElement = activeCard;
-        }
-        
-        loadLivePreview(liveItem);
-    } else {
-        state.currentPlayingStream = null;
-    }
+    state.currentPlayingStream = null;
     
     if (state.lastFocusedElement) {
         state.lastFocusedElement.focus();
