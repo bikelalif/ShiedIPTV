@@ -496,6 +496,7 @@ function renderPlaylistsGrid() {
     if (!gridEl) return;
     gridEl.innerHTML = "";
     
+    const t = TRANSLATIONS[state.language || 'en'];
     const playlists = loadSavedPlaylists();
     
     playlists.forEach(pl => {
@@ -566,8 +567,8 @@ function renderPlaylistsGrid() {
     addCard.setAttribute("tabindex", "0");
     addCard.innerHTML = `
         <span class="material-icons playlist-card-icon" style="font-size: 3rem !important;">add_circle_outline</span>
-        <h3 class="playlist-card-title">Ajouter une playlist</h3>
-        <p class="playlist-card-type">Xtream Codes ou Lien M3U</p>
+        <h3 class="playlist-card-title">${t.pmAddPlaylist}</h3>
+        <p class="playlist-card-type">${t.pmAddPlaylistSub}</p>
     `;
     
     addCard.addEventListener("click", () => {

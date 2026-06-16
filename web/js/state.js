@@ -282,6 +282,7 @@ const TRANSLATIONS = {
         dohTitle: "DNS over HTTPS (DoH)",
         dohDesc: "Permet de contourner les blocages DNS imposés par certains FAI pour lire les flux IPTV.",
         dohEnable: "Activer DoH",
+        dohEnableLogin: "Activer le contournement DNS (DoH)",
         dohResolver: "Résolveur DoH",
         langTitle: "Langue / Language",
         langDesc: "Sélectionnez la langue de l'interface.",
@@ -403,6 +404,7 @@ const TRANSLATIONS = {
         dohTitle: "DNS over HTTPS (DoH)",
         dohDesc: "Allows bypassing DNS blocking imposed by some ISPs to play IPTV streams.",
         dohEnable: "Enable DoH",
+        dohEnableLogin: "Enable DNS Bypass (DoH)",
         dohResolver: "DoH Resolver",
         langTitle: "Language / Langue",
         langDesc: "Select the interface language.",
@@ -524,6 +526,7 @@ const TRANSLATIONS = {
         dohTitle: "DNS sobre HTTPS (DoH)",
         dohDesc: "Permite eludir los bloqueos de DNS impuestos por algunos proveedores de Internet para reproducir transmisiones de IPTV.",
         dohEnable: "Activar DoH",
+        dohEnableLogin: "Activar el desvío de DNS (DoH)",
         dohResolver: "Servidor DoH",
         langTitle: "Idioma / Language",
         langDesc: "Seleccione el idioma de la interfaz.",
@@ -645,6 +648,7 @@ const TRANSLATIONS = {
         dohTitle: "DNS over HTTPS (DoH)",
         dohDesc: "Consente di aggirare i blocchi DNS imposti da alcuni ISP per riprodurre i flussi IPTV.",
         dohEnable: "Attiva DoH",
+        dohEnableLogin: "Abilita bypass DNS (DoH)",
         dohResolver: "Risolutore DoH",
         langTitle: "Lingua / Language",
         langDesc: "Seleziona la lingua dell'interfaccia.",
@@ -1019,6 +1023,9 @@ function applyLanguage(lang) {
     const btnConnectSpan = document.querySelector("#btn-connect span:not(.material-icons)");
     if (btnConnectSpan) btnConnectSpan.innerText = t.pmConnectBtn;
     
+    const loginDohSpan = document.querySelector("#login-doh-label span");
+    if (loginDohSpan) loginDohSpan.innerText = t.dohEnableLogin || "Enable DNS Bypass (DoH)";
+    
     const diagH3 = document.getElementById("settings-diag-title");
     if (diagH3) diagH3.innerText = t.diagTitle;
     
@@ -1066,6 +1073,10 @@ function applyLanguage(lang) {
     if (loaderVlcBtnSpan) loaderVlcBtnSpan.innerText = t.vlcBtnText || "Ouvrir dans VLC";
     
     updateBreadcrumbs();
+    
+    if (typeof renderPlaylistsGrid === 'function') {
+        renderPlaylistsGrid();
+    }
 }
 
 function updateBreadcrumbs() {
