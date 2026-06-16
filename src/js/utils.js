@@ -258,3 +258,13 @@ function parseM3USeries(m3uItems) {
     
     return seriesList;
 }
+
+// Defensive helper to convert any object/dictionary payload to array
+function ensureArray(data) {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'object') {
+        return Object.values(data);
+    }
+    return [];
+}
