@@ -7,12 +7,19 @@ function loadSavedPlaylists() {
     const saved = safeStorage.local.getItem("shield_playlists");
     if (saved) {
         try {
-            playlists = JSON.parse(saved);
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+                playlists = parsed;
+            }
         } catch(e) {}
     }
     
     // Filter out leftover 'demo' playlist objects
-    playlists = playlists.filter(p => p.id !== 'demo');
+    if (Array.isArray(playlists)) {
+        playlists = playlists.filter(p => p && p.id !== 'demo');
+    } else {
+        playlists = [];
+    }
     return playlists;
 }
 
