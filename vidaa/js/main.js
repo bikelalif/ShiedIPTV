@@ -649,7 +649,6 @@ function setupEventListeners() {
     });
     
     // Player screen activity listeners
-    const playerScreen = document.getElementById("player-screen");
     let lastMouseX = null;
     let lastMouseY = null;
     playerScreen.addEventListener("mousemove", (e) => {
