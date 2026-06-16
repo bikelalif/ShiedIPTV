@@ -1,7 +1,9 @@
 // Initial Setup on Load
-document.addEventListener("DOMContentLoaded", () => {
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initApp);
+} else {
     initApp();
-});
+}
 
 function initApp() {
     if (isTvWrapper) {
@@ -21,7 +23,7 @@ function initApp() {
     initTvInputs();
     
     // Restore settings
-    const savedSettings = localStorage.getItem("shield_iptv_settings");
+    const savedSettings = safeStorage.local.getItem("shield_iptv_settings");
     if (savedSettings) {
         try {
             const settings = JSON.parse(savedSettings);
@@ -46,7 +48,7 @@ function initApp() {
     showScreen("intro-screen");
     
     setTimeout(() => {
-        const cguAccepted = localStorage.getItem("shield_cgu_accepted") === "true";
+        const cguAccepted = safeStorage.local.getItem("shield_cgu_accepted") === "true";
         if (!cguAccepted) {
             showScreen("playlist-manager-screen");
             
@@ -64,9 +66,9 @@ function initApp() {
 }
 
 function proceedAfterCgu() {
-    sessionStorage.setItem("shield_session_active", "true");
+    safeStorage.session.setItem("shield_session_active", "true");
     
-    const activePlaylistId = localStorage.getItem("shield_active_playlist_id");
+    const activePlaylistId = safeStorage.local.getItem("shield_active_playlist_id");
     if (activePlaylistId) {
         const playlists = loadSavedPlaylists();
         const activePlaylist = playlists.find(p => p.id === activePlaylistId);
@@ -128,7 +130,7 @@ function setupEventListeners() {
     const btnCguAccept = document.getElementById("btn-cgu-accept");
     if (btnCguAccept) {
         btnCguAccept.addEventListener("click", () => {
-            localStorage.setItem("shield_cgu_accepted", "true");
+            safeStorage.local.setItem("shield_cgu_accepted", "true");
             const modal = document.getElementById("cgu-modal");
             if (modal) modal.classList.add("hidden");
             proceedAfterCgu();
