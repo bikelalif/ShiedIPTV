@@ -7,6 +7,15 @@ function initApp() {
     if (isTvWrapper) {
         document.body.classList.add("tv-mode");
     }
+    
+    // Add is-webapp class if running as a hosted web page (not packaged local file/app)
+    const isWebappOnly = (window.location.protocol === 'http:' || window.location.protocol === 'https:') && 
+                         !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) &&
+                         !/Electron/i.test(navigator.userAgent);
+    if (isWebappOnly) {
+        document.body.classList.add("is-webapp");
+    }
+    
     setupEventListeners();
     setupSpatialNavigation();
     initTvInputs();
