@@ -469,6 +469,10 @@
             color: white;
             text-decoration: underline;
         }
+
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -511,6 +515,18 @@
                     </div>
                 </div>
 
+                <!-- Active Session Tools -->
+                <div id="session-tools" class="presets-wrapper" style="border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 0.85rem; display: none;">
+                    <div class="presets-label">Session Active (Recherche VOD)</div>
+                    <div style="display: flex; gap: 0.5rem; flex-direction: column;">
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="text" id="search-vod-input" placeholder="Ex: Irishman" style="width: 100%; padding: 0.5rem; border-radius: 8px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); color: white; outline: none; font-size: 0.85rem;">
+                            <button id="btn-search-vod" class="btn-preset" style="width: auto; padding: 0 1rem; border-color: var(--primary);">Rechercher</button>
+                        </div>
+                        <div id="search-vod-results" style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+                    </div>
+                </div>
+
                 <!-- Stream URL -->
                 <div class="input-group">
                     <label for="stream-url">URL de votre flux direct ou VOD</label>
@@ -527,6 +543,7 @@
                         <span class="material-icons">smart_display</span>
                         <select id="engine-select">
                             <option value="auto">Automatique (Détection extension)</option>
+                            <option value="exoplayer">ExoPlayer (Android TV Natif)</option>
                             <option value="hls">HLS.js (Recommandé .m3u8)</option>
                             <option value="mpegts">MPEG-TS.js (.ts / live TS)</option>
                             <option value="native">HTML5 Natif (.mp4, Safari HLS)</option>
@@ -763,6 +780,16 @@
                 log(`[Auto] Moteur détecté : ${engine.toUpperCase()}`, "debug");
             }
 
+            if (engine === "exoplayer") {
+                log(`[ExoPlayer] Envoi du flux vers l'activité native ExoPlayer : ${finalUrl}`);
+                if (window.AndroidApp && typeof window.AndroidApp.playStream === 'function') {
+                    window.AndroidApp.playStream(finalUrl, "Test ExoPlayer", "");
+                } else {
+                    log("Erreur : L'interface AndroidApp.playStream n'est pas disponible (lancez l'app sur Android TV pour tester ExoPlayer).", "error");
+                }
+                return;
+            }
+
             // Bind video listeners
             bindVideoEvents();
 
@@ -909,6 +936,114 @@
             };
         }
 
+        // Safe storage definition
+        const safeStorage = {
+            local: {
+                getItem: (key) => {
+                    try { return localStorage.getItem(key); } catch (e) { return null; }
+                }
+            }
+        };
+
+        // Live/VOD session tool initialization
+        const sessionTools = document.getElementById("session-tools");
+        const searchVodInput = document.getElementById("search-vod-input");
+        const btnSearchVod = document.getElementById("btn-search-vod");
+        const searchVodResults = document.getElementById("search-vod-results");
+
+        // Load active session if exists
+        let activeSession = null;
+        try {
+            const rawSession = safeStorage.local.getItem("shield_iptv_session");
+            if (rawSession) {
+                activeSession = JSON.parse(rawSession);
+                if (activeSession && activeSession.serverUrl && activeSession.username && activeSession.password) {
+                    sessionTools.style.display = "flex";
+                    log(`[Session] Session active détectée pour l'utilisateur : ${activeSession.username}`, "info");
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to load active session:", e);
+        }
+
+        // Search VOD event
+        if (btnSearchVod) {
+            btnSearchVod.addEventListener("click", async () => {
+                const keyword = searchVodInput.value.trim().toLowerCase();
+                if (!keyword) {
+                    log("Veuillez saisir un mot-clé (ex: irishman)", "warn");
+                    return;
+                }
+                if (!activeSession) {
+                    log("Aucune session active n'est disponible pour rechercher.", "error");
+                    return;
+                }
+
+                log(`[Session] Recherche de '${keyword}' dans les films de la playlist active...`);
+                searchVodResults.innerHTML = "<div style='color: var(--text-muted); font-size: 0.85rem; padding: 0.5rem;'>Recherche en cours...</div>";
+
+                try {
+                    const endpoint = `${activeSession.serverUrl}/player_api.php?username=${activeSession.username}&password=${activeSession.password}&action=get_vod_streams`;
+                    
+                    // Resolve the API domain if DoH is enabled
+                    const resolvedEndpoint = await resolveDoh(endpoint);
+                    
+                    log(`[Session] Appel API VOD sur : ${resolvedEndpoint.split('?')[0]}`, "debug");
+
+                    const res = await fetch(resolvedEndpoint);
+                    if (!res.ok) throw new Error(`Status ${res.status}`);
+                    
+                    const movies = await res.json();
+                    if (!Array.isArray(movies)) {
+                        log("Réponse API invalide (pas un tableau de films)", "error");
+                        searchVodResults.innerHTML = "";
+                        return;
+                    }
+
+                    const filtered = movies.filter(m => m.name && m.name.toLowerCase().includes(keyword));
+                    searchVodResults.innerHTML = "";
+
+                    if (filtered.length === 0) {
+                        searchVodResults.innerHTML = "<div style='color: var(--danger); font-size: 0.85rem; padding: 0.5rem;'>Aucun film trouvé.</div>";
+                        log(`[Session] Aucun film trouvé contenant '${keyword}'.`, "warn");
+                        return;
+                    }
+
+                    log(`[Session] ${filtered.length} films correspondants trouvés.`, "info");
+
+                    filtered.slice(0, 15).forEach(m => {
+                        const row = document.createElement("div");
+                        row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 0.4rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.8rem; gap: 0.5rem; margin-bottom: 4px;";
+                        
+                        const titleSpan = document.createElement("span");
+                        titleSpan.style.cssText = "white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white; flex-grow: 1;";
+                        titleSpan.innerText = `${m.name} (${m.container_extension || 'mp4'})`;
+                        titleSpan.title = m.name;
+                        
+                        const selectBtn = document.createElement("button");
+                        selectBtn.className = "btn-preset";
+                        selectBtn.style.cssText = "width: auto; padding: 0.3rem 0.6rem; border-color: var(--primary);";
+                        selectBtn.innerText = "Charger";
+                        selectBtn.addEventListener("click", () => {
+                            const ext = m.container_extension || "mp4";
+                            const streamUrl = `${activeSession.serverUrl}/movie/${activeSession.username}/${activeSession.password}/${m.stream_id}.${ext}`;
+                            streamUrlInput.value = streamUrl;
+                            log(`[Session] Film chargé : ${m.name} (ID: ${m.stream_id}, Ext: ${ext})`, "info");
+                            
+                            streamUrlInput.focus();
+                        });
+
+                        row.appendChild(titleSpan);
+                        row.appendChild(selectBtn);
+                        searchVodResults.appendChild(row);
+                    });
+                } catch (err) {
+                    log(`[Session] Échec de la recherche : ${err.message}`, "error");
+                    searchVodResults.innerHTML = "<div style='color: var(--danger); font-size: 0.85rem; padding: 0.5rem;'>Erreur de chargement.</div>";
+                }
+            });
+        }
+
         // Event listeners
         btnPlay.addEventListener("click", runStreamTest);
         btnStop.addEventListener("click", () => {
@@ -917,7 +1052,7 @@
         });
 
         // Auto-run default stream on page load
-        log("Testeur de flux initialisé. Sélectionnez un flux ou cliquez sur 'Lancer'.", "info");
+        log("Testeur de flux initialisé. Sélectionnez un flux ou recherchez dans votre playlist active.", "info");
     </script>
 </body>
 </html>

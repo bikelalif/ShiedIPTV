@@ -3,7 +3,7 @@
    ========================================================================== */
 
 async function openSeriesDetails(item) {
-    localStorage.setItem("shield_last_series_id", item.series_id || item.id);
+    safeStorage.local.setItem("shield_last_series_id", item.series_id || item.id);
     const t = TRANSLATIONS[state.language || 'en'];
     
     if (state.currentPlaylistType === 'demo' || state.currentPlaylistType === 'm3u' || item.episodes) {
@@ -171,11 +171,21 @@ function renderEpisodes(epList, seasonNum) {
         card.appendChild(playIcon);
         
         card.addEventListener("click", () => {
-            const ext = ep.container_extension || "mp4";
+            const ext = (ep.container_extension || "mp4").toLowerCase();
             const playUrl = ep.url || `${state.serverUrl}/series/${state.username}/${state.password}/${ep.id}.${ext}`;
             const displayTitle = ep.title ? cleanEpisodeTitle(ep.title, seriesName) : `${t.seasonPrefix} ${seasonNum} ${t.episodeLabelZap} ${ep.episode_num || ep.num}`;
             
             state.currentPlayingStream = { item: ep, section: 'series', seasonNum: seasonNum };
+            
+            // On Android TV, use native ExoPlayer for MKV files (full codec support)
+            if (window.AndroidApp && ext === "mkv") {
+                resolveUrlWithDoH(playUrl).then(resolvedUrl => {
+                    console.log("[Android TV] Playing MKV series via ExoPlayer:", resolvedUrl);
+                    window.AndroidApp.playStream(resolvedUrl, displayTitle, state.currentSeriesDetails.info.cover || "");
+                });
+                return;
+            }
+            
             launchVideoPlayer(playUrl, displayTitle, state.currentSeriesDetails.info.cover);
         });
         
