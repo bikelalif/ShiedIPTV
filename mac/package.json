@@ -1,8 +1,8 @@
 {
-  "name": "shieldiptv-pc",
+  "name": "shieldiptv-mac",
   "productName": "Shield IPTV Player",
   "version": "1.0.5",
-  "description": "ShieldIPTV PC Client",
+  "description": "ShieldIPTV macOS Client",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -12,7 +12,8 @@
   "keywords": [
     "iptv",
     "player",
-    "desktop"
+    "desktop",
+    "macos"
   ],
   "author": "Bilal",
   "license": "ISC",
@@ -25,17 +26,26 @@
   },
   "build": {
     "appId": "com.shieldiptv.app",
-    "win": {
-      "target": "nsis"
-    },
     "mac": {
       "target": "dmg",
       "category": "public.app-category.entertainment"
     },
-    "nsis": {
-      "oneClick": true,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": false
+    "dmg": {
+      "background": null,
+      "iconSize": 100,
+      "contents": [
+        {
+          "x": 130,
+          "y": 150,
+          "type": "file"
+        },
+        {
+          "x": 410,
+          "y": 150,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
     }
   }
 }
