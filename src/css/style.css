@@ -1467,6 +1467,18 @@ body.tv-mode .episode-card:focus-visible .episode-play-icon .material-icons, bod
     pointer-events: none;
 }
 
+/* Hide native WebView/Chromium play button overlay during loading */
+video::-webkit-media-controls-start-playback-button {
+    display: none !important;
+    -webkit-appearance: none;
+}
+video::-webkit-media-controls-overlay-play-button {
+    display: none !important;
+}
+video::-webkit-media-controls {
+    display: none !important;
+}
+
 .player-loader {
     position: absolute;
     top: 50%;
