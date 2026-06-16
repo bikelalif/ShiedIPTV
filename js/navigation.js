@@ -796,6 +796,30 @@ function focusFirst() {
 }
 
 function handleBackButton() {
+    const playerScreen = document.getElementById("player-screen");
+    if (playerScreen && playerScreen.classList.contains("preview-mode")) {
+        console.log("[Navigation] Back button clicked in minimized preview mode, stopping video playback");
+        const livePreviewPanel = document.getElementById("live-preview-panel");
+        if (livePreviewPanel) {
+            livePreviewPanel.classList.add("hidden");
+        }
+        const homeScreen = document.getElementById("home-screen");
+        if (homeScreen) {
+            homeScreen.classList.remove("preview-open");
+        }
+        stopVideoPlaybackCompletely();
+        document.querySelectorAll(".media-card").forEach(el => {
+            el.classList.remove("active-playing");
+        });
+        
+        if (state.lastFocusedElement) {
+            state.lastFocusedElement.focus();
+        } else {
+            focusFirst();
+        }
+        return;
+    }
+
     const screenId = activeScreenId();
     
     if (screenId === "player-screen") {
