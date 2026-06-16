@@ -1,6 +1,60 @@
-/* ==========================================================================
-   SHIELDIPTV APP STATE & CONSTANTS
-   ========================================================================== */
+// Safe localStorage/sessionStorage helper wrapper to prevent security exceptions in strict TV WebView environments
+const safeStorage = {
+    local: {
+        getItem(key) {
+            try {
+                return localStorage.getItem(key);
+            } catch (e) {
+                console.warn("localStorage.getItem blocked:", e);
+                return this.fallbackStore[key] || null;
+            }
+        },
+        setItem(key, value) {
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {
+                console.warn("localStorage.setItem blocked:", e);
+                this.fallbackStore[key] = String(value);
+            }
+        },
+        removeItem(key) {
+            try {
+                localStorage.removeItem(key);
+            } catch (e) {
+                console.warn("localStorage.removeItem blocked:", e);
+                delete this.fallbackStore[key];
+            }
+        },
+        fallbackStore: {}
+    },
+    session: {
+        getItem(key) {
+            try {
+                return sessionStorage.getItem(key);
+            } catch (e) {
+                console.warn("sessionStorage.getItem blocked:", e);
+                return this.fallbackStore[key] || null;
+            }
+        },
+        setItem(key, value) {
+            try {
+                sessionStorage.setItem(key, value);
+            } catch (e) {
+                console.warn("sessionStorage.setItem blocked:", e);
+                this.fallbackStore[key] = String(value);
+            }
+        },
+        removeItem(key) {
+            try {
+                sessionStorage.removeItem(key);
+            } catch (e) {
+                console.warn("sessionStorage.removeItem blocked:", e);
+                delete this.fallbackStore[key];
+            }
+        },
+        fallbackStore: {}
+    }
+};
 
 const isTvWrapper = window.cordova || 
                     /SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent);
@@ -146,6 +200,9 @@ const state = {
     reconnectTimer: null,
     reconnectAttempts: 0,
     maxReconnectAttempts: 5,
+    isNativePlaying: false,
+    nativeCurrentTime: 0,
+    nativeDuration: 0,
     
     // Series details page state
     currentSeriesDetails: null,
@@ -319,6 +376,7 @@ const TRANSLATIONS = {
         aboutCredits: "Licences Open Source :",
         toastM3uLoad: "Chargement de la playlist M3U...",
         vlcBtnText: "Ouvrir dans VLC",
+        vlcAutoFallback: "Format non supporté, ouverture dans VLC...",
         deletePlaylist: "Playlist supprimée."
     },
     en: {
@@ -439,6 +497,7 @@ const TRANSLATIONS = {
         aboutCredits: "Open Source Licenses:",
         toastM3uLoad: "Loading M3U playlist...",
         vlcBtnText: "Open in VLC",
+        vlcAutoFallback: "Format not supported, opening in VLC...",
         deletePlaylist: "Playlist deleted."
     },
     es: {
@@ -559,6 +618,7 @@ const TRANSLATIONS = {
         aboutCredits: "Licencias de código abierto:",
         toastM3uLoad: "Cargando lista de reproducción M3U...",
         vlcBtnText: "Abrir en VLC",
+        vlcAutoFallback: "Formato no compatible, abriendo en VLC...",
         deletePlaylist: "Playlist eliminada."
     },
     it: {
@@ -679,6 +739,7 @@ const TRANSLATIONS = {
         aboutCredits: "Licences Open Source:",
         toastM3uLoad: "Caricamento playlist M3U...",
         vlcBtnText: "Apri in VLC",
+        vlcAutoFallback: "Formato non supportato, apertura in VLC...",
         deletePlaylist: "Playlist deleted."
     }
 };
@@ -692,7 +753,7 @@ function detectLanguage() {
         }
     }
     
-    const savedSettings = localStorage.getItem("shield_iptv_settings");
+    const savedSettings = safeStorage.local.getItem("shield_iptv_settings");
     if (savedSettings) {
         try {
             const settings = JSON.parse(savedSettings);
@@ -700,6 +761,12 @@ function detectLanguage() {
                 return settings.language;
             }
         } catch (e) {}
+    }
+    
+    // Check browser/system language
+    const sysLang = (navigator.language || navigator.userLanguage || '').substring(0, 2).toLowerCase();
+    if (sysLang && TRANSLATIONS[sysLang]) {
+        return sysLang;
     }
     
     // Default base language is English
@@ -710,11 +777,11 @@ function applyLanguage(lang) {
     if (!TRANSLATIONS[lang]) lang = 'en';
     state.language = lang;
     
-    const savedSettings = localStorage.getItem("shield_iptv_settings") || "{}";
+    const savedSettings = safeStorage.local.getItem("shield_iptv_settings") || "{}";
     try {
         const settings = JSON.parse(savedSettings);
         settings.language = lang;
-        localStorage.setItem("shield_iptv_settings", JSON.stringify(settings));
+        safeStorage.local.setItem("shield_iptv_settings", JSON.stringify(settings));
     } catch(e) {}
     
     const langSelect = document.getElementById("setting-lang-select");

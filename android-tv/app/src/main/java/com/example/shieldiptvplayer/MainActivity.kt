@@ -41,6 +41,8 @@ class MainActivity : ComponentActivity() {
         settings.allowContentAccess = true
         settings.allowUniversalAccessFromFileURLs = true
         settings.allowFileAccessFromFileURLs = true
+        settings.cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
+        webView.clearCache(true)
         
         settings.setSupportZoom(false)
         settings.builtInZoomControls = false
@@ -53,6 +55,17 @@ class MainActivity : ComponentActivity() {
 
         // Add JavaScript Interface for ExoPlayer integration
         webView.addJavascriptInterface(WebAppInterface(this), "AndroidApp")
+
+        PlayerActivity.onErrorCallback = { errMsg ->
+            runOnUiThread {
+                val escapedMsg = errMsg.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ")
+                webView.evaluateJavascript(
+                    "if (typeof testerLog === 'function') { testerLog('ExoPlayer Error: ' + \"$escapedMsg\", 'error'); }" +
+                    "else if (typeof log === 'function') { log('ExoPlayer Error: ' + \"$escapedMsg\", 'error'); }", 
+                    null
+                )
+            }
+        }
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -86,5 +99,19 @@ class WebAppInterface(private val activity: MainActivity) {
             putExtra("LOGO_URL", logoUrl)
         }
         activity.startActivity(intent)
+    }
+
+    @android.webkit.JavascriptInterface
+    fun openExternalPlayer(url: String) {
+        activity.runOnUiThread {
+            try {
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                    setDataAndType(android.net.Uri.parse(url), "video/*")
+                }
+                activity.startActivity(intent)
+            } catch (e: Exception) {
+                android.widget.Toast.makeText(activity, "No video player (like VLC) found.", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
     }
 }

@@ -245,6 +245,17 @@ async function runStreamTesterTest() {
         }
     }
     
+    if (engine === "exoplayer") {
+        if (loader) loader.classList.add("hidden");
+        testerLog(`[ExoPlayer] Envoi du flux vers l'activité native ExoPlayer : ${finalUrl}`);
+        if (window.AndroidApp && typeof window.AndroidApp.playStream === 'function') {
+            window.AndroidApp.playStream(finalUrl, "Test ExoPlayer", "");
+        } else {
+            testerLog("Erreur : L'interface AndroidApp.playStream n'est pas disponible (lancez l'app sur Android TV pour tester ExoPlayer).", "error");
+        }
+        return;
+    }
+    
     const video = document.getElementById("streamtester-video");
     if (!video) return;
     

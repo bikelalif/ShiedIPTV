@@ -8,13 +8,33 @@ function showScreen(screenId) {
     }
 
     document.querySelectorAll(".screen").forEach(screen => {
+        // DO NOT hide player-screen if it is in preview-mode and we are showing home-screen
+        if (screen.id === 'player-screen' && screen.classList.contains('preview-mode') && screenId === 'home-screen') {
+            return;
+        }
         screen.classList.add("hidden");
     });
     const scr = document.getElementById(screenId);
     if (scr) scr.classList.remove("hidden");
     
+    // Make sure player-screen is not hidden if we are on home-screen and in preview-mode
+    if (screenId === 'home-screen') {
+        const playerScreen = document.getElementById('player-screen');
+        if (playerScreen && playerScreen.classList.contains('preview-mode')) {
+            playerScreen.classList.remove('hidden');
+            if (typeof updatePreviewVideoPosition === 'function') {
+                updatePreviewVideoPosition();
+            }
+        }
+    }
+    
     if (screenId !== 'home-screen' || state.currentSection !== 'live') {
-        destroyPreviewMpegtsPlayer();
+        // Stop the video completely if we navigate away to portal or settings
+        if (screenId !== 'player-screen' && screenId !== 'home-screen') {
+            if (typeof stopVideoPlaybackCompletely === 'function') {
+                stopVideoPlaybackCompletely();
+            }
+        }
     }
     
     if (screenId !== 'streamtester-screen') {
@@ -22,7 +42,7 @@ function showScreen(screenId) {
     }
 
     if (screenId && screenId !== "intro-screen" && screenId !== "loader" && screenId !== "player-screen") {
-        localStorage.setItem("shield_last_screen", screenId);
+        safeStorage.local.setItem("shield_last_screen", screenId);
     }
     
     // Automatically focus the first logical element of the screen for TV remote
@@ -60,7 +80,7 @@ function showToast(text, duration = 3000) {
 }
 
 async function switchSection(section) {
-    localStorage.setItem("shield_last_section", section);
+    safeStorage.local.setItem("shield_last_section", section);
     const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
                         window.location.protocol !== 'file:' && 
                         !window.cordova && 
@@ -99,6 +119,9 @@ async function switchSection(section) {
         document.getElementById("media-grid-container").classList.add("hidden");
         document.getElementById("settings-panel").classList.remove("hidden");
         document.getElementById("live-preview-panel").classList.add("hidden");
+        if (homeScreen) {
+            homeScreen.classList.remove("preview-open");
+        }
         
         destroyPreviewMpegtsPlayer(); // Stop preview playback
         state.currentPlayingStream = null;
@@ -122,6 +145,9 @@ async function switchSection(section) {
     document.getElementById("settings-panel").classList.add("hidden");
     
     document.getElementById("live-preview-panel").classList.add("hidden");
+    if (homeScreen) {
+        homeScreen.classList.remove("preview-open");
+    }
     destroyPreviewMpegtsPlayer();
     state.currentPlayingStream = null;
     
@@ -157,7 +183,7 @@ function renderCategories(cats) {
             document.querySelectorAll(".category-item").forEach(el => el.classList.remove("active"));
             btn.classList.add("active");
             state.activeCategoryId = cat.category_id;
-            localStorage.setItem("shield_last_category_id", cat.category_id);
+            safeStorage.local.setItem("shield_last_category_id", cat.category_id);
             
             document.getElementById("breadcrumb-category").innerText = (cat.category_id === 'all') ? t.breadcrumbAll : cat.category_name;
             loadCategoryStreamsCached(state.currentSection, cat.category_id);
@@ -167,22 +193,71 @@ function renderCategories(cats) {
     });
 }
 
-function loadCategoryStreamsCached(section, categoryId) {
+async function loadCategoryStreamsCached(section, categoryId) {
     state.activeCategoryId = categoryId;
-    localStorage.setItem("shield_last_category_id", categoryId);
+    safeStorage.local.setItem("shield_last_category_id", categoryId);
     const searchBar = document.getElementById("search-bar");
     if (searchBar) {
         searchBar.value = "";
     }
 
-    let streamsList = state.streams[section] || [];
-    if (!Array.isArray(streamsList)) streamsList = [];
-    
-    let filtered = streamsList;
-    if (categoryId !== "all") {
-        filtered = streamsList.filter(item => item.category_id === categoryId);
+    const t = TRANSLATIONS[state.language || 'en'];
+    let filtered = [];
+
+    if (state.currentPlaylistType === 'xtream') {
+        let categoryCached = (state.streams[section] || []).filter(item => {
+            const catId = item.category_id;
+            return catId !== undefined && String(catId) === String(categoryId);
+        });
+
+        const totalCached = (state.streams[section] || []).length;
+
+        if ((categoryId === 'all' && totalCached === 0) || (categoryId !== 'all' && categoryCached.length === 0)) {
+            showLoader(t.toastPreloadLive || "Chargement...");
+            try {
+                let action = 'get_live_streams';
+                if (section === 'movies') action = 'get_vod_streams';
+                if (section === 'series') action = 'get_series';
+
+                const params = categoryId !== 'all' ? `&category_id=${categoryId}` : '';
+                const data = await makeApiCall(action, params);
+                
+                let fetched = Array.isArray(data) ? data : [];
+                
+                if (!state.streams[section]) {
+                    state.streams[section] = [];
+                }
+
+                const existing = new Set(state.streams[section].map(item => String(item.stream_id || item.series_id || item.id)));
+                fetched.forEach(item => {
+                    const id = String(item.stream_id || item.series_id || item.id);
+                    if (!existing.has(id)) {
+                        state.streams[section].push(item);
+                    }
+                });
+
+                categoryCached = fetched;
+            } catch (e) {
+                console.error("Failed to load category streams from server:", e);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        if (categoryId === 'all') {
+            filtered = state.streams[section] || [];
+        } else {
+            filtered = (state.streams[section] || []).filter(item => String(item.category_id) === String(categoryId));
+        }
+    } else {
+        let streamsList = state.streams[section] || [];
+        if (!Array.isArray(streamsList)) streamsList = [];
+        filtered = streamsList;
+        if (categoryId !== "all") {
+            filtered = streamsList.filter(item => String(item.category_id) === String(categoryId));
+        }
     }
-    
+
     state.categoryGridItems = filtered;
     state.currentGridItems = filtered;
     
@@ -295,10 +370,37 @@ function setupSpatialNavigation() {
         
         // Prevent key events from moving focus or triggering form actions if editing an input
         const activeEl = document.activeElement;
-        if (activeEl && activeEl.tagName === 'INPUT' && !activeEl.hasAttribute('readonly')) {
+        if (activeEl && activeEl.tagName === 'INPUT' && (!isTvWrapper || !activeEl.hasAttribute('readonly'))) {
             if (key === 'Enter') {
                 e.preventDefault();
-                activeEl.setAttribute('readonly', 'true');
+                
+                const container = document.getElementById(activeScreenId());
+                const inputs = Array.from(container.querySelectorAll('input[type="text"], input[type="url"], input[type="password"]')).filter(input => {
+                    return input.offsetWidth > 0 || input.offsetHeight > 0;
+                });
+                
+                const currentIndex = inputs.indexOf(activeEl);
+                
+                if (isTvWrapper) {
+                    activeEl.setAttribute('readonly', 'true');
+                }
+                activeEl.blur();
+                
+                if (currentIndex !== -1 && currentIndex < inputs.length - 1) {
+                    const nextInput = inputs[currentIndex + 1];
+                    if (isTvWrapper) {
+                        nextInput.removeAttribute('readonly');
+                    }
+                    nextInput.focus();
+                } else {
+                    const form = activeEl.closest('form');
+                    const submitBtn = form ? (form.querySelector('button[type="submit"]') || form.querySelector('.btn-primary') || form.querySelector('.focusable')) : null;
+                    if (submitBtn) {
+                        submitBtn.focus();
+                    } else {
+                        focusFirst();
+                    }
+                }
             }
             return;
         }
@@ -317,13 +419,22 @@ function setupSpatialNavigation() {
                     e.preventDefault();
                     togglePlayPause();
                 } else if (key === 'ArrowLeft' || key === 'ArrowRight') {
-                    const video = document.getElementById("video-player");
-                    if (video && video.duration) {
-                        e.preventDefault();
-                        if (key === 'ArrowLeft') {
-                            video.currentTime = Math.max(0, video.currentTime - 10);
-                        } else {
-                            video.currentTime = Math.min(video.duration, video.currentTime + 10);
+                    e.preventDefault();
+                    if (state.isNativePlaying) {
+                        let targetTime = key === 'ArrowLeft' ? Math.max(0, state.nativeCurrentTime - 10) : Math.min(state.nativeDuration, state.nativeCurrentTime + 10);
+                        if (window.AndroidApp && typeof window.AndroidApp.seekNative === 'function') {
+                            window.AndroidApp.seekNative(targetTime * 1000);
+                        }
+                        state.nativeCurrentTime = targetTime;
+                        onNativePlayerProgress(targetTime, state.nativeDuration);
+                    } else {
+                        const video = document.getElementById("video-player");
+                        if (video && video.duration) {
+                            if (key === 'ArrowLeft') {
+                                video.currentTime = Math.max(0, video.currentTime - 10);
+                            } else {
+                                video.currentTime = Math.min(video.duration, video.currentTime + 10);
+                            }
                         }
                     }
                 } else if (key === 'Escape') {
@@ -355,6 +466,15 @@ function setupSpatialNavigation() {
             const targetContainer = activeOverlay || container;
             
             if (!active || active === document.body || !active.classList.contains("focusable") || (targetContainer && !targetContainer.contains(active))) {
+                if (state.lastFocusedElement && document.body.contains(state.lastFocusedElement) && state.lastFocusedElement.offsetWidth > 0) {
+                    const lastFocusedScreen = state.lastFocusedElement.closest('.screen');
+                    const isInsideTarget = !targetContainer || targetContainer.contains(state.lastFocusedElement);
+                    if (isInsideTarget && lastFocusedScreen && lastFocusedScreen.id === activeScreenId()) {
+                        e.preventDefault();
+                        state.lastFocusedElement.focus();
+                        return;
+                    }
+                }
                 e.preventDefault();
                 focusFirst();
                 return;
@@ -388,15 +508,28 @@ function setupSpatialNavigation() {
             }
             
             if (active && active.id === 'player-progress-bar') {
-                const video = document.getElementById("video-player");
-                if (video.duration && (key === 'ArrowLeft' || key === 'ArrowRight')) {
-                    e.preventDefault();
-                    if (key === 'ArrowLeft') {
-                        video.currentTime = Math.max(0, video.currentTime - 10);
-                    } else {
-                        video.currentTime = Math.min(video.duration, video.currentTime + 10);
+                if (state.isNativePlaying) {
+                    if (key === 'ArrowLeft' || key === 'ArrowRight') {
+                        e.preventDefault();
+                        let targetTime = key === 'ArrowLeft' ? Math.max(0, state.nativeCurrentTime - 10) : Math.min(state.nativeDuration, state.nativeCurrentTime + 10);
+                        if (window.AndroidApp && typeof window.AndroidApp.seekNative === 'function') {
+                            window.AndroidApp.seekNative(targetTime * 1000);
+                        }
+                        state.nativeCurrentTime = targetTime;
+                        onNativePlayerProgress(targetTime, state.nativeDuration);
+                        return;
                     }
-                    return;
+                } else {
+                    const video = document.getElementById("video-player");
+                    if (video.duration && (key === 'ArrowLeft' || key === 'ArrowRight')) {
+                        e.preventDefault();
+                        if (key === 'ArrowLeft') {
+                            video.currentTime = Math.max(0, video.currentTime - 10);
+                        } else {
+                            video.currentTime = Math.min(video.duration, video.currentTime + 10);
+                        }
+                        return;
+                    }
                 }
             }
             
@@ -412,7 +545,7 @@ function setupSpatialNavigation() {
                         active.removeAttribute('readonly');
                         active.focus();
                     }
-                } else if (active.tagName !== 'SELECT') {
+                } else if (active.tagName !== 'BUTTON' && active.tagName !== 'A' && active.tagName !== 'SELECT') {
                     e.preventDefault();
                     active.click();
                 }
@@ -425,17 +558,62 @@ function setupSpatialNavigation() {
     
     document.addEventListener("focusin", (e) => {
         const target = e.target;
-        if (target && target.classList.contains("media-card")) {
+        if (target && target.classList.contains("focusable")) {
             state.lastFocusedElement = target;
         }
     });
 }
 
 function moveFocus(direction) {
-    const active = document.activeElement;
+    let active = document.activeElement;
+    if (!active || active === document.body || !active.classList.contains('focusable')) {
+        if (state.lastFocusedElement && document.body.contains(state.lastFocusedElement) && state.lastFocusedElement.offsetWidth > 0) {
+            const lastFocusedScreen = state.lastFocusedElement.closest('.screen');
+            if (lastFocusedScreen && lastFocusedScreen.id === activeScreenId()) {
+                state.lastFocusedElement.focus();
+                active = state.lastFocusedElement;
+            }
+        }
+    }
     if (!active || !active.classList.contains('focusable')) {
         focusFirst();
         return;
+    }
+    
+    // Custom rule: navigation between category sidebar and media grid
+    if (active.classList.contains("category-item") && direction === "right") {
+        const gridCard = document.querySelector("#media-grid .media-card.active-playing") || 
+                         document.querySelector("#media-grid .media-card") || 
+                         Array.from(document.querySelectorAll("#media-grid .focusable")).find(el => el.offsetWidth > 0 && el.offsetHeight > 0);
+        if (gridCard) {
+            gridCard.focus();
+            gridCard.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+            return;
+        }
+    }
+    if (active.classList.contains("media-card") && direction === "left" && isLeftmostMediaCard(active)) {
+        const activeCat = document.querySelector("#category-list .category-item.active") || 
+                          document.querySelector("#category-list .category-item");
+        if (activeCat) {
+            activeCat.focus();
+            activeCat.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+            return;
+        }
+    }
+    
+    // Custom rule: left navigation from preview panel to media grid
+    const inPreviewPanel = document.getElementById("live-preview-panel") && 
+                           document.getElementById("live-preview-panel").contains(active);
+    if (inPreviewPanel && direction === "left") {
+        const gridCard = state.lastFocusedElement || 
+                         document.querySelector("#media-grid .media-card.active-playing") || 
+                         document.querySelector("#media-grid .media-card") || 
+                         Array.from(document.querySelectorAll("#media-grid .focusable")).find(el => el.offsetWidth > 0 && el.offsetHeight > 0);
+        if (gridCard) {
+            gridCard.focus();
+            gridCard.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+            return;
+        }
     }
     
     if (active.id === 'player-btn-back' && direction === 'right') {
@@ -453,6 +631,33 @@ function moveFocus(direction) {
         candidates = Array.from(zapDrawer.querySelectorAll(".focusable"));
     } else {
         candidates = Array.from(document.querySelectorAll('.screen:not(.hidden) .focusable'));
+    }
+    
+    // Filter candidates to keep navigation intuitive and prevent focus from jumping out of lists/grids
+    if (active.classList.contains("media-card")) {
+        if (direction === 'down') {
+            // Keep focus inside media-grid when going down
+            candidates = candidates.filter(c => c.classList.contains("media-card"));
+        } else if (direction === 'up') {
+            // Only allow jumping to header (non-cards) if there are no media cards directly above us
+            const cardsAbove = candidates.filter(c => c.classList.contains("media-card") && c.getBoundingClientRect().bottom <= active.getBoundingClientRect().top + 5);
+            if (cardsAbove.length > 0) {
+                candidates = cardsAbove;
+            } else {
+                // No cards above, allow focusing header actions (like search bar, back button)
+                candidates = candidates.filter(c => !c.classList.contains("media-card") && !c.classList.contains("category-item"));
+            }
+        }
+    } else if (active.classList.contains("category-item")) {
+        if (direction === 'up' || direction === 'down') {
+            // Keep vertical navigation in sidebar constrained to category items and category search bar
+            candidates = candidates.filter(c => c.classList.contains("category-item") || c.id === "category-search-bar");
+        }
+    } else if (active.id === "category-search-bar") {
+        if (direction === 'down') {
+            // Go to first category item
+            candidates = candidates.filter(c => c.classList.contains("category-item"));
+        }
     }
     
     const activeRect = active.getBoundingClientRect();
@@ -511,19 +716,17 @@ function moveFocus(direction) {
     
     if (bestCandidate) {
         bestCandidate.focus();
-        bestCandidate.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
-            inline: 'nearest'
-        });
-    } else {
-        // Wrap-around focus behavior on TV
-        if (direction === 'down' && candidates.length > 0) {
-            candidates[0].focus();
-            candidates[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        } else if (direction === 'up' && candidates.length > 0) {
-            candidates[candidates.length - 1].focus();
-            candidates[candidates.length - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (bestCandidate.classList.contains("category-item")) {
+            bestCandidate.scrollIntoView({
+                behavior: 'auto',
+                block: 'center'
+            });
+        } else {
+            bestCandidate.scrollIntoView({
+                behavior: 'auto',
+                block: 'nearest',
+                inline: 'nearest'
+            });
         }
     }
 }
@@ -546,6 +749,8 @@ function focusFirst() {
             target = container.querySelector(".playlist-card") || container.querySelector(".focusable");
         } else if (screenId === 'login-screen') {
             target = container.querySelector("#login-name") || container.querySelector(".focusable");
+        } else if (screenId === 'player-screen') {
+            target = container.querySelector("#player-btn-play") || container.querySelector("#player-btn-back") || Array.from(container.querySelectorAll(".focusable")).find(el => el.offsetWidth > 0 || el.offsetHeight > 0);
         } else if (screenId === 'home-screen') {
             if (state.currentSection === 'settings') {
                 target = container.querySelector("#setting-doh-toggle") || container.querySelector(".settings-panel .focusable");
@@ -558,7 +763,7 @@ function focusFirst() {
         }
         
         if (!target) {
-            target = container.querySelector(".focusable");
+            target = Array.from(container.querySelectorAll(".focusable")).find(el => el.offsetWidth > 0 || el.offsetHeight > 0);
         }
         
         if (target) {
@@ -613,8 +818,8 @@ function handleBackButton() {
 }
 
 function restoreLastScreenState() {
-    const lastScreen = localStorage.getItem("shield_last_screen");
-    const lastSection = localStorage.getItem("shield_last_section");
+    const lastScreen = safeStorage.local.getItem("shield_last_screen");
+    const lastSection = safeStorage.local.getItem("shield_last_section");
     
     if (!lastScreen || lastScreen === "playlist-manager-screen" || lastScreen === "login-screen" || lastScreen === "intro-screen") {
         showScreen("portal-screen");
@@ -625,7 +830,7 @@ function restoreLastScreenState() {
     
     if (lastScreen === "home-screen" && lastSection) {
         switchSection(lastSection);
-        const lastCatId = localStorage.getItem("shield_last_category_id");
+        const lastCatId = safeStorage.local.getItem("shield_last_category_id");
         if (lastCatId && lastCatId !== "all") {
             state.activeCategoryId = lastCatId;
             const cats = state.categories[lastSection] || [];
@@ -645,7 +850,7 @@ function restoreLastScreenState() {
             });
         }
     } else if (lastScreen === "series-details-screen") {
-        const lastSeriesId = localStorage.getItem("shield_last_series_id");
+        const lastSeriesId = safeStorage.local.getItem("shield_last_series_id");
         const seriesItem = state.streams.series.find(s => s.series_id === lastSeriesId || s.id === lastSeriesId);
         if (seriesItem) {
             openSeriesDetails(seriesItem);
@@ -660,4 +865,20 @@ function restoreLastScreenState() {
     } else {
         showScreen(lastScreen);
     }
+}
+
+function isLeftmostMediaCard(activeCard) {
+    const activeRect = activeCard.getBoundingClientRect();
+    const cards = Array.from(document.querySelectorAll("#media-grid .media-card"));
+    for (const card of cards) {
+        if (card === activeCard) continue;
+        const rect = card.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+            // If another card's right side is to the left of our left side (with a tiny margin)
+            if (rect.right < activeRect.left - 5) {
+                return false;
+            }
+        }
+    }
+    return true;
 }

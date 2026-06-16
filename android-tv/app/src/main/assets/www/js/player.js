@@ -47,8 +47,19 @@ async function playMedia(item, section) {
     }
     
     // VOD (movies)
-    const ext = item.container_extension || "mp4";
+    const ext = (item.container_extension || "mp4").toLowerCase();
     const streamUrl = item.url || `${state.serverUrl}/movie/${state.username}/${state.password}/${item.stream_id}.${ext}`;
+    
+    // On Android TV, use native ExoPlayer for MKV files (full codec support)
+    // Resolve URL with DoH first to bypass ISP DNS blocking
+    if (window.AndroidApp && ext === "mkv") {
+        state.currentPlayingStream = { item, section };
+        resolveUrlWithDoH(streamUrl).then(resolvedUrl => {
+            console.log("[Android TV] Playing MKV VOD via ExoPlayer:", resolvedUrl);
+            window.AndroidApp.playStream(resolvedUrl, item.name, item.stream_icon || item.cover || "");
+        });
+        return;
+    }
     
     state.currentPlayingStream = { item, section };
     launchVideoPlayer(streamUrl, item.name, item.stream_icon || item.cover);
@@ -76,11 +87,7 @@ async function loadEPG(streamId) {
 }
 
 function launchVideoPlayer(url, title, logoUrl) {
-    if (window.AndroidApp) {
-        console.log("[Android Wrapper] Delegating video play to native ExoPlayer:", url);
-        window.AndroidApp.playStream(url, title, logoUrl || "");
-        return;
-    }
+
     state.currentPlayingStreamUrl = url;
     destroyPreviewMpegtsPlayer();
     
@@ -97,6 +104,10 @@ function launchVideoPlayer(url, title, logoUrl) {
     showScreen("player-screen");
     const video = document.getElementById("video-player");
     const playerLoader = document.getElementById("player-loader");
+
+    if (video) {
+        video.setAttribute("poster", "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
+    }
     
     document.getElementById("player-channel-name").innerText = title;
     document.getElementById("player-channel-logo").src = logoUrl || "";
@@ -660,6 +671,16 @@ function showZapDrawer() {
                 const displayTitle = ep.title ? cleanEpisodeTitle(ep.title, seriesName) : `${t.seasonPrefix} ${seasonNum} ${t.episodeLabelZap} ${ep.episode_num || ep.num}`;
                 
                 state.currentPlayingStream = { item: ep, section: 'series', seasonNum: seasonNum };
+                
+                // On Android TV, use native ExoPlayer with DoH resolution
+                if (window.AndroidApp) {
+                    resolveUrlWithDoH(playUrl).then(resolvedUrl => {
+                        console.log("[Android TV] Playing series (zap) via ExoPlayer:", resolvedUrl);
+                        window.AndroidApp.playStream(resolvedUrl, displayTitle, state.currentSeriesDetails.info.cover || "");
+                    });
+                    return;
+                }
+                
                 launchVideoPlayer(playUrl, displayTitle, state.currentSeriesDetails.info.cover);
             });
             

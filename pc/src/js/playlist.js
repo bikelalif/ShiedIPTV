@@ -4,7 +4,7 @@
 
 function loadSavedPlaylists() {
     let playlists = [];
-    const saved = localStorage.getItem("shield_playlists");
+    const saved = safeStorage.local.getItem("shield_playlists");
     if (saved) {
         try {
             playlists = JSON.parse(saved);
@@ -17,7 +17,7 @@ function loadSavedPlaylists() {
 }
 
 function saveSettings() {
-    localStorage.setItem("shield_iptv_settings", JSON.stringify({
+    safeStorage.local.setItem("shield_iptv_settings", JSON.stringify({
         isDohEnabled: state.isDohEnabled,
         dohResolver: state.dohResolver,
         language: state.language
@@ -26,12 +26,12 @@ function saveSettings() {
 
 function logout() {
     const t = TRANSLATIONS[state.language || 'en'];
-    localStorage.removeItem("shield_iptv_session");
-    localStorage.removeItem("shield_active_playlist_id");
-    localStorage.removeItem("shield_last_screen");
-    localStorage.removeItem("shield_last_section");
-    localStorage.removeItem("shield_last_category_id");
-    localStorage.removeItem("shield_last_series_id");
+    safeStorage.local.removeItem("shield_iptv_session");
+    safeStorage.local.removeItem("shield_active_playlist_id");
+    safeStorage.local.removeItem("shield_last_screen");
+    safeStorage.local.removeItem("shield_last_section");
+    safeStorage.local.removeItem("shield_last_category_id");
+    safeStorage.local.removeItem("shield_last_series_id");
     state.isLoggedIn = false;
     state.streams = { live: [], movies: [], series: [] };
     state.categories = { live: [], movies: [], series: [] };
@@ -44,13 +44,13 @@ function logout() {
 async function connectPlaylist(playlist, isAuto = false) {
     const t = TRANSLATIONS[state.language || 'en'];
     state.currentPlaylistType = playlist.type;
-    localStorage.setItem("shield_active_playlist_id", playlist.id);
+    safeStorage.local.setItem("shield_active_playlist_id", playlist.id);
     
     if (!isAuto) {
-        localStorage.removeItem("shield_last_screen");
-        localStorage.removeItem("shield_last_section");
-        localStorage.removeItem("shield_last_category_id");
-        localStorage.removeItem("shield_last_series_id");
+        safeStorage.local.removeItem("shield_last_screen");
+        safeStorage.local.removeItem("shield_last_section");
+        safeStorage.local.removeItem("shield_last_category_id");
+        safeStorage.local.removeItem("shield_last_series_id");
     }
     
     if (playlist.type === 'demo') {
@@ -190,7 +190,7 @@ async function performLogin(url, username, password, isAutoLogin = false) {
         if (data && data.user_info && data.user_info.auth === 1) {
             state.isLoggedIn = true;
             
-            localStorage.setItem("shield_iptv_session", JSON.stringify({
+            safeStorage.local.setItem("shield_iptv_session", JSON.stringify({
                 serverUrl: state.serverUrl,
                 username: state.username,
                 password: state.password
@@ -303,10 +303,10 @@ async function addXtreamCodesPlaylist(name, url, username, password) {
                 readonly: false
             };
             playlists.push(newPlaylist);
-            localStorage.setItem("shield_playlists", JSON.stringify(playlists));
-            localStorage.setItem("shield_active_playlist_id", id);
+            safeStorage.local.setItem("shield_playlists", JSON.stringify(playlists));
+            safeStorage.local.setItem("shield_active_playlist_id", id);
             
-            localStorage.setItem("shield_iptv_session", JSON.stringify({
+            safeStorage.local.setItem("shield_iptv_session", JSON.stringify({
                 serverUrl: state.serverUrl,
                 username: state.username,
                 password: state.password
@@ -418,12 +418,12 @@ async function addM3UPlaylist(name, url) {
             readonly: false
         };
         playlists.push(newPlaylist);
-        localStorage.setItem("shield_playlists", JSON.stringify(playlists));
+        safeStorage.local.setItem("shield_playlists", JSON.stringify(playlists));
         
         state.username = newPlaylist.name;
         state.currentPlaylistType = 'm3u';
         state.isLoggedIn = true;
-        localStorage.setItem("shield_active_playlist_id", id);
+        safeStorage.local.setItem("shield_active_playlist_id", id);
         
         document.getElementById("portal-username").innerText = newPlaylist.name;
         document.getElementById("info-status").innerText = t.activeText;
@@ -444,11 +444,11 @@ async function addM3UPlaylist(name, url) {
 function deletePlaylist(id) {
     const playlists = loadSavedPlaylists();
     const filtered = playlists.filter(p => p.id !== id);
-    localStorage.setItem("shield_playlists", JSON.stringify(filtered));
+    safeStorage.local.setItem("shield_playlists", JSON.stringify(filtered));
     
-    const activePlaylistId = localStorage.getItem("shield_active_playlist_id");
+    const activePlaylistId = safeStorage.local.getItem("shield_active_playlist_id");
     if (activePlaylistId === id) {
-        localStorage.removeItem("shield_active_playlist_id");
+        safeStorage.local.removeItem("shield_active_playlist_id");
     }
     
     const t = TRANSLATIONS[state.language || 'en'];

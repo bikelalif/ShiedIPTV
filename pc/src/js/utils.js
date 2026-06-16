@@ -95,7 +95,7 @@ async function makeApiCall(action = '', additionalParams = '') {
     const rawUrl = `${state.serverUrl}/player_api.php?username=${state.username}&password=${state.password}${action ? `&action=${action}` : ''}${additionalParams}`;
     
     try {
-        const response = await fetchWithFallback(rawUrl, {}, 20000);
+        const response = await fetchWithFallback(rawUrl, {}, 60000);
         
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return await response.json();

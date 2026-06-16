@@ -55,15 +55,20 @@ function initApp() {
 }
 
 function proceedAfterCgu() {
-    const isNewSession = !sessionStorage.getItem("shield_session_active");
     sessionStorage.setItem("shield_session_active", "true");
     
-    const activePlaylistId = isNewSession ? null : localStorage.getItem("shield_active_playlist_id");
+    const activePlaylistId = localStorage.getItem("shield_active_playlist_id");
     if (activePlaylistId) {
         const playlists = loadSavedPlaylists();
         const activePlaylist = playlists.find(p => p.id === activePlaylistId);
         if (activePlaylist) {
-            connectPlaylist(activePlaylist, true);
+            const t = TRANSLATIONS[state.language || 'en'];
+            showLoader(t.toastLoginAuth || "Connexion...");
+            
+            // Allow DOM paint tick to show the spinner before starting heavy connection logic
+            setTimeout(() => {
+                connectPlaylist(activePlaylist, true);
+            }, 50);
         } else {
             showScreen("playlist-manager-screen");
             renderPlaylistsGrid();
@@ -472,9 +477,16 @@ function setupEventListeners() {
         toggleFullscreen();
     });
     
-    // VLC Player launching
-    const launchVlc = () => {
+    // VLC / External Player launching (global for timeout auto-fallback)
+    window.launchVlc = () => {
         if (state.currentPlayingStreamUrl) {
+            // On Android TV, use native intent to open external player (VLC, MX Player, etc.)
+            if (window.AndroidApp && typeof window.AndroidApp.openExternalPlayer === 'function') {
+                console.log("[VLC] Launching stream via Android native intent:", state.currentPlayingStreamUrl);
+                window.AndroidApp.openExternalPlayer(state.currentPlayingStreamUrl);
+                return;
+            }
+            // On web/PC, use vlc:// protocol
             let vlcUrl = state.currentPlayingStreamUrl;
             if (vlcUrl.startsWith('http://')) {
                 vlcUrl = vlcUrl.replace('http://', 'vlc://');
@@ -487,6 +499,7 @@ function setupEventListeners() {
             window.location.href = vlcUrl;
         }
     };
+    const launchVlc = window.launchVlc;
 
     const loaderVlcBtn = document.getElementById("player-loader-vlc");
     if (loaderVlcBtn) {
