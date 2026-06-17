@@ -160,7 +160,7 @@ const state = {
     username: '',
     password: '',
     isLoggedIn: false,
-    isDohEnabled: true,
+    isDohEnabled: false,
     dohResolver: 'https://dns.google/resolve',
     
     currentSection: 'live', // 'live', 'movies', 'series', 'settings'
