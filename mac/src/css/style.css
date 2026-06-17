@@ -2742,12 +2742,54 @@ body:not(.tv-mode) #home-screen[data-section="series"] .media-grid {
 /* 10. Unified Video Player Preview Mode overrides */
 #player-screen.preview-mode {
     background-color: transparent !important;
-    box-shadow: none !important;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
     transition: top 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
                 left 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
                 width 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
-                height 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+                height 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.22s ease,
+                box-shadow 0.22s ease !important;
     cursor: pointer;
+}
+
+#player-screen.preview-mode:hover,
+#app:has(#preview-video-container:focus-visible) #player-screen.preview-mode,
+#app:has(#preview-video-container.focused) #player-screen.preview-mode {
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 20px var(--focus-glow) !important;
+    transform: scale(1.03) !important;
+}
+
+#player-screen.preview-mode::after {
+    content: "fullscreen";
+    font-family: "Material Icons";
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    opacity: 0;
+    transition: var(--transition-smooth);
+    pointer-events: none;
+    z-index: 60;
+}
+
+#player-screen.preview-mode:hover::after,
+#app:has(#preview-video-container:focus-visible) #player-screen.preview-mode::after,
+#app:has(#preview-video-container.focused) #player-screen.preview-mode::after {
+    opacity: 1;
 }
 
 #player-screen.preview-mode #video-player {
