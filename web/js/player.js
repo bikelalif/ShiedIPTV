@@ -739,8 +739,9 @@ function closeVideoPlayer() {
     
     const wasLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
     const liveItem = wasLive ? state.currentPlayingStream.item : null;
+    const isMobile = window.innerWidth <= 1024 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     
-    if (wasLive && liveItem) {
+    if (wasLive && liveItem && !isMobile) {
         exitFullscreenToPreview();
         return;
     }

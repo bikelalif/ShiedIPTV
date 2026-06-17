@@ -112,7 +112,7 @@ async function switchSection(section) {
     console.log(`[Browser Check] Section: ${section}, isMobileWeb: ${isMobileWeb}, Width: ${window.innerWidth}, UA: ${navigator.userAgent}`);
     const warningBanner = document.getElementById("browser-warning-banner");
     if (warningBanner) {
-        if (isMobileWeb && section === 'series') {
+        if (isMobileWeb && section === 'movies') {
             warningBanner.classList.remove("hidden");
         } else {
             warningBanner.classList.add("hidden");
@@ -189,9 +189,8 @@ async function switchSection(section) {
     
     showScreen("home-screen");
     
-    renderCategories(state.categories[section]);
-    
     state.activeCategoryId = "all";
+    renderCategories(state.categories[section]);
     loadCategoryStreamsCached(section, "all");
 }
 

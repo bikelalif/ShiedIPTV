@@ -342,8 +342,8 @@ const TRANSLATIONS = {
         breadcrumbGeneral: "Général",
         breadcrumbAll: "Tout",
         untitled: "Sans titre",
-        browserWarningTitle: "Lecture limitée sur navigateur",
-        browserWarningDesc: "Pour regarder le Direct et les Films, veuillez utiliser notre application dédiée. Seules les Séries sont disponibles sur le web.",
+        browserWarningTitle: "Lecture de Films limitée",
+        browserWarningDesc: "L'application dédiée ShieldIPTV est requise pour ouvrir et regarder des films sur votre appareil mobile.",
         browserPlayBlocked: "Ce contenu nécessite l'application ShieldIPTV pour être lu.",
         
         cguTitle: "Avertissement Légal & Conditions",
@@ -464,8 +464,8 @@ const TRANSLATIONS = {
         breadcrumbGeneral: "General",
         breadcrumbAll: "All",
         untitled: "Untitled",
-        browserWarningTitle: "Browser Playback Limited",
-        browserWarningDesc: "To watch Live TV and Movies, please use our dedicated app. Only Series are available on the web.",
+        browserWarningTitle: "Movie Playback Limited",
+        browserWarningDesc: "The dedicated ShieldIPTV app is required to open and watch movies on your mobile device.",
         browserPlayBlocked: "This content requires the ShieldIPTV application to play.",
         
         cguTitle: "Legal Disclaimer & Conditions",
@@ -586,8 +586,8 @@ const TRANSLATIONS = {
         breadcrumbGeneral: "General",
         breadcrumbAll: "Todo",
         untitled: "Sin título",
-        browserWarningTitle: "Reproducción limitada en el navegador",
-        browserWarningDesc: "Para ver canales en vivo y películas, utilice nuestra aplicación dedicada. Solo las series están disponibles en la web.",
+        browserWarningTitle: "Reproducción de películas limitada",
+        browserWarningDesc: "Se requiere la aplicación dedicada ShieldIPTV para abrir y ver películas en su dispositivo móvil.",
         browserPlayBlocked: "Este contenido requiere la aplicación ShieldIPTV para reproducirse.",
         
         cguTitle: "Aviso Legal y Condiciones",
@@ -708,8 +708,8 @@ const TRANSLATIONS = {
         breadcrumbGeneral: "Generale",
         breadcrumbAll: "Tutto",
         untitled: "Senza titolo",
-        browserWarningTitle: "Riproduzione limitata nel browser",
-        browserWarningDesc: "Per guardare la TV in diretta e i film, utilizza la nostra app dedicata. Solo le serie sono disponibili sul web.",
+        browserWarningTitle: "Riproduzione di film limitata",
+        browserWarningDesc: "L'applicazione dedicata ShieldIPTV è richiesta per aprire e guardare film sul tuo dispositivo mobile.",
         browserPlayBlocked: "Questo contenuto richiede l'applicazione ShieldIPTV per essere riprodotto.",
         
         cguTitle: "Avviso Legale & Condizioni",
