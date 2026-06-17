@@ -87,9 +87,10 @@ async function loadEPG(streamId) {
 }
 
 function launchVideoPlayer(url, title, logoUrl) {
-
+    const preservedStream = state.currentPlayingStream;
     state.currentPlayingStreamUrl = url;
     destroyPreviewMpegtsPlayer();
+    state.currentPlayingStream = preservedStream;
     
     const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const vlcLoaderBtn = document.getElementById("player-loader-vlc");
@@ -293,16 +294,20 @@ function bindFullscreenVideoHandlers() {
 function bindPreviewVideoHandlers() {
     const video = document.getElementById("video-player");
     const loader = document.getElementById("preview-loader");
+    const playerLoader = document.getElementById("player-loader");
     if (!video) return;
     
     video.onwaiting = () => { 
         if (loader) loader.classList.remove("hidden"); 
+        if (playerLoader) playerLoader.style.display = "flex";
     };
     video.onplaying = () => { 
         if (loader) loader.classList.add("hidden"); 
+        if (playerLoader) playerLoader.style.display = "none";
     };
     video.onerror = () => {
         if (loader) loader.classList.add("hidden");
+        if (playerLoader) playerLoader.style.display = "none";
         console.warn("[Preview] Error playing preview stream");
     };
     video.onplay = null;
@@ -418,6 +423,7 @@ async function loadLivePreview(item) {
     const playerScreen = document.getElementById("player-screen");
     const video = document.getElementById("video-player");
     const loader = document.getElementById("preview-loader");
+    const playerLoader = document.getElementById("player-loader");
     const t = TRANSLATIONS[state.language || 'en'];
     
     const epgListEl = document.getElementById("preview-epg-list");
@@ -431,6 +437,7 @@ async function loadLivePreview(item) {
     destroyMpegtsPlayer();
     
     if (loader) loader.classList.remove("hidden");
+    if (playerLoader) playerLoader.style.display = "flex";
     
     const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.ts`;
     
@@ -574,13 +581,33 @@ function exitFullscreenToPreview() {
     
     console.log("[Player] Shrinking from fullscreen to preview mode");
     
-    playerScreen.classList.add("preview-mode");
-    updatePreviewVideoPosition();
+    if (state.overlayTimeout) {
+        clearTimeout(state.overlayTimeout);
+        state.overlayTimeout = null;
+    }
+    playerScreen.style.cursor = "";
     
+    // Mark playerScreen as preview-mode FIRST so showScreen knows not to hide it
+    playerScreen.classList.add("preview-mode");
+    
+    // First show the home screen and live-preview-panel so they are in the DOM layout
     showScreen("home-screen");
     
     const liveItem = state.currentPlayingStream.item;
     document.getElementById("live-preview-panel").classList.remove("hidden");
+    
+    const homeScreen = document.getElementById("home-screen");
+    if (homeScreen) {
+        homeScreen.classList.add("preview-open");
+    }
+    
+    // Then calculate positioning
+    updatePreviewVideoPosition();
+    
+    // Schedule additional updates to handle browser exiting fullscreen transition duration
+    setTimeout(updatePreviewVideoPosition, 100);
+    setTimeout(updatePreviewVideoPosition, 300);
+    setTimeout(updatePreviewVideoPosition, 500);
     
     document.querySelectorAll(".media-card").forEach(el => {
         el.classList.remove("active-playing");
@@ -602,13 +629,25 @@ function exitFullscreenToPreview() {
     
     // Adjust preview loader state immediately
     const loader = document.getElementById("preview-loader");
+    const playerLoader = document.getElementById("player-loader");
+    const video = document.getElementById("video-player");
+    const isReady = video && !video.paused && !video.seeking && video.readyState >= 3;
+    
     if (loader) {
-        const video = document.getElementById("video-player");
-        if (video && !video.paused && !video.seeking && video.readyState >= 3) {
-            loader.classList.add("hidden");
-        } else {
-            loader.classList.remove("hidden");
-        }
+        if (isReady) loader.classList.add("hidden");
+        else loader.classList.remove("hidden");
+    }
+    if (playerLoader) {
+        if (isReady) playerLoader.style.display = "none";
+        else playerLoader.style.display = "flex";
+    }
+    
+    // Restore focus to avoid losing focus in TV modes or web
+    if (state.lastFocusedElement && document.body.contains(state.lastFocusedElement) && state.lastFocusedElement.offsetWidth > 0) {
+        state.lastFocusedElement.focus();
+        state.lastFocusedElement.scrollIntoView({ block: 'nearest' });
+    } else {
+        focusFirst();
     }
 }
 
@@ -627,6 +666,10 @@ function stopVideoPlaybackCompletely() {
         playerScreen.classList.add("hidden");
         playerScreen.classList.remove("preview-mode");
         updatePreviewVideoPosition();
+    }
+    const playerLoader = document.getElementById("player-loader");
+    if (playerLoader) {
+        playerLoader.style.display = "none";
     }
     state.currentPlayingStream = null;
 }
