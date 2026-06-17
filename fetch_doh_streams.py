@@ -2,7 +2,27 @@ import urllib.request
 import urllib.parse
 import json
 import ssl
+import socket
 import sys
+
+# Global DNS override mapping
+dns_override_map = {}
+
+# Save original socket.getaddrinfo
+original_getaddrinfo = socket.getaddrinfo
+
+def custom_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    """
+    Custom DNS resolver override that redirects connections for mapped domains
+    to their resolved DoH IP addresses while preserving the original host headers.
+    """
+    if host in dns_override_map:
+        resolved_ip = dns_override_map[host]
+        return original_getaddrinfo(resolved_ip, port, family, type, proto, flags)
+    return original_getaddrinfo(host, port, family, type, proto, flags)
+
+# Enable the socket override globally
+socket.getaddrinfo = custom_getaddrinfo
 
 def resolve_host_doh(hostname):
     """
@@ -51,20 +71,18 @@ def resolve_host_doh(hostname):
         
     return None
 
-def fetch_endpoint(ip, port, scheme, original_hostname, username, password, action=None):
+def fetch_endpoint(server_url, username, password, action=None):
     """
-    Fetches raw data from the IPTV server using the resolved IP and custom Host header.
+    Fetches raw data from the IPTV server. Uses the original domain URL because
+    the socket.getaddrinfo override redirects the socket connection to the correct IP
+    while preserving the domain in the Host header.
     """
-    host_str = f"{original_hostname}:{port}" if port else original_hostname
-    ip_str = f"{ip}:{port}" if port else ip
-    
     if action:
-        url = f"{scheme}://{ip_str}/player_api.php?username={username}&password={password}&action={action}"
+        url = f"{server_url}/player_api.php?username={username}&password={password}&action={action}"
     else:
-        url = f"{scheme}://{ip_str}/player_api.php?username={username}&password={password}"
+        url = f"{server_url}/player_api.php?username={username}&password={password}"
         
     headers = {
-        'Host': host_str,
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
     }
     
@@ -101,8 +119,6 @@ def main():
         
     parsed_url = urllib.parse.urlparse(server_url)
     hostname = parsed_url.hostname
-    port = parsed_url.port
-    scheme = parsed_url.scheme or "http"
     
     if not hostname:
         print("[!] Error: Invalid URL.")
@@ -114,9 +130,12 @@ def main():
         print("[-] DNS resolution failed. Check your connection or the domain.")
         sys.exit(1)
         
+    # Map the hostname to the resolved IP for socket override
+    dns_override_map[hostname] = ip
+    
     print("[*] Connecting to server to check authentication...")
     try:
-        profile = fetch_endpoint(ip, port, scheme, hostname, username, password)
+        profile = fetch_endpoint(server_url, username, password)
         if not profile or not profile.get("user_info") or profile["user_info"].get("auth") != 1:
             print("[!] Authentication failed: Invalid username or password.")
             sys.exit(1)
@@ -129,11 +148,6 @@ def main():
         print(f"[-] Connection failed: {e}")
         sys.exit(1)
         
-    # Fetch lists
-    host_str = f"{hostname}:{port}" if port else hostname
-    base_stream_url = f"{scheme}://{host_str}"
-    base_stream_url_ip = f"{scheme}://{ip}{f':{port}' if port else ''}"
-    
     output_data = {
         "user_info": profile["user_info"],
         "live_streams": [],
@@ -144,14 +158,14 @@ def main():
     # 1. Fetch Live Streams
     print("[*] Fetching live channels...")
     try:
-        live_raw = fetch_endpoint(ip, port, scheme, hostname, username, password, "get_live_streams")
+        live_raw = fetch_endpoint(server_url, username, password, "get_live_streams")
         if isinstance(live_raw, list):
             for item in live_raw:
                 stream_id = item.get("stream_id")
                 if stream_id:
                     # Construct stream links
-                    item["stream_url"] = f"{base_stream_url}/live/{username}/{password}/{stream_id}.ts"
-                    item["stream_url_ip"] = f"{base_stream_url_ip}/live/{username}/{password}/{stream_id}.ts"
+                    item["stream_url"] = f"{server_url}/live/{username}/{password}/{stream_id}.ts"
+                    item["stream_url_ip"] = f"{server_url.replace(hostname, ip)}/live/{username}/{password}/{stream_id}.ts"
                     output_data["live_streams"].append(item)
             print(f"[+] Loaded {len(output_data['live_streams'])} live channels.")
     except Exception as e:
@@ -160,15 +174,15 @@ def main():
     # 2. Fetch VOD Streams
     print("[*] Fetching movies (VOD)...")
     try:
-        vod_raw = fetch_endpoint(ip, port, scheme, hostname, username, password, "get_vod_streams")
+        vod_raw = fetch_endpoint(server_url, username, password, "get_vod_streams")
         if isinstance(vod_raw, list):
             for item in vod_raw:
                 stream_id = item.get("stream_id")
                 if stream_id:
                     ext = item.get("container_extension") or "mp4"
                     # Construct stream links
-                    item["stream_url"] = f"{base_stream_url}/movie/{username}/{password}/{stream_id}.{ext}"
-                    item["stream_url_ip"] = f"{base_stream_url_ip}/movie/{username}/{password}/{stream_id}.{ext}"
+                    item["stream_url"] = f"{server_url}/movie/{username}/{password}/{stream_id}.{ext}"
+                    item["stream_url_ip"] = f"{server_url.replace(hostname, ip)}/movie/{username}/{password}/{stream_id}.{ext}"
                     output_data["movies"].append(item)
             print(f"[+] Loaded {len(output_data['movies'])} movies.")
     except Exception as e:
@@ -177,14 +191,14 @@ def main():
     # 3. Fetch Series
     print("[*] Fetching series list...")
     try:
-        series_raw = fetch_endpoint(ip, port, scheme, hostname, username, password, "get_series")
+        series_raw = fetch_endpoint(server_url, username, password, "get_series")
         if isinstance(series_raw, list):
             for item in series_raw:
                 series_id = item.get("series_id")
                 if series_id:
                     # Add a template link since episodes must be loaded separately
-                    item["episode_url_template"] = f"{base_stream_url}/series/{username}/{password}/{{episode_id}}.{{extension}}"
-                    item["episode_url_template_ip"] = f"{base_stream_url_ip}/series/{username}/{password}/{{episode_id}}.{{extension}}"
+                    item["episode_url_template"] = f"{server_url}/series/{username}/{password}/{{episode_id}}.{{extension}}"
+                    item["episode_url_template_ip"] = f"{server_url.replace(hostname, ip)}/series/{username}/{password}/{{episode_id}}.{{extension}}"
                     output_data["series"].append(item)
             print(f"[+] Loaded {len(output_data['series'])} series.")
     except Exception as e:
