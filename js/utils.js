@@ -82,7 +82,10 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
     try {
         return await tryFetch(resolvedUrl);
     } catch (error) {
-        if (resolvedUrl !== url) {
+        // Only fall back to original URL if DoH is NOT enabled.
+        // When DoH is active and resolved a different URL, the original URL would
+        // go through the ISP's DNS which may redirect to a fake/intercepted server.
+        if (resolvedUrl !== url && !state.isDohEnabled) {
             console.warn(`[DoH] Fetch failed for resolved URL (${resolvedUrl}). Retrying with original URL (${url})...`, error);
             return await tryFetch(url);
         }
