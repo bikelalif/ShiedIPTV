@@ -1,7 +1,7 @@
 {
     "user_info": {
-        "username": "bilal000",
-        "password": "mpbK2326",
+        "username": "demo_user",
+        "password": "demo_password",
         "message": "Welcome (Mock Profile)",
         "auth": 1,
         "status": "Active",
