@@ -18,25 +18,48 @@ async function resolveUrlWithDoH(url) {
         const isHttps = url.startsWith('https://');
         
         // DoH fetch with a 5-second timeout so a blocked resolver doesn't hang the whole login
-        const dohController = new AbortController();
-        const dohTimeout = setTimeout(() => dohController.abort(), 5000);
-        
-        let dnsData;
+        let dohController;
+        let signal;
         try {
-            const acceptHeader = state.dohResolver.includes("dns.google")
-                ? 'application/json'
-                : 'application/dns-json';
-            const dohResponse = await fetch(
-                `${state.dohResolver}?name=${encodeURIComponent(hostname)}&type=A`,
-                { headers: { 'Accept': acceptHeader }, signal: dohController.signal }
-            );
-            clearTimeout(dohTimeout);
-            dnsData = await dohResponse.json();
-        } catch (dohErr) {
-            clearTimeout(dohTimeout);
-            console.warn(`[DoH] Resolver ${state.dohResolver} unreachable or timed out. Using original URL.`, dohErr);
-            return url;
-        }
+            if (typeof AbortController !== 'undefined') {
+                dohController = new AbortController();
+                signal = dohController.signal;
+            }
+        } catch (e) {}
+        
+        let dohTimeoutId;
+        const dohTimeoutPromise = new Promise((_, reject) => {
+            dohTimeoutId = setTimeout(() => {
+                if (dohController) {
+                    try {
+                        dohController.abort();
+                    } catch (e) {}
+                }
+                const err = new Error("DoH Timeout");
+                err.name = "AbortError";
+                reject(err);
+            }, 5000);
+        });
+        
+        const fetchPromise = (async () => {
+            try {
+                const acceptHeader = state.dohResolver.includes("dns.google")
+                    ? 'application/json'
+                    : 'application/dns-json';
+                const fetchOptions = { headers: { 'Accept': acceptHeader } };
+                if (signal) fetchOptions.signal = signal;
+                
+                const dohResponse = await fetch(
+                    `${state.dohResolver}?name=${encodeURIComponent(hostname)}&type=A`,
+                    fetchOptions
+                );
+                return await dohResponse.json();
+            } finally {
+                if (dohTimeoutId) clearTimeout(dohTimeoutId);
+            }
+        })();
+        
+        const dnsData = await Promise.race([fetchPromise, dohTimeoutPromise]);
         
         if (dnsData && dnsData.Answer && dnsData.Answer.length > 0) {
             const aRecord = dnsData.Answer.find(record => record.type === 1);
@@ -60,29 +83,51 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
     const resolvedUrl = await resolveUrlWithDoH(url);
     
     const tryFetch = async (targetUrl) => {
-        const controller = new AbortController();
-        const signal = options.signal || controller.signal;
-        
-        let timeoutId;
-        if (!options.signal) {
-            timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-        }
+        let controller;
+        let signal;
         
         try {
-            const fetchOptions = { ...options, signal };
-            const response = await fetch(targetUrl, fetchOptions);
-            if (timeoutId) clearTimeout(timeoutId);
-            return response;
-        } catch (err) {
-            if (timeoutId) clearTimeout(timeoutId);
-            throw err;
+            if (typeof AbortController !== 'undefined') {
+                controller = new AbortController();
+                signal = options.signal || controller.signal;
+            }
+        } catch (e) {
+            console.warn("AbortController not supported:", e);
         }
+        
+        let timeoutId;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => {
+                if (controller) {
+                    try {
+                        controller.abort();
+                    } catch (e) {}
+                }
+                const err = new Error('Timeout');
+                err.name = 'AbortError';
+                reject(err);
+            }, timeoutMs);
+        });
+        
+        const fetchPromise = (async () => {
+            try {
+                const fetchOptions = { ...options };
+                if (signal) fetchOptions.signal = signal;
+                const response = await fetch(targetUrl, fetchOptions);
+                return response;
+            } finally {
+                if (timeoutId) clearTimeout(timeoutId);
+            }
+        })();
+        
+        return Promise.race([fetchPromise, timeoutPromise]);
     };
     
     try {
         return await tryFetch(resolvedUrl);
     } catch (error) {
-        if (resolvedUrl !== url && error.name !== 'AbortError') {
+        const isTimeout = error.name === 'AbortError' || error.message === 'Timeout';
+        if (resolvedUrl !== url && !isTimeout) {
             console.warn(`[DoH] Fetch failed for resolved URL (${resolvedUrl}). Retrying with original URL (${url})...`, error);
             return await tryFetch(url);
         }
