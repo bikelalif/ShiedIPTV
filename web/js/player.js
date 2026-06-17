@@ -298,6 +298,12 @@ function bindFullscreenVideoHandlers() {
             if (total) total.innerText = formatTime(video.duration);
         }
     };
+    
+    // iOS Safari native fullscreen exit support
+    video.onwebkitendfullscreen = () => {
+        console.log("[Player] webkitendfullscreen event fired");
+        handleiOSFullscreenExit();
+    };
 }
 
 function bindPreviewVideoHandlers() {
@@ -322,6 +328,7 @@ function bindPreviewVideoHandlers() {
     video.onplay = null;
     video.onpause = null;
     video.ontimeupdate = null;
+    video.onwebkitendfullscreen = null;
 }
 
 function destroyMpegtsPlayer() {
@@ -585,6 +592,28 @@ function goFullscreenFromPreview() {
     }
     
     resetPlayerActivity();
+}
+
+// iOS Safari native player exit support
+function handleiOSFullscreenExit() {
+    const video = document.getElementById("video-player");
+    if (!video || !state.currentPlayingStream) return;
+    
+    const wasLive = state.currentPlayingStream.section === 'live';
+    
+    if (wasLive) {
+        console.log("[Player] iOS exit fullscreen: returning Live to preview mode");
+        exitFullscreenToPreview();
+        // Force playback resume since Safari automatically pauses video on native player exit
+        setTimeout(() => {
+            if (video.paused) {
+                video.play().catch(e => console.warn("Failed to resume Live stream after exiting iOS native player:", e));
+            }
+        }, 150);
+    } else {
+        console.log("[Player] iOS exit fullscreen: closing Movie/Series player");
+        closeVideoPlayer();
+    }
 }
 
 function exitFullscreenToPreview() {

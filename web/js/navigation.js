@@ -112,11 +112,25 @@ async function switchSection(section) {
     console.log(`[Browser Check] Section: ${section}, isMobileWeb: ${isMobileWeb}, Width: ${window.innerWidth}, UA: ${navigator.userAgent}`);
     const warningBanner = document.getElementById("browser-warning-banner");
     if (warningBanner) {
-        if (isMobileWeb && (section === 'live' || section === 'movies')) {
+        if (isMobileWeb && section === 'series') {
             warningBanner.classList.remove("hidden");
         } else {
             warningBanner.classList.add("hidden");
         }
+    }
+
+    // Toggle search bar wrapper visibility and clear search query on section switch
+    const searchWrapper = document.querySelector(".search-wrapper");
+    if (searchWrapper) {
+        if (section === 'settings') {
+            searchWrapper.classList.add("hidden");
+        } else {
+            searchWrapper.classList.remove("hidden");
+        }
+    }
+    const searchBar = document.getElementById("search-bar");
+    if (searchBar) {
+        searchBar.value = "";
     }
 
     const homeScreen = document.getElementById("home-screen");
