@@ -101,6 +101,33 @@ async function makeApiCall(action = '', additionalParams = '') {
         return await response.json();
     } catch (error) {
         console.error(`API Error on action: ${action}`, error);
+        
+        // Attempt to fall back to locally generated mock JSON files in case of server failure/timeout
+        try {
+            console.log(`[Local Fallback] Server unreachable. Trying local files for action: ${action || 'user_info'}`);
+            let localFile = 'user_info.json';
+            if (action === 'get_live_categories') localFile = 'live_categories.json';
+            else if (action === 'get_live_streams') localFile = 'live_streams.json';
+            else if (action === 'get_vod_categories') localFile = 'vod_categories.json';
+            else if (action === 'get_vod_streams') localFile = 'vod_streams.json';
+            else if (action === 'get_series_categories') localFile = 'series_categories.json';
+            else if (action === 'get_series') localFile = 'series.json';
+            else if (action === 'get_series_info') {
+                const match = additionalParams.match(/series_id=(\d+)/);
+                const seriesId = match ? match[1] : '3001';
+                localFile = `series_info_${seriesId}.json`;
+            }
+            
+            const localResponse = await fetch(localFile);
+            if (localResponse.ok) {
+                const data = await localResponse.json();
+                console.log(`[Local Fallback] Successfully loaded ${localFile} locally.`);
+                return data;
+            }
+        } catch (fallbackErr) {
+            console.warn(`[Local Fallback] Failed to load local file:`, fallbackErr);
+        }
+        
         // Give a human-readable error message based on error type
         if (error.name === 'AbortError') {
             throw new Error('Délai dépassé — le serveur ne répond pas (timeout)');
