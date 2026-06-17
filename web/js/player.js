@@ -195,12 +195,14 @@ function launchVideoPlayer(url, title, logoUrl) {
                 state.mpegtsPlayer.play().catch(e => {
                     console.warn("Autoplay failed, trying muted...", e);
                     video.muted = true;
-                    state.mpegtsPlayer.play();
+                    if (state.mpegtsPlayer) {
+                        state.mpegtsPlayer.play().catch(err => console.error(err));
+                    }
                 });
             } catch (err) {
                 console.error("mpegts.js setup crashed, falling back to native player:", err);
                 video.src = resolvedStreamUrl;
-                video.play();
+                video.play().catch(err => {});
             }
         } else {
             console.log("[Player] Launching native HTML5 source:", resolvedStreamUrl);
@@ -209,7 +211,7 @@ function launchVideoPlayer(url, title, logoUrl) {
             video.play().catch(e => {
                 console.warn("Native Autoplay failed, trying muted...", e);
                 video.muted = true;
-                video.play();
+                video.play().catch(err => {});
             });
         }
     });
@@ -393,7 +395,9 @@ function attemptReconnection() {
                 state.mpegtsPlayer.load();
                 state.mpegtsPlayer.play().catch(e => {
                     video.muted = true;
-                    state.mpegtsPlayer.play().catch(err => console.error(err));
+                    if (state.mpegtsPlayer) {
+                        state.mpegtsPlayer.play().catch(err => console.error(err));
+                    }
                 });
             } catch (err) {
                 video.src = resolvedStreamUrl;
@@ -452,7 +456,9 @@ async function loadLivePreview(item) {
                 state.mpegtsPlayer.play().catch(e => {
                     console.warn("[Preview] Autoplay failed, trying muted...", e);
                     video.muted = true;
-                    state.mpegtsPlayer.play().catch(err => console.error(err));
+                    if (state.mpegtsPlayer) {
+                        state.mpegtsPlayer.play().catch(err => console.error(err));
+                    }
                 });
                 
                 state.mpegtsPlayer.on(mpegts.Events.ERROR, (type, detail, info) => {
