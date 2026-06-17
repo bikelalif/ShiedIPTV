@@ -82,7 +82,7 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
     try {
         return await tryFetch(resolvedUrl);
     } catch (error) {
-        if (resolvedUrl !== url) {
+        if (resolvedUrl !== url && error.name !== 'AbortError') {
             console.warn(`[DoH] Fetch failed for resolved URL (${resolvedUrl}). Retrying with original URL (${url})...`, error);
             return await tryFetch(url);
         }
@@ -91,11 +91,16 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
 }
 
 // API Request Handler
-async function makeApiCall(action = '', additionalParams = '') {
+async function makeApiCall(action = '', additionalParams = '', timeoutMs = 60000) {
     const rawUrl = `${state.serverUrl}/player_api.php?username=${state.username}&password=${state.password}${action ? `&action=${action}` : ''}${additionalParams}`;
     
+    // Proactively block mixed content fetches on HTTPS hosted sites to explain the issue clearly to the user
+    if (window.location.protocol === 'https:' && rawUrl.startsWith('http://') && !window.cordova && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        throw new Error("Sécurité Navigateur : Impossible de se connecter à un serveur HTTP depuis un site HTTPS (Mixed Content). Veuillez installer l'application PC, Mac ou Android TV.");
+    }
+    
     try {
-        const response = await fetchWithFallback(rawUrl, {}, 60000);
+        const response = await fetchWithFallback(rawUrl, {}, timeoutMs);
         
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return await response.json();
@@ -105,7 +110,11 @@ async function makeApiCall(action = '', additionalParams = '') {
         if (error.name === 'AbortError') {
             throw new Error('Délai dépassé — le serveur ne répond pas (timeout)');
         } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('net::')) {
-            throw new Error('Serveur injoignable — vérifiez l\'URL et votre connexion réseau');
+            let msg = 'Serveur injoignable — vérifiez l\'URL et votre connexion réseau';
+            if (window.location.protocol === 'https:' && !window.cordova && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                msg += '. Note: Les navigateurs bloquent les connexions non sécurisées (HTTP) ou sans en-têtes CORS sur ce site HTTPS. Utilisez l\'application PC, Mac ou Android TV.';
+            }
+            throw new Error(msg);
         }
         throw error;
     }
