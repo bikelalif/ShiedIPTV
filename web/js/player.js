@@ -299,7 +299,11 @@ function bindFullscreenVideoHandlers() {
         }
     };
     
-    // iOS Safari native fullscreen exit support
+    // iOS Safari native fullscreen events
+    video.onwebkitbeginfullscreen = () => {
+        console.log("[Player] webkitbeginfullscreen event fired");
+        state.iosIsFullscreen = true;
+    };
     video.onwebkitendfullscreen = () => {
         console.log("[Player] webkitendfullscreen event fired");
         handleiOSFullscreenExit();
@@ -328,7 +332,9 @@ function bindPreviewVideoHandlers() {
     video.onplay = null;
     video.onpause = null;
     video.ontimeupdate = null;
+    video.onwebkitbeginfullscreen = null;
     video.onwebkitendfullscreen = null;
+    state.iosIsFullscreen = false;
 }
 
 function destroyMpegtsPlayer() {
@@ -598,6 +604,13 @@ function goFullscreenFromPreview() {
 function handleiOSFullscreenExit() {
     const video = document.getElementById("video-player");
     if (!video || !state.currentPlayingStream) return;
+    
+    // Only handle exit if we were actually in native iOS fullscreen
+    if (!state.iosIsFullscreen) {
+        console.log("[Player] Ignored webkitendfullscreen (phantom event, not in fullscreen)");
+        return;
+    }
+    state.iosIsFullscreen = false;
     
     const wasLive = state.currentPlayingStream.section === 'live';
     
