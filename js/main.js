@@ -434,12 +434,25 @@ function setupEventListeners() {
         });
     }
 
-    // Update preview position on window resize
+    // Update preview position on window resize and fullscreen changes
     window.addEventListener("resize", () => {
         if (typeof updatePreviewVideoPosition === 'function') {
             updatePreviewVideoPosition();
         }
     });
+
+    const onFullscreenChange = () => {
+        if (typeof updatePreviewVideoPosition === 'function') {
+            updatePreviewVideoPosition();
+            setTimeout(updatePreviewVideoPosition, 100);
+            setTimeout(updatePreviewVideoPosition, 300);
+            setTimeout(updatePreviewVideoPosition, 500);
+        }
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+    document.addEventListener("mozfullscreenchange", onFullscreenChange);
+    document.addEventListener("MSFullscreenChange", onFullscreenChange);
     
     // Series Back
     document.getElementById("series-btn-back").addEventListener("click", () => {
@@ -530,7 +543,8 @@ function setupEventListeners() {
     });
     
     // Player controls
-    document.getElementById("player-btn-back").addEventListener("click", () => {
+    document.getElementById("player-btn-back").addEventListener("click", (e) => {
+        e.stopPropagation();
         closeVideoPlayer();
     });
     document.getElementById("player-btn-play").addEventListener("click", () => {
