@@ -9,10 +9,15 @@ async function playMedia(item, section) {
                         !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
                         window.location.hostname !== 'localhost' && 
                         window.location.hostname !== '127.0.0.1';
-    if (isMobileWeb && (section === 'live' || section === 'movies')) {
-        const t = TRANSLATIONS[state.language || 'en'];
-        showToast(t.browserPlayBlocked || "Ce contenu nécessite l'application ShieldIPTV pour être lu.", 5000);
-        return;
+    
+    // On mobile web, only block MKV movies (unsupported codec). TS live streams and MP4 movies work fine.
+    if (isMobileWeb && section === 'movies') {
+        const ext = (item.container_extension || "mp4").toLowerCase();
+        if (ext === 'mkv') {
+            const t = TRANSLATIONS[state.language || 'en'];
+            showToast(t.browserPlayBlocked || "Les fichiers MKV ne sont pas supportés sur navigateur mobile. Utilisez l'application ShieldIPTV.", 5000);
+            return;
+        }
     }
 
     if (section === 'series') {

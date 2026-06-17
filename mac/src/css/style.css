@@ -2312,11 +2312,26 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
 
 /* 12. Responsive adjustments for Mobile & Tablets */
 @media (max-width: 1024px) {
-    #portal-screen {
+    /* Make ALL screens scrollable on mobile with touch inertia */
+    .screen {
         overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    #portal-screen {
         padding: 2rem 1.5rem !important;
         align-items: flex-start !important;
         justify-content: flex-start !important;
+    }
+    #playlist-manager-screen {
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+        padding: 2rem 1rem !important;
+    }
+    .main-content {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        height: auto !important;
+        min-height: 100% !important;
     }
     .content-body {
         flex-direction: column;
@@ -2376,53 +2391,83 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
 }
 
 @media (max-width: 768px) {
-    /* Playlist Manager Header Stacking */
+    /* Playlist Manager Header — keep horizontal but allow wrapping */
     .playlist-manager-header {
-        flex-direction: column !important;
-        align-items: center !important;
-        text-align: center !important;
-        gap: 1.25rem !important;
+        flex-wrap: wrap !important;
+        gap: 1rem !important;
+        justify-content: center !important;
     }
     .playlist-manager-header > div {
         display: flex;
-        flex-direction: column;
         align-items: center;
     }
     .playlist-manager-header .brand-logo {
         justify-content: center !important;
     }
+    /* Keep utility icon buttons in a ROW */
     .playlist-manager-utility-actions {
         justify-content: center !important;
-        width: 100% !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
     }
+    /* Keep action buttons (Demo, CGU) in a ROW */
     .playlist-manager-actions {
-        flex-direction: column !important;
-        width: 100% !important;
-        gap: 1rem !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 0.75rem !important;
     }
     .playlist-manager-actions button {
-        width: 100% !important;
+        width: auto !important;
+        flex-shrink: 0 !important;
     }
 
-    /* Portal Cards vertical scaling adjustments */
+    /* Portal Header — stack logo above buttons, keep buttons in row */
+    .portal-header {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 1rem !important;
+    }
+    .portal-user-info {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 0.5rem !important;
+    }
+    .portal-username-label {
+        width: 100% !important;
+        text-align: center !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* Portal Cards — compact horizontal layout (icon left, text right) */
     .portal-grid {
         grid-template-columns: 1fr !important;
-        gap: 1rem !important;
+        gap: 0.75rem !important;
         max-width: 100% !important;
     }
     .portal-card {
-        padding: 1.5rem 1rem !important;
-        gap: 0.75rem !important;
-        border-radius: 16px !important;
+        flex-direction: row !important;
+        padding: 1rem 1.25rem !important;
+        gap: 1rem !important;
+        border-radius: 14px !important;
+        text-align: left !important;
+        align-items: center !important;
     }
     .portal-card-icon {
-        font-size: 2.75rem !important;
+        font-size: 2rem !important;
+        flex-shrink: 0 !important;
     }
     .portal-card h3 {
-        font-size: 1.25rem !important;
+        font-size: 1.1rem !important;
     }
     .portal-card p {
-        font-size: 0.85rem !important;
+        font-size: 0.8rem !important;
+        display: none !important;
+    }
+    .portal-card-glow {
+        display: none !important;
     }
 
     /* Content Header Stacking & Grid columns */
