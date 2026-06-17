@@ -2397,6 +2397,9 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
         gap: 1rem !important;
         justify-content: center !important;
     }
+    .playlist-manager-header p {
+        display: none !important;
+    }
     .playlist-manager-header > div {
         display: flex;
         align-items: center;
