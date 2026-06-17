@@ -459,7 +459,7 @@ function setupSpatialNavigation() {
                             }
                         }
                     }
-                } else if (key === 'Escape') {
+                } else if (key === 'Escape' || key === 'Backspace') {
                     e.preventDefault();
                     closeVideoPlayer();
                 }
