@@ -960,6 +960,12 @@ body.tv-mode .media-card:focus-visible img, body.tv-mode .media-card.focused img
     transition: var(--transition-smooth);
 }
 
+.preview-video-container:hover {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 20px var(--focus-glow);
+    transform: scale(1.03);
+}
+
 .preview-video-container video {
     position: absolute;
     top: 0;
