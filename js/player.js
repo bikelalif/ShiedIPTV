@@ -32,8 +32,9 @@ async function playMedia(item, section) {
         
         if (isMobile || isPlayerOpen || (state.currentPlayingStream && state.currentPlayingStream.section === 'live' && state.currentPlayingStream.item.stream_id === item.stream_id)) {
             state.currentPlayingStream = { item, section };
-            // On mobile browsers, use .m3u8 (HLS) instead of .ts for native playback
-            const ext = isMobileWeb ? 'm3u8' : 'ts';
+            // Use .ts if MSE is supported (Android Chrome, etc.), fall back to .m3u8 if MSE is not supported (iOS Safari)
+            const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
+            const ext = supportsMse ? 'ts' : 'm3u8';
             const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
             launchVideoPlayer(streamUrl, item.name, item.stream_icon || item.cover);
             return;
@@ -447,8 +448,9 @@ async function loadLivePreview(item) {
     if (loader) loader.classList.remove("hidden");
     if (playerLoader) playerLoader.style.display = "flex";
     
-    const isMobileWebPreview = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.cordova && !window.AndroidApp;
-    const previewExt = isMobileWebPreview ? 'm3u8' : 'ts';
+    // Use .ts if MSE is supported (Android Chrome, etc.), fall back to .m3u8 if MSE is not supported (iOS Safari)
+    const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
+    const previewExt = supportsMse ? 'ts' : 'm3u8';
     const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${previewExt}`;
     
     resolveUrlWithDoH(streamUrl).then(resolvedUrl => {
