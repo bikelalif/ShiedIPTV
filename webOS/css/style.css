@@ -2345,12 +2345,23 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
 
 @media (max-width: 1024px) {
     .portal-grid {
-        grid-template-columns: 1fr;
-        max-width: 450px;
-        margin: 0 auto;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 1rem !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
     }
     .portal-card {
-        padding: 2rem;
+        padding: 2rem 1rem !important;
+        gap: 0.75rem !important;
+    }
+    .portal-card-icon {
+        font-size: 3rem !important;
+    }
+    .portal-card h3 {
+        font-size: 1.2rem !important;
+    }
+    .portal-card p {
+        font-size: 0.8rem !important;
     }
     .main-content {
         padding: 1.5rem;
@@ -2443,26 +2454,27 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
         text-align: center !important;
         font-size: 0.85rem !important;
     }
-    /* Portal Cards — vertical with icons like desktop, just more compact */
+    /* Portal Cards — 3 columns horizontal row with icons like desktop */
     .portal-grid {
-        grid-template-columns: 1fr !important;
-        gap: 0.75rem !important;
-        max-width: 400px !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 0.5rem !important;
+        max-width: 100% !important;
         margin: 0 auto !important;
     }
     .portal-card {
-        padding: 1.5rem 1rem !important;
-        gap: 0.5rem !important;
-        border-radius: 16px !important;
+        padding: 1.25rem 0.25rem !important;
+        gap: 0.4rem !important;
+        border-radius: 12px !important;
     }
     .portal-card-icon {
-        font-size: 2.5rem !important;
+        font-size: 2.2rem !important;
     }
     .portal-card h3 {
-        font-size: 1.15rem !important;
+        font-size: 0.85rem !important;
+        letter-spacing: 0.5px !important;
     }
     .portal-card p {
-        font-size: 0.8rem !important;
+        display: none !important;
     }
 
     /* Content Header Stacking & Grid columns */
@@ -2872,6 +2884,16 @@ body.tv-mode .category-list {
 body.is-webapp #player-btn-vlc,
 body.is-webapp #player-loader-vlc {
     display: none !important;
+}
+
+@media (max-width: 1024px) {
+    body.is-webapp #player-btn-vlc,
+    body.is-webapp #player-loader-vlc {
+        display: flex !important;
+    }
+    body.is-webapp #player-btn-vlc {
+        display: inline-flex !important;
+    }
 }
 
 /* Webapp layout: 4 columns for Movies & Series */
