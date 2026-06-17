@@ -18,48 +18,25 @@ async function resolveUrlWithDoH(url) {
         const isHttps = url.startsWith('https://');
         
         // DoH fetch with a 5-second timeout so a blocked resolver doesn't hang the whole login
-        let dohController;
-        let signal;
+        const dohController = new AbortController();
+        const dohTimeout = setTimeout(() => dohController.abort(), 5000);
+        
+        let dnsData;
         try {
-            if (typeof AbortController !== 'undefined') {
-                dohController = new AbortController();
-                signal = dohController.signal;
-            }
-        } catch (e) {}
-        
-        let dohTimeoutId;
-        const dohTimeoutPromise = new Promise((_, reject) => {
-            dohTimeoutId = setTimeout(() => {
-                if (dohController) {
-                    try {
-                        dohController.abort();
-                    } catch (e) {}
-                }
-                const err = new Error("DoH Timeout");
-                err.name = "AbortError";
-                reject(err);
-            }, 5000);
-        });
-        
-        const fetchPromise = (async () => {
-            try {
-                const acceptHeader = state.dohResolver.includes("dns.google")
-                    ? 'application/json'
-                    : 'application/dns-json';
-                const fetchOptions = { headers: { 'Accept': acceptHeader } };
-                if (signal) fetchOptions.signal = signal;
-                
-                const dohResponse = await fetch(
-                    `${state.dohResolver}?name=${encodeURIComponent(hostname)}&type=A`,
-                    fetchOptions
-                );
-                return await dohResponse.json();
-            } finally {
-                if (dohTimeoutId) clearTimeout(dohTimeoutId);
-            }
-        })();
-        
-        const dnsData = await Promise.race([fetchPromise, dohTimeoutPromise]);
+            const acceptHeader = state.dohResolver.includes("dns.google")
+                ? 'application/json'
+                : 'application/dns-json';
+            const dohResponse = await fetch(
+                `${state.dohResolver}?name=${encodeURIComponent(hostname)}&type=A`,
+                { headers: { 'Accept': acceptHeader }, signal: dohController.signal }
+            );
+            clearTimeout(dohTimeout);
+            dnsData = await dohResponse.json();
+        } catch (dohErr) {
+            clearTimeout(dohTimeout);
+            console.warn(`[DoH] Resolver ${state.dohResolver} unreachable or timed out. Using original URL.`, dohErr);
+            return url;
+        }
         
         if (dnsData && dnsData.Answer && dnsData.Answer.length > 0) {
             const aRecord = dnsData.Answer.find(record => record.type === 1);
@@ -83,51 +60,29 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
     const resolvedUrl = await resolveUrlWithDoH(url);
     
     const tryFetch = async (targetUrl) => {
-        let controller;
-        let signal;
-        
-        try {
-            if (typeof AbortController !== 'undefined') {
-                controller = new AbortController();
-                signal = options.signal || controller.signal;
-            }
-        } catch (e) {
-            console.warn("AbortController not supported:", e);
-        }
+        const controller = new AbortController();
+        const signal = options.signal || controller.signal;
         
         let timeoutId;
-        const timeoutPromise = new Promise((_, reject) => {
-            timeoutId = setTimeout(() => {
-                if (controller) {
-                    try {
-                        controller.abort();
-                    } catch (e) {}
-                }
-                const err = new Error('Timeout');
-                err.name = 'AbortError';
-                reject(err);
-            }, timeoutMs);
-        });
+        if (!options.signal) {
+            timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        }
         
-        const fetchPromise = (async () => {
-            try {
-                const fetchOptions = { ...options };
-                if (signal) fetchOptions.signal = signal;
-                const response = await fetch(targetUrl, fetchOptions);
-                return response;
-            } finally {
-                if (timeoutId) clearTimeout(timeoutId);
-            }
-        })();
-        
-        return Promise.race([fetchPromise, timeoutPromise]);
+        try {
+            const fetchOptions = { ...options, signal };
+            const response = await fetch(targetUrl, fetchOptions);
+            if (timeoutId) clearTimeout(timeoutId);
+            return response;
+        } catch (err) {
+            if (timeoutId) clearTimeout(timeoutId);
+            throw err;
+        }
     };
     
     try {
         return await tryFetch(resolvedUrl);
     } catch (error) {
-        const isTimeout = error.name === 'AbortError' || error.message === 'Timeout';
-        if (resolvedUrl !== url && !isTimeout) {
+        if (resolvedUrl !== url) {
             console.warn(`[DoH] Fetch failed for resolved URL (${resolvedUrl}). Retrying with original URL (${url})...`, error);
             return await tryFetch(url);
         }
@@ -136,16 +91,11 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
 }
 
 // API Request Handler
-async function makeApiCall(action = '', additionalParams = '', timeoutMs = 60000) {
+async function makeApiCall(action = '', additionalParams = '') {
     const rawUrl = `${state.serverUrl}/player_api.php?username=${state.username}&password=${state.password}${action ? `&action=${action}` : ''}${additionalParams}`;
     
-    // Proactively block mixed content fetches on HTTPS hosted sites to explain the issue clearly to the user
-    if (window.location.protocol === 'https:' && rawUrl.startsWith('http://') && !window.cordova && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        throw new Error("Sécurité Navigateur : Impossible de se connecter à un serveur HTTP depuis un site HTTPS (Mixed Content). Veuillez installer l'application PC, Mac ou Android TV.");
-    }
-    
     try {
-        const response = await fetchWithFallback(rawUrl, {}, timeoutMs);
+        const response = await fetchWithFallback(rawUrl, {}, 60000);
         
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return await response.json();
@@ -155,11 +105,7 @@ async function makeApiCall(action = '', additionalParams = '', timeoutMs = 60000
         if (error.name === 'AbortError') {
             throw new Error('Délai dépassé — le serveur ne répond pas (timeout)');
         } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('net::')) {
-            let msg = 'Serveur injoignable — vérifiez l\'URL et votre connexion réseau';
-            if (window.location.protocol === 'https:' && !window.cordova && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-                msg += '. Note: Les navigateurs bloquent les connexions non sécurisées (HTTP) ou sans en-têtes CORS sur ce site HTTPS. Utilisez l\'application PC, Mac ou Android TV.';
-            }
-            throw new Error(msg);
+            throw new Error('Serveur injoignable — vérifiez l\'URL et votre connexion réseau');
         }
         throw error;
     }

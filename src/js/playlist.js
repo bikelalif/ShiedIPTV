@@ -192,7 +192,7 @@ async function performLogin(url, username, password, isAutoLogin = false) {
     state.password = password;
     
     try {
-        const data = await makeApiCall('', '', 15000);
+        const data = await makeApiCall();
         
         if (data && data.user_info && data.user_info.auth === 1) {
             state.isLoggedIn = true;
@@ -328,7 +328,7 @@ async function addXtreamCodesPlaylist(name, url, username, password) {
     state.password = password;
     
     try {
-        const data = await makeApiCall('', '', 15000);
+        const data = await makeApiCall();
         
         if (data && data.user_info && data.user_info.auth === 1) {
             state.isLoggedIn = true;
