@@ -2443,34 +2443,26 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
         text-align: center !important;
         font-size: 0.85rem !important;
     }
-
-    /* Portal Cards — compact horizontal layout (icon left, text right) */
+    /* Portal Cards — vertical with icons like desktop, just more compact */
     .portal-grid {
         grid-template-columns: 1fr !important;
         gap: 0.75rem !important;
-        max-width: 100% !important;
+        max-width: 400px !important;
+        margin: 0 auto !important;
     }
     .portal-card {
-        flex-direction: row !important;
-        padding: 1rem 1.25rem !important;
-        gap: 1rem !important;
-        border-radius: 14px !important;
-        text-align: left !important;
-        align-items: center !important;
+        padding: 1.5rem 1rem !important;
+        gap: 0.5rem !important;
+        border-radius: 16px !important;
     }
     .portal-card-icon {
-        font-size: 2rem !important;
-        flex-shrink: 0 !important;
+        font-size: 2.5rem !important;
     }
     .portal-card h3 {
-        font-size: 1.1rem !important;
+        font-size: 1.15rem !important;
     }
     .portal-card p {
         font-size: 0.8rem !important;
-        display: none !important;
-    }
-    .portal-card-glow {
-        display: none !important;
     }
 
     /* Content Header Stacking & Grid columns */
