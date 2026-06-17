@@ -25,6 +25,11 @@
   },
   "build": {
     "appId": "com.shieldiptv.app",
+    "files": [
+      "main.js",
+      "package.json",
+      "src/**/*"
+    ],
     "win": {
       "target": "nsis"
     },
