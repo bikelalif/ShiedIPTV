@@ -22,7 +22,7 @@ async function playMedia(item, section) {
     
     if (section === 'live') {
         const isPlayerOpen = activeScreenId() === 'player-screen';
-        const isMobile = window.innerWidth <= 768;
+        const isMobile = window.innerWidth <= 1024;
         
         if (isMobile || isPlayerOpen || (state.currentPlayingStream && state.currentPlayingStream.section === 'live' && state.currentPlayingStream.item.stream_id === item.stream_id)) {
             state.currentPlayingStream = { item, section };
@@ -92,7 +92,7 @@ function launchVideoPlayer(url, title, logoUrl) {
     destroyPreviewMpegtsPlayer();
     state.currentPlayingStream = preservedStream;
     
-    const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isMobile = window.innerWidth <= 1024 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const vlcLoaderBtn = document.getElementById("player-loader-vlc");
     if (vlcLoaderBtn) {
         if (isMobile) {
