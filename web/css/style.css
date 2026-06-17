@@ -2326,14 +2326,25 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
     }
 
     #portal-screen {
-        padding: 2rem 1.5rem !important;
+        padding: 2.5rem 1.5rem !important;
+        display: flex !important;
+        flex-direction: column !important;
         align-items: center !important;
-        justify-content: center !important;
+        justify-content: flex-start !important;
     }
     #playlist-manager-screen {
+        display: flex !important;
+        flex-direction: column !important;
         align-items: center !important;
-        justify-content: center !important;
-        padding: 2rem 1rem !important;
+        justify-content: flex-start !important;
+        padding: 2.5rem 1rem !important;
+    }
+    #login-screen {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        padding: 2.5rem 1rem !important;
     }
     
     .portal-grid {
@@ -2427,7 +2438,13 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
 }
 
 @media (max-width: 768px) {
-    /* Playlist Manager Header — keep horizontal but allow wrapping */
+    /* Playlist Manager Screen mobile layout */
+    .playlist-manager-container {
+        width: 95% !important;
+        gap: 1.5rem !important;
+        padding: 1.5rem 0.5rem !important;
+        padding-bottom: calc(3rem + env(safe-area-inset-bottom)) !important;
+    }
     .playlist-manager-header {
         flex-direction: row !important;
         flex-wrap: wrap !important;
@@ -2445,14 +2462,12 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
     .playlist-manager-header .brand-logo {
         justify-content: flex-start !important;
     }
-    /* Keep utility icon buttons in a ROW */
     .playlist-manager-utility-actions {
         justify-content: flex-end !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         gap: 0.5rem !important;
     }
-    /* Keep action buttons (Demo, CGU) in a ROW */
     .playlist-manager-actions {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
@@ -2464,58 +2479,100 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
         flex: 1 !important;
         width: auto !important;
         font-size: 0.85rem !important;
-        padding: 0.6rem 0.5rem !important;
+        padding: 0.60rem 0.5rem !important;
     }
 
-    /* Portal Header — stack logo above buttons, keep buttons in row */
+    /* Portal Screen (Main Menu) mobile layout */
+    #portal-screen {
+        padding: 1.5rem 1rem !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        overflow-y: auto !important;
+    }
+    .portal-container {
+        width: 100% !important;
+        gap: 1.5rem !important;
+        padding-bottom: calc(3rem + env(safe-area-inset-bottom)) !important;
+        padding-top: calc(0.5rem + env(safe-area-inset-top)) !important;
+    }
     .portal-header {
         flex-direction: column !important;
         align-items: center !important;
-        gap: 1rem !important;
+        gap: 0.75rem !important;
     }
     .portal-user-info {
         flex-direction: row !important;
         flex-wrap: wrap !important;
         justify-content: center !important;
         gap: 0.5rem !important;
+        width: 100% !important;
     }
     .portal-username-label {
         width: 100% !important;
         text-align: center !important;
         font-size: 0.85rem !important;
+        margin-bottom: 0.25rem !important;
     }
-    
-    /* Portal Cards — 3 columns horizontal row with icons like desktop */
     .portal-grid {
         grid-template-columns: repeat(3, 1fr) !important;
-        gap: 0.5rem !important;
+        gap: 0.6rem !important;
         max-width: 100% !important;
         margin: 0 auto !important;
+        width: 100% !important;
     }
     .portal-card {
-        padding: 1.25rem 0.25rem !important;
-        gap: 0.4rem !important;
-        border-radius: 12px !important;
+        padding: 1.5rem 0.4rem !important;
+        gap: 0.5rem !important;
+        border-radius: 16px !important;
+        background: rgba(15, 23, 42, 0.6) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35) !important;
     }
     .portal-card-icon {
-        font-size: 2.2rem !important;
+        font-size: 2.5rem !important;
     }
     .portal-card h3 {
-        font-size: 0.85rem !important;
+        font-size: 0.9rem !important;
         letter-spacing: 0.5px !important;
+        font-weight: 700 !important;
     }
     .portal-card p {
         display: none !important;
     }
 
-    /* Content Header — keep horizontal and clean */
+    /* Login / Add Playlist Screen mobile layout */
+    #login-screen {
+        padding: 1rem !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        overflow-y: auto !important;
+    }
+    .login-container {
+        width: 100% !important;
+        max-height: none !important;
+        padding: 1.5rem 1rem !important;
+        margin-top: calc(0.5rem + env(safe-area-inset-top)) !important;
+    }
+    #login-form {
+        max-height: none !important;
+        overflow-y: visible !important;
+        padding: 10px 0 calc(3rem + env(safe-area-inset-bottom)) 0 !important;
+    }
+
+    /* Content Area (Media Dashboard) header mobile layout */
     .content-header {
         flex-direction: row !important;
         align-items: center !important;
         justify-content: space-between !important;
         gap: 0.5rem !important;
         padding: 0.6rem 0.75rem !important;
-        height: 55px !important;
+        padding-top: calc(0.6rem + env(safe-area-inset-top)) !important;
+        height: auto !important;
+        min-height: 55px !important;
         margin-bottom: 0 !important;
         border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
     }
@@ -2539,38 +2596,92 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
         display: none !important;
     }
     
-    /* Keep PC layout: Left category sidebar, right media grid */
+    /* Horizontal categories top bar mobile layout */
     .content-body {
-        flex-direction: row !important;
+        flex-direction: column !important;
         height: calc(100% - 55px) !important;
+        overflow: hidden !important;
     }
     .category-sidebar {
-        width: 140px !important;
-        padding: 0.5rem 0.25rem !important;
+        width: 100% !important;
+        height: 48px !important;
+        max-height: 48px !important;
+        padding: 0 0.5rem !important;
+        background: rgba(15, 23, 42, 0.15) !important;
+        border-right: none !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        display: flex !important;
+        align-items: center !important;
+        overflow: hidden !important;
+        border-radius: 0 !important;
+    }
+    .category-list {
+        display: flex !important;
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        width: 100% !important;
+        height: 100% !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        padding: 0 0.25rem !important;
+    }
+    .category-list::-webkit-scrollbar {
+        display: none !important;
     }
     .category-item {
-        padding: 0.5rem 0.6rem !important;
-        font-size: 0.8rem !important;
-        margin-bottom: 0.2rem !important;
-        border-radius: 8px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        padding: 0.4rem 1rem !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        margin-bottom: 0 !important;
+        border-radius: 20px !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        background: rgba(255, 255, 255, 0.03) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        color: var(--text-muted) !important;
     }
+    .category-item.active {
+        background: var(--primary) !important;
+        color: white !important;
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.3) !important;
+    }
+    
+    /* Media Grid below top bar categories */
     .media-grid-container {
         padding: 0.75rem !important;
+        width: 100% !important;
+        height: calc(100% - 48px) !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding-bottom: calc(2.5rem + env(safe-area-inset-bottom)) !important;
     }
     .media-grid {
         grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)) !important;
         gap: 0.6rem !important;
+        width: 100% !important;
     }
     
-    /* Video Player Overlay Controls mobile layout */
+    /* Video Player Overlay mobile layout (Safe Area optimized) */
+    .player-overlay-container {
+        padding: 1rem !important;
+        padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)) !important;
+        padding-top: calc(1rem + env(safe-area-inset-top)) !important;
+        padding-left: calc(1rem + env(safe-area-inset-left)) !important;
+        padding-right: calc(1rem + env(safe-area-inset-right)) !important;
+    }
     .player-top-bar {
-        padding: 0.75rem !important;
+        padding: 0.5rem !important;
         gap: 0.5rem !important;
     }
     .player-btn {
-        width: 36px !important;
-        height: 36px !important;
-        border-radius: 8px !important;
+        width: 40px !important;
+        height: 40px !important;
+        border-radius: 10px !important;
     }
     .player-btn .material-icons {
         font-size: 1.25rem !important;
@@ -2586,7 +2697,8 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
         font-size: 0.75rem !important;
     }
     .player-bottom-bar {
-        padding: 0.75rem !important;
+        padding: 0.5rem !important;
+        gap: 1rem !important;
     }
     .player-control-row {
         flex-direction: row !important;
@@ -2600,6 +2712,7 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
         position: relative !important;
         left: 0 !important;
         transform: none !important;
+        gap: 1rem !important;
     }
     
     .xtream-fields {
@@ -2893,20 +3006,13 @@ body.tv-mode .category-list {
     gap: 0.3rem !important;
 }
 
-/* Webapp only styling overrides */
+/* Webapp only styling overrides - VLC buttons completely removed */
 body.is-webapp #player-btn-vlc,
-body.is-webapp #player-loader-vlc {
+body.is-webapp #player-loader-vlc,
+#player-btn-vlc,
+#player-loader-vlc,
+.vlc-btn-loader {
     display: none !important;
-}
-
-@media (max-width: 1024px) {
-    body.is-webapp #player-btn-vlc,
-    body.is-webapp #player-loader-vlc {
-        display: flex !important;
-    }
-    body.is-webapp #player-btn-vlc {
-        display: inline-flex !important;
-    }
 }
 
 /* Webapp layout: 4 columns for Movies & Series */
