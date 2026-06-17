@@ -28,10 +28,13 @@ async function playMedia(item, section) {
     if (section === 'live') {
         const isPlayerOpen = activeScreenId() === 'player-screen';
         const isMobile = window.innerWidth <= 1024;
+        const isMobileWeb = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.cordova && !window.AndroidApp;
         
         if (isMobile || isPlayerOpen || (state.currentPlayingStream && state.currentPlayingStream.section === 'live' && state.currentPlayingStream.item.stream_id === item.stream_id)) {
             state.currentPlayingStream = { item, section };
-            const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.ts`;
+            // On mobile browsers, use .m3u8 (HLS) instead of .ts for native playback
+            const ext = isMobileWeb ? 'm3u8' : 'ts';
+            const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
             launchVideoPlayer(streamUrl, item.name, item.stream_icon || item.cover);
             return;
         }
@@ -444,7 +447,9 @@ async function loadLivePreview(item) {
     if (loader) loader.classList.remove("hidden");
     if (playerLoader) playerLoader.style.display = "flex";
     
-    const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.ts`;
+    const isMobileWebPreview = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.cordova && !window.AndroidApp;
+    const previewExt = isMobileWebPreview ? 'm3u8' : 'ts';
+    const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${previewExt}`;
     
     resolveUrlWithDoH(streamUrl).then(resolvedUrl => {
         const isTsStream = (resolvedUrl.includes('.ts') || resolvedUrl.includes('/live/')) && !resolvedUrl.includes('.m3u8');
@@ -752,9 +757,24 @@ function togglePlayPause() {
 }
 
 function toggleFullscreen() {
+    const video = document.getElementById('video-player');
+    
+    // iOS Safari: use webkitEnterFullscreen on the video element
+    if (video && video.webkitEnterFullscreen && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        try {
+            video.webkitEnterFullscreen();
+        } catch (err) {
+            console.error('iOS fullscreen failed:', err);
+        }
+        resetPlayerActivity();
+        return;
+    }
+    
     if (!document.fullscreenElement) {
         try {
-            const promise = document.documentElement.requestFullscreen();
+            const el = document.documentElement;
+            const promise = el.requestFullscreen ? el.requestFullscreen() : 
+                           el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : null;
             if (promise && typeof promise.catch === 'function') {
                 promise.catch(err => {
                     console.error(`Error entering fullscreen: ${err.message}`);
@@ -765,7 +785,8 @@ function toggleFullscreen() {
         }
     } else {
         try {
-            const promise = document.exitFullscreen();
+            const promise = document.exitFullscreen ? document.exitFullscreen() :
+                           document.webkitExitFullscreen ? document.webkitExitFullscreen() : null;
             if (promise && typeof promise.catch === 'function') {
                 promise.catch(() => {});
             }
