@@ -1,8 +1,8 @@
 const http = require('http');
 
-const SERVER_URL = "http://line.liondnscloud.ru";
-const USERNAME = "bilal000";
-const PASSWORD = "mpbK2326";
+const SERVER_URL = "http://your-iptv-domain.com";
+const USERNAME = "username";
+const PASSWORD = "password";
 const SEARCH_KEYWORD = "irishman";
 
 const url = `${SERVER_URL}/player_api.php?username=${USERNAME}&password=${PASSWORD}&action=get_vod_streams`;

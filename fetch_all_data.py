@@ -4,9 +4,9 @@ import ssl
 import os
 import sys
 
-SERVER_URL = "http://line.liondnscloud.ru"
-USERNAME = "bilal000"
-PASSWORD = "mpbK2326"
+SERVER_URL = "http://your-iptv-domain.com"
+USERNAME = "username"
+PASSWORD = "password"
 
 MOCK_USER_INFO = {
     "user_info": {

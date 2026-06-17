@@ -2,10 +2,10 @@ import urllib.request
 import json
 import ssl
 
-# Credentials provided by the user
-SERVER_URL = "http://line.liondnscloud.ru"
-USERNAME = "bilal000"
-PASSWORD = "mpbK2326"
+# Credentials
+SERVER_URL = "http://your-iptv-domain.com"
+USERNAME = "username"
+PASSWORD = "password"
 SEARCH_KEYWORD = "irishman"
 
 def fetch_and_find():
