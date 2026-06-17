@@ -78,6 +78,11 @@
             }
             
             window.onerror = function(message, source, lineno, colno, error) {
+                // Ignore Keychain/autofill/extensions and cross-origin censored errors
+                if (message === 'Script error.' || lineno === 0 || !source) {
+                    console.warn("Ignored browser extension/autofill error:", message);
+                    return true;
+                }
                 showError(message, source, lineno, colno, error);
                 return false;
             };
@@ -86,6 +91,12 @@
                 var reason = event.reason;
                 var message = reason && reason.message ? reason.message : String(reason);
                 var stack = reason && reason.stack ? reason.stack : '';
+                
+                // Ignore video playback interruption errors (AbortError) common during zapping
+                if (message.indexOf('AbortError') !== -1 || message.indexOf('play()') !== -1) {
+                    console.warn("Ignored video playback promise interruption:", message);
+                    return;
+                }
                 showError('Unhandled Promise Rejection: ' + message, 'Promise', 0, 0, reason);
             });
 
