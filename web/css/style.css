@@ -45,7 +45,9 @@ body {
     color: var(--text-main);
     overflow: hidden;
     width: 100vw;
+    width: 100dvw;
     height: 100vh;
+    height: 100dvh;
     user-select: none;
 }
 
