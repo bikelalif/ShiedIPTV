@@ -637,7 +637,14 @@ function closeVideoPlayer() {
     state.reconnectAttempts = 0;
 
     if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
+        try {
+            const promise = document.exitFullscreen();
+            if (promise && typeof promise.catch === 'function') {
+                promise.catch(() => {});
+            }
+        } catch (e) {
+            console.warn("Failed to exit fullscreen:", e);
+        }
     }
     
     const wasLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
@@ -692,11 +699,25 @@ function togglePlayPause() {
 
 function toggleFullscreen() {
     if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => {
+        try {
+            const promise = document.documentElement.requestFullscreen();
+            if (promise && typeof promise.catch === 'function') {
+                promise.catch(err => {
+                    console.error(`Error entering fullscreen: ${err.message}`);
+                });
+            }
+        } catch (err) {
             console.error(`Error entering fullscreen: ${err.message}`);
-        });
+        }
     } else {
-        document.exitFullscreen().catch(() => {});
+        try {
+            const promise = document.exitFullscreen();
+            if (promise && typeof promise.catch === 'function') {
+                promise.catch(() => {});
+            }
+        } catch (err) {
+            console.error(err);
+        }
     }
     resetPlayerActivity();
 }
