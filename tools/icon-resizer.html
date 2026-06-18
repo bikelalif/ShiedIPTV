@@ -322,14 +322,46 @@
             <!-- Right panel: Crop Targets with Tabs -->
             <div class="panel">
                 <div class="tabs-header">
-                    <button class="tab-btn active" onclick="switchTab('android')">Android APK</button>
+                    <button class="tab-btn active" onclick="switchTab('playstore')">Google Play Store</button>
+                    <button class="tab-btn" onclick="switchTab('android')">Android APK</button>
                     <button class="tab-btn" onclick="switchTab('pc')">PC Client (Electron)</button>
                     <button class="tab-btn" onclick="switchTab('webos')">webOS (LG TV)</button>
                     <button class="tab-btn" onclick="switchTab('vidaa')">Vidaa OS (Hisense)</button>
                 </div>
 
+                <!-- Google Play Store Previews -->
+                <div class="preview-panel" id="playstore-tab">
+                    <div class="section-title">Icône de l'application (512 x 512)</div>
+                    <div class="grid-previews">
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 80px; height: 80px;">
+                                <canvas id="canvas-ps-icon" width="512" height="512" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>play_store_icon.png</h4>
+                                <p>512 x 512 px — PNG ou JPEG, max 1 Mo</p>
+                                <button class="btn-download" id="btn-dl-ps-icon">Enregistrer</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-title" style="margin-top: 1.5rem;">Image de présentation (1024 x 500)</div>
+                    <div class="grid-previews">
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 180px; height: 88px;">
+                                <canvas id="canvas-ps-feature" width="1024" height="500" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>feature_graphic.png</h4>
+                                <p>1024 x 500 px — PNG ou JPEG, max 15 Mo</p>
+                                <button class="btn-download" id="btn-dl-ps-feature">Enregistrer</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Android APK Previews -->
-                <div class="preview-panel" id="android-tab">
+                <div class="preview-panel" id="android-tab" style="display: none;">
                     <div class="section-title">Icônes de l'application (Mipmaps)</div>
                     <div class="grid-previews">
                         
@@ -540,24 +572,29 @@
 
         let loadedImage = null;
 
+        // Play Store Canvases
+        const canvasPsIcon = document.getElementById('canvas-ps-icon');
+        const canvasPsFeature = document.getElementById('canvas-ps-feature');
+        
+        // Play Store Download buttons
+        const btnDlPsIcon = document.getElementById('btn-dl-ps-icon');
+        const btnDlPsFeature = document.getElementById('btn-dl-ps-feature');
+
         // Tabs
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.preview-panel').forEach(panel => panel.style.display = 'none');
             
-            if (tabName === 'android') {
-                document.querySelector('.tab-btn[onclick="switchTab(\'android\')"]').classList.add('active');
-                document.getElementById('android-tab').style.display = 'flex';
-            } else if (tabName === 'pc') {
-                document.querySelector('.tab-btn[onclick="switchTab(\'pc\')"]').classList.add('active');
-                document.getElementById('pc-tab').style.display = 'flex';
-            } else if (tabName === 'webos') {
-                document.querySelector('.tab-btn[onclick="switchTab(\'webos\')"]').classList.add('active');
-                document.getElementById('webos-tab').style.display = 'flex';
-            } else if (tabName === 'vidaa') {
-                document.querySelector('.tab-btn[onclick="switchTab(\'vidaa\')"]').classList.add('active');
-                document.getElementById('vidaa-tab').style.display = 'flex';
-            }
+            const tabMap = {
+                'playstore': 'playstore-tab',
+                'android': 'android-tab',
+                'pc': 'pc-tab',
+                'webos': 'webos-tab',
+                'vidaa': 'vidaa-tab'
+            };
+            
+            document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(tabMap[tabName]).style.display = 'flex';
         }
 
         // Drop zone interaction
@@ -615,6 +652,10 @@
         function generateResizedImages() {
             if (!loadedImage) return;
 
+            // Google Play Store
+            cropSquare(loadedImage, canvasPsIcon, 512);
+            cropFeature(loadedImage, canvasPsFeature, 1024, 500);
+
             // Generate Square icons (Center cropped)
             cropSquare(loadedImage, canvas512, 512);
             cropSquare(loadedImage, canvas192, 192);
@@ -633,6 +674,10 @@
 
             // Generate 16:9 Banner
             crop169(loadedImage, canvasBanner, 320, 180);
+
+            // Play Store Download setups
+            setupDownload(canvasPsIcon, btnDlPsIcon, 'play_store_icon.png');
+            setupDownload(canvasPsFeature, btnDlPsFeature, 'feature_graphic.png');
 
             // Setup download triggers
             setupDownload(canvas512, btnDl512, 'play_store_icon.png');
@@ -682,6 +727,26 @@
             if (srcH > img.height) {
                 srcH = img.height;
                 srcW = img.height * (16 / 9);
+                srcX = (img.width - srcW) / 2;
+                srcY = 0;
+            }
+
+            ctx.clearRect(0, 0, targetW, targetH);
+            ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH);
+        }
+
+        function cropFeature(img, canvas, targetW, targetH) {
+            const ctx = canvas.getContext('2d');
+            const targetRatio = targetW / targetH; // 1024/500 = 2.048
+            
+            let srcW = img.width;
+            let srcH = img.width / targetRatio;
+            let srcX = 0;
+            let srcY = (img.height - srcH) / 2;
+
+            if (srcH > img.height) {
+                srcH = img.height;
+                srcW = img.height * targetRatio;
                 srcX = (img.width - srcW) / 2;
                 srcY = 0;
             }
