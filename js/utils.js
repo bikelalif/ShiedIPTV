@@ -3,7 +3,7 @@
    ========================================================================== */
 
 // DNS-over-HTTPS (DoH) Resolver
-async function resolveUrlWithDoH(url) {
+async function resolveUrlWithDoH(url, isLiveStream = false) {
     if (!state.isDohEnabled) return url;
     
     try {
@@ -40,11 +40,12 @@ async function resolveUrlWithDoH(url) {
         
         if (dnsData && dnsData.Answer && dnsData.Answer.length > 0) {
             const aRecord = dnsData.Answer.find(record => record.type === 1);
-            if (aRecord && !isHttps) {
-                // Only substitute IP for plain HTTP (HTTPS SNI would break)
+            if (aRecord && !isHttps && isLiveStream) {
+                // Only substitute IP for plain HTTP Live TV streams to bypass DNS blocking.
+                // We keep the original domain name for VOD (Movies/Series) to avoid iOS Safari AVPlayer playback issues with raw IPs.
                 const ip = aRecord.data;
                 parsedUrl.hostname = ip;
-                console.log(`[DoH] Resolved: ${hostname} -> ${ip}`);
+                console.log(`[DoH] Resolved & Substituted IP (Live TV): ${hostname} -> ${ip}`);
                 return parsedUrl.toString();
             }
         }
