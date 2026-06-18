@@ -358,13 +358,24 @@ function appendItemsToGrid(batch, section) {
         
         const poster = document.createElement("img");
         poster.className = "media-poster";
-        poster.loading = "lazy";
+        // Disable lazy loading on TV – older Android TV WebViews have bugs with
+        // loading="lazy" on images created off-DOM, causing logos to never render.
+        if (!isTvWrapper) {
+            poster.loading = "lazy";
+        }
         
         const defaultPoster = section === 'live' ? PLACEHOLDERS.live : PLACEHOLDERS.vod;
-        poster.src = item.stream_icon || item.cover || defaultPoster;
-        poster.onerror = () => {
-            poster.src = defaultPoster;
-        };
+        const logoUrl = item.stream_icon || item.cover || defaultPoster;
+        if (isTvWrapper) {
+            // Simple direct loading (v1.0.6 style) – most reliable on TV WebViews
+            poster.src = logoUrl;
+            poster.onerror = () => { poster.src = defaultPoster; poster.onerror = null; };
+        } else if (typeof loadImageWithFallback === 'function') {
+            loadImageWithFallback(poster, logoUrl, defaultPoster);
+        } else {
+            poster.src = logoUrl;
+            poster.onerror = () => { poster.src = defaultPoster; };
+        }
         
         posterWrapper.appendChild(poster);
         
@@ -507,12 +518,20 @@ function setupSpatialNavigation() {
             const targetContainer = activeOverlay || container;
             
             if (!active || active === document.body || !active.classList.contains("focusable") || (targetContainer && !targetContainer.contains(active))) {
-                if (state.lastFocusedElement && document.body.contains(state.lastFocusedElement) && state.lastFocusedElement.offsetWidth > 0) {
-                    const lastFocusedScreen = state.lastFocusedElement.closest('.screen');
-                    const isInsideTarget = !targetContainer || targetContainer.contains(state.lastFocusedElement);
-                    if (isInsideTarget && lastFocusedScreen && lastFocusedScreen.id === activeScreenId()) {
+                const screenId = activeScreenId();
+                let fallbackElement = state.lastFocusedElement;
+                if (screenId === 'home-screen' && state.lastFocusedHomeElement) {
+                    fallbackElement = state.lastFocusedHomeElement;
+                } else if (screenId === 'series-details-screen' && state.lastFocusedSeriesDetailsElement) {
+                    fallbackElement = state.lastFocusedSeriesDetailsElement;
+                }
+                
+                if (fallbackElement && document.body.contains(fallbackElement) && fallbackElement.offsetWidth > 0) {
+                    const lastFocusedScreen = fallbackElement.closest('.screen');
+                    const isInsideTarget = !targetContainer || targetContainer.contains(fallbackElement);
+                    if (isInsideTarget && lastFocusedScreen && lastFocusedScreen.id === screenId) {
                         e.preventDefault();
-                        state.lastFocusedElement.focus();
+                        fallbackElement.focus();
                         return;
                     }
                 }
@@ -600,6 +619,17 @@ function setupSpatialNavigation() {
     document.addEventListener("focusin", (e) => {
         const target = e.target;
         if (target && target.classList.contains("focusable")) {
+            const screen = target.closest('.screen');
+            if (screen) {
+                if (screen.id === 'home-screen') {
+                    const isInsidePreview = target.closest('#live-preview-panel');
+                    if (!isInsidePreview) {
+                        state.lastFocusedHomeElement = target;
+                    }
+                } else if (screen.id === 'series-details-screen') {
+                    state.lastFocusedSeriesDetailsElement = target;
+                }
+            }
             state.lastFocusedElement = target;
             
             // Remove focused class from all other focusable elements
@@ -607,6 +637,20 @@ function setupSpatialNavigation() {
                 if (el !== target) el.classList.remove("focused");
             });
             target.classList.add("focused");
+        }
+    });
+
+    window.addEventListener("focus", () => {
+        // If we regain window focus, restore focus to screen-specific last focused element
+        const screenId = activeScreenId();
+        let fallbackElement = state.lastFocusedElement;
+        if (screenId === 'home-screen' && state.lastFocusedHomeElement) {
+            fallbackElement = state.lastFocusedHomeElement;
+        } else if (screenId === 'series-details-screen' && state.lastFocusedSeriesDetailsElement) {
+            fallbackElement = state.lastFocusedSeriesDetailsElement;
+        }
+        if (fallbackElement && document.body.contains(fallbackElement) && fallbackElement.offsetWidth > 0) {
+            fallbackElement.focus();
         }
     });
 
@@ -621,11 +665,19 @@ function setupSpatialNavigation() {
 function moveFocus(direction) {
     let active = document.activeElement;
     if (!active || active === document.body || !active.classList.contains('focusable')) {
-        if (state.lastFocusedElement && document.body.contains(state.lastFocusedElement) && state.lastFocusedElement.offsetWidth > 0) {
-            const lastFocusedScreen = state.lastFocusedElement.closest('.screen');
-            if (lastFocusedScreen && lastFocusedScreen.id === activeScreenId()) {
-                state.lastFocusedElement.focus();
-                active = state.lastFocusedElement;
+        const screenId = activeScreenId();
+        let fallbackElement = state.lastFocusedElement;
+        if (screenId === 'home-screen' && state.lastFocusedHomeElement) {
+            fallbackElement = state.lastFocusedHomeElement;
+        } else if (screenId === 'series-details-screen' && state.lastFocusedSeriesDetailsElement) {
+            fallbackElement = state.lastFocusedSeriesDetailsElement;
+        }
+        
+        if (fallbackElement && document.body.contains(fallbackElement) && fallbackElement.offsetWidth > 0) {
+            const lastFocusedScreen = fallbackElement.closest('.screen');
+            if (lastFocusedScreen && lastFocusedScreen.id === screenId) {
+                fallbackElement.focus();
+                active = fallbackElement;
             }
         }
     }
@@ -636,9 +688,13 @@ function moveFocus(direction) {
     
     // Custom rule: navigation between category sidebar and media grid
     if (active.classList.contains("category-item") && direction === "right") {
-        const gridCard = document.querySelector("#media-grid .media-card.active-playing") || 
-                         document.querySelector("#media-grid .media-card") || 
-                         Array.from(document.querySelectorAll("#media-grid .focusable")).find(el => el.offsetWidth > 0 && el.offsetHeight > 0);
+        let gridCard = state.lastFocusedHomeElement;
+        const isCardInGrid = gridCard && gridCard.classList.contains("media-card") && document.getElementById("media-grid").contains(gridCard);
+        if (!isCardInGrid) {
+            gridCard = document.querySelector("#media-grid .media-card.active-playing") || 
+                       document.querySelector("#media-grid .media-card") || 
+                       Array.from(document.querySelectorAll("#media-grid .focusable")).find(el => el.offsetWidth > 0 && el.offsetHeight > 0);
+        }
         if (gridCard) {
             gridCard.focus();
             gridCard.scrollIntoView({ behavior: 'auto', block: 'nearest' });
@@ -659,10 +715,13 @@ function moveFocus(direction) {
     const inPreviewPanel = document.getElementById("live-preview-panel") && 
                            document.getElementById("live-preview-panel").contains(active);
     if (inPreviewPanel && direction === "left") {
-        const gridCard = state.lastFocusedElement || 
-                         document.querySelector("#media-grid .media-card.active-playing") || 
-                         document.querySelector("#media-grid .media-card") || 
-                         Array.from(document.querySelectorAll("#media-grid .focusable")).find(el => el.offsetWidth > 0 && el.offsetHeight > 0);
+        let gridCard = state.lastFocusedHomeElement;
+        const isCardInGrid = gridCard && gridCard.classList.contains("media-card") && document.getElementById("media-grid").contains(gridCard);
+        if (!isCardInGrid) {
+            gridCard = document.querySelector("#media-grid .media-card.active-playing") || 
+                       document.querySelector("#media-grid .media-card") || 
+                       Array.from(document.querySelectorAll("#media-grid .focusable")).find(el => el.offsetWidth > 0 && el.offsetHeight > 0);
+        }
         if (gridCard) {
             gridCard.focus();
             gridCard.scrollIntoView({ behavior: 'auto', block: 'nearest' });
@@ -785,6 +844,33 @@ function moveFocus(direction) {
     }
 }
 
+function getFocusFallbackForScreen(screenId) {
+    if (screenId === 'home-screen') {
+        if (state.lastFocusedHomeElement && document.body.contains(state.lastFocusedHomeElement) && state.lastFocusedHomeElement.offsetWidth > 0) {
+            return state.lastFocusedHomeElement;
+        }
+        const container = document.getElementById('home-screen');
+        if (container) {
+            return container.querySelector("#media-grid .media-card") ||
+                   container.querySelector(".category-item.active") ||
+                   container.querySelector(".category-item") ||
+                   container.querySelector(".focusable:not(.btn-back-round):not(#btn-header-back):not(#search-bar):not(#category-search-bar)");
+        }
+    } else if (screenId === 'series-details-screen') {
+        if (state.lastFocusedSeriesDetailsElement && document.body.contains(state.lastFocusedSeriesDetailsElement) && state.lastFocusedSeriesDetailsElement.offsetWidth > 0) {
+            return state.lastFocusedSeriesDetailsElement;
+        }
+        const container = document.getElementById('series-details-screen');
+        if (container) {
+            return container.querySelector(".episode-card") ||
+                   container.querySelector(".season-btn.active") ||
+                   container.querySelector(".season-btn") ||
+                   container.querySelector(".focusable");
+        }
+    }
+    return null;
+}
+
 function focusFirst() {
     const screenId = activeScreenId();
     let container = document.getElementById(screenId);
@@ -805,14 +891,11 @@ function focusFirst() {
             target = container.querySelector("#login-name") || container.querySelector(".focusable");
         } else if (screenId === 'player-screen') {
             target = container.querySelector("#player-btn-play") || container.querySelector("#player-btn-back") || Array.from(container.querySelectorAll(".focusable")).find(el => el.offsetWidth > 0 || el.offsetHeight > 0);
-        } else if (screenId === 'home-screen') {
-            if (state.currentSection === 'settings') {
+        } else if (screenId === 'home-screen' || screenId === 'series-details-screen') {
+            if (screenId === 'home-screen' && state.currentSection === 'settings') {
                 target = container.querySelector("#setting-doh-toggle") || container.querySelector(".settings-panel .focusable");
             } else {
-                target = container.querySelector(".category-item.active") || 
-                         container.querySelector(".category-item") || 
-                         container.querySelector(".media-card") || 
-                         container.querySelector(".focusable:not(.btn-back-round):not(#btn-header-back):not(#search-bar):not(#category-search-bar)");
+                target = getFocusFallbackForScreen(screenId);
             }
         }
         
@@ -844,7 +927,9 @@ function handleBackButton() {
             el.classList.remove("active-playing");
         });
         
-        if (state.lastFocusedElement) {
+        if (state.lastFocusedHomeElement && document.body.contains(state.lastFocusedHomeElement) && state.lastFocusedHomeElement.offsetWidth > 0) {
+            state.lastFocusedHomeElement.focus();
+        } else if (state.lastFocusedElement) {
             state.lastFocusedElement.focus();
         } else {
             focusFirst();
@@ -862,7 +947,9 @@ function handleBackButton() {
         }
     } else if (screenId === "series-details-screen") {
         showScreen("home-screen");
-        if (state.lastFocusedElement) {
+        if (state.lastFocusedHomeElement && document.body.contains(state.lastFocusedHomeElement) && state.lastFocusedHomeElement.offsetWidth > 0) {
+            state.lastFocusedHomeElement.focus();
+        } else if (state.lastFocusedElement) {
             state.lastFocusedElement.focus();
         } else {
             focusFirst();

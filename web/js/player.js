@@ -26,6 +26,19 @@ async function playMedia(item, section) {
         const isMobile = (window.innerWidth <= 1024) && !window.AndroidApp && !isTvWrapper;
         const isMobileWeb = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.cordova && !window.AndroidApp;
         
+        // If the stream is already playing in the preview panel, expand it directly to fullscreen instead of restarting
+        const isPreviewing = state.currentPlayingStream && 
+                             state.currentPlayingStream.section === 'live' && 
+                             state.currentPlayingStream.item.stream_id === item.stream_id &&
+                             document.getElementById("player-screen").classList.contains("preview-mode");
+        
+        if (isPreviewing) {
+            if (typeof goFullscreenFromPreview === 'function') {
+                goFullscreenFromPreview();
+            }
+            return;
+        }
+        
         if (isMobile || isPlayerOpen || (state.currentPlayingStream && state.currentPlayingStream.section === 'live' && state.currentPlayingStream.item.stream_id === item.stream_id)) {
             state.currentPlayingStream = { item, section };
             const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
@@ -54,12 +67,12 @@ async function playMedia(item, section) {
     const ext = (item.container_extension || "mp4").toLowerCase();
     const streamUrl = item.url || `${state.serverUrl}/movie/${state.username}/${state.password}/${item.stream_id}.${ext}`;
     
-    // On Android TV, use native ExoPlayer for MKV files (full codec support)
+    // On Android TV, use native ExoPlayer for all VOD movies (full codec support)
     // Resolve URL with DoH first to bypass ISP DNS blocking
-    if (window.AndroidApp && ext === "mkv") {
+    if (window.AndroidApp) {
         state.currentPlayingStream = { item, section };
         resolveUrlWithDoH(streamUrl, false).then(resolvedUrl => {
-            console.log("[Android TV] Playing MKV VOD via ExoPlayer:", resolvedUrl);
+            console.log("[Android TV] Playing VOD via ExoPlayer:", resolvedUrl);
             window.AndroidApp.playStream(resolvedUrl, item.name, item.stream_icon || item.cover || "");
         });
         return;
@@ -128,11 +141,29 @@ function launchVideoPlayer(url, title, logoUrl) {
     const playerLoader = document.getElementById("player-loader");
 
     if (video) {
-        video.setAttribute("poster", "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
+        video.setAttribute("poster", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=");
+        video.classList.remove("video-active");
     }
     
     document.getElementById("player-channel-name").innerText = title;
-    document.getElementById("player-channel-logo").src = logoUrl || "";
+    const resolvedLogoUrl = logoUrl || "";
+    const channelLogoImg = document.getElementById("player-channel-logo");
+    if (channelLogoImg) {
+        channelLogoImg.style.display = "";
+        let triedDoh = false;
+        channelLogoImg.onerror = () => {
+            if (!triedDoh && state.isDohEnabled && typeof resolveUrlWithDoHSync === 'function') {
+                triedDoh = true;
+                const resolvedUrl = resolveUrlWithDoHSync(resolvedLogoUrl);
+                if (resolvedUrl && resolvedUrl !== resolvedLogoUrl) {
+                    channelLogoImg.src = resolvedUrl;
+                    return;
+                }
+            }
+            channelLogoImg.style.display = "none";
+        };
+        channelLogoImg.src = resolvedLogoUrl;
+    }
     
     const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
     document.getElementById("player-timeline-container").style.display = isLive ? "none" : "flex";
@@ -253,6 +284,7 @@ function bindFullscreenVideoHandlers() {
     
     video.onwaiting = () => { 
         playerLoader.style.display = "flex"; 
+        video.classList.remove("video-active");
         if (isLive && !state.reconnectTimer) {
             state.reconnectTimer = setTimeout(() => {
                 state.reconnectTimer = null;
@@ -262,6 +294,7 @@ function bindFullscreenVideoHandlers() {
     };
     video.onplaying = () => { 
         playerLoader.style.display = "none"; 
+        video.classList.add("video-active");
         if (state.reconnectTimer) {
             clearTimeout(state.reconnectTimer);
             state.reconnectTimer = null;
@@ -280,8 +313,10 @@ function bindFullscreenVideoHandlers() {
     video.onpause = () => {
         const icon = document.getElementById("player-icon-play");
         if (icon) icon.innerText = "play_arrow";
+        video.classList.remove("video-active");
     };
     video.onerror = () => {
+        video.classList.remove("video-active");
         let errDetail = "";
         if (video.error) {
             errDetail = ` (Code ${video.error.code}: ${video.error.message || ''})`;
@@ -413,14 +448,17 @@ function bindPreviewVideoHandlers() {
     video.onwaiting = () => { 
         if (loader) loader.classList.remove("hidden"); 
         if (playerLoader) playerLoader.style.display = "flex";
+        video.classList.remove("video-active");
     };
     video.onplaying = () => { 
         if (loader) loader.classList.add("hidden"); 
         if (playerLoader) playerLoader.style.display = "none";
+        video.classList.add("video-active");
     };
     video.onerror = () => {
         if (loader) loader.classList.add("hidden");
         if (playerLoader) playerLoader.style.display = "none";
+        video.classList.remove("video-active");
         console.warn("[Preview] Error playing preview stream");
     };
     video.onplay = null;
@@ -481,6 +519,7 @@ function attemptReconnection() {
     
     destroyMpegtsPlayer();
     video.removeAttribute("src");
+    video.classList.remove("video-active");
     try { video.load(); } catch(e){}
     
     resolveUrlWithDoH(url, true).then(resolvedStreamUrl => {
@@ -694,8 +733,10 @@ function goFullscreenFromPreview() {
     if (playerLoader) {
         if (video && !video.paused && !video.seeking && video.readyState >= 3) {
             playerLoader.style.display = "none";
+            video.classList.add("video-active");
         } else {
             playerLoader.style.display = "flex";
+            video.classList.remove("video-active");
         }
     }
     
@@ -768,6 +809,13 @@ function exitFullscreenToPreview() {
         if (isReady) playerLoader.style.display = "none";
         else playerLoader.style.display = "flex";
     }
+    if (video) {
+        if (isReady) {
+            video.classList.add("video-active");
+        } else {
+            video.classList.remove("video-active");
+        }
+    }
     
     // Restore focus to avoid losing focus in TV modes or web
     if (state.lastFocusedElement && document.body.contains(state.lastFocusedElement) && state.lastFocusedElement.offsetWidth > 0) {
@@ -786,6 +834,7 @@ function stopVideoPlaybackCompletely() {
     if (video) {
         video.pause();
         video.removeAttribute("src");
+        video.classList.remove("video-active");
         try { video.load(); } catch(e){}
     }
     
@@ -876,7 +925,8 @@ function closeVideoPlayer() {
     clearTimeout(state.overlayTimeout);
     document.getElementById("player-overlay").classList.add("hidden");
     
-    if (state.currentPlayingStream && state.currentPlayingStream.section === 'series') {
+    const isSeries = state.currentPlayingStream && state.currentPlayingStream.section === 'series';
+    if (isSeries) {
         showScreen("series-details-screen");
     } else {
         showScreen("home-screen");
@@ -884,9 +934,12 @@ function closeVideoPlayer() {
     
     state.currentPlayingStream = null;
     
-    if (state.lastFocusedElement) {
-        state.lastFocusedElement.focus();
-        state.lastFocusedElement.scrollIntoView({ block: 'nearest' });
+    let fallbackElement = isSeries ? state.lastFocusedSeriesDetailsElement : state.lastFocusedHomeElement;
+    if (!fallbackElement) fallbackElement = state.lastFocusedElement;
+    
+    if (fallbackElement && document.body.contains(fallbackElement) && fallbackElement.offsetWidth > 0) {
+        fallbackElement.focus();
+        fallbackElement.scrollIntoView({ block: 'nearest' });
     } else {
         focusFirst();
     }
@@ -1057,8 +1110,14 @@ function showZapDrawer() {
             }
             
             const img = document.createElement("img");
-            img.src = item.stream_icon || item.cover || (section === 'live' ? PLACEHOLDERS.live : PLACEHOLDERS.vod);
-            img.onerror = () => { img.src = section === 'live' ? PLACEHOLDERS.live : PLACEHOLDERS.vod; };
+            const logoUrl = item.stream_icon || item.cover || (section === 'live' ? PLACEHOLDERS.live : PLACEHOLDERS.vod);
+            const defaultPoster = section === 'live' ? PLACEHOLDERS.live : PLACEHOLDERS.vod;
+            if (typeof loadImageWithFallback === 'function') {
+                loadImageWithFallback(img, logoUrl, defaultPoster);
+            } else {
+                img.src = logoUrl;
+                img.onerror = () => { img.src = defaultPoster; };
+            }
             
             const text = document.createElement("span");
             text.innerText = item.name;

@@ -13,47 +13,126 @@ async function resolveUrlWithDoH(url, isLiveStream = false) {
         // Already an IP address — no need to resolve
         if (/^[0-9.]+$/.test(hostname)) return url;
         
-        // For HTTPS, DoH cannot replace the hostname (breaks TLS SNI), so we skip IP substitution
-        // but we still attempt DoH to verify the domain is resolvable
         const isHttps = url.startsWith('https://');
         
-        // DoH fetch with a 5-second timeout so a blocked resolver doesn't hang the whole login
-        const dohController = new AbortController();
-        const dohTimeout = setTimeout(() => dohController.abort(), 5000);
+        if (!state.dohCache) state.dohCache = {};
         
-        let dnsData;
-        try {
-            const acceptHeader = state.dohResolver.includes("dns.google")
-                ? 'application/json'
-                : 'application/dns-json';
-            const dohResponse = await fetch(
-                `${state.dohResolver}?name=${encodeURIComponent(hostname)}&type=A`,
-                { headers: { 'Accept': acceptHeader }, signal: dohController.signal }
-            );
-            clearTimeout(dohTimeout);
-            dnsData = await dohResponse.json();
-        } catch (dohErr) {
-            clearTimeout(dohTimeout);
-            console.warn(`[DoH] Resolver ${state.dohResolver} unreachable or timed out. Using original URL.`, dohErr);
-            return url;
+        let ip = state.dohCache[hostname];
+        
+        if (!ip) {
+            // DoH fetch with a 5-second timeout so a blocked resolver doesn't hang the whole login
+            const dohController = new AbortController();
+            const dohTimeout = setTimeout(() => dohController.abort(), 5000);
+            
+            let dnsData;
+            try {
+                const acceptHeader = state.dohResolver.includes("dns.google")
+                    ? 'application/json'
+                    : 'application/dns-json';
+                const dohResponse = await fetch(
+                    `${state.dohResolver}?name=${encodeURIComponent(hostname)}&type=A`,
+                    { headers: { 'Accept': acceptHeader }, signal: dohController.signal }
+                );
+                clearTimeout(dohTimeout);
+                dnsData = await dohResponse.json();
+            } catch (dohErr) {
+                clearTimeout(dohTimeout);
+                console.warn(`[DoH] Resolver ${state.dohResolver} unreachable or timed out. Using original URL.`, dohErr);
+                return url;
+            }
+            
+            if (dnsData && dnsData.Answer && dnsData.Answer.length > 0) {
+                const aRecord = dnsData.Answer.find(record => record.type === 1);
+                if (aRecord) {
+                    ip = aRecord.data;
+                    state.dohCache[hostname] = ip; // Cache resolved IP
+                    console.log(`[DoH] Cached resolution: ${hostname} -> ${ip}`);
+                }
+            }
         }
         
-        if (dnsData && dnsData.Answer && dnsData.Answer.length > 0) {
-            const aRecord = dnsData.Answer.find(record => record.type === 1);
-            if (aRecord && !isHttps && isLiveStream) {
-                // Only substitute IP for plain HTTP Live TV streams to bypass DNS blocking.
-                // We keep the original domain name for VOD (Movies/Series) to avoid iOS Safari AVPlayer playback issues with raw IPs.
-                const ip = aRecord.data;
-                parsedUrl.hostname = ip;
-                console.log(`[DoH] Resolved & Substituted IP (Live TV): ${hostname} -> ${ip}`);
-                return parsedUrl.toString();
-            }
+        if (ip && !isHttps && isLiveStream) {
+            // Only substitute IP for plain HTTP Live TV streams to bypass DNS blocking.
+            // We keep the original domain name for VOD (Movies/Series) to avoid iOS Safari AVPlayer playback issues with raw IPs.
+            parsedUrl.hostname = ip;
+            console.log(`[DoH] Resolved & Substituted IP (Live TV): ${hostname} -> ${ip}`);
+            return parsedUrl.toString();
         }
     } catch (error) {
         console.warn("[DoH] DNS lookup failed, using fallback URL:", error);
     }
     
     return url;
+}
+
+// Synchronous DNS bypass for logo image elements using pre-resolved cache
+function resolveUrlWithDoHSync(url) {
+    if (!state.isDohEnabled || !state.dohCache || !url) return url;
+    try {
+        const parsedUrl = new URL(url);
+        const hostname = parsedUrl.hostname;
+        if (/^[0-9.]+$/.test(hostname)) return url;
+        
+        const isHttps = url.startsWith('https://');
+        const ip = state.dohCache[hostname];
+        if (ip && !isHttps) {
+            parsedUrl.hostname = ip;
+            return parsedUrl.toString();
+        }
+    } catch (e) {}
+    return url;
+}
+
+// Image loader utility that handles normal load, resolves to DoH IP on failure, and falls back to default placeholder on absolute failure.
+function loadImageWithFallback(imgElement, originalUrl, defaultPoster) {
+    if (!originalUrl || originalUrl === "null" || originalUrl === "undefined" || String(originalUrl).trim() === "") {
+        imgElement.src = defaultPoster || "";
+        return;
+    }
+    
+    // Normalize relative paths, protocol-relative, and localhost URLs using the active IPTV server URL
+    let targetUrl = originalUrl.trim();
+    if (targetUrl.startsWith('//')) {
+        targetUrl = 'http:' + targetUrl;
+    } else if (state.serverUrl) {
+        if (targetUrl.startsWith('/')) {
+            targetUrl = state.serverUrl + targetUrl;
+        } else if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://') && !targetUrl.startsWith('data:')) {
+            targetUrl = state.serverUrl + '/' + targetUrl;
+        } else {
+            // Absolute URL - check if it points to localhost or loopback IP (common Xtream DB misconfig)
+            try {
+                const urlObj = new URL(targetUrl);
+                if (urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1') {
+                    const serverUrlObj = new URL(state.serverUrl);
+                    urlObj.hostname = serverUrlObj.hostname;
+                    urlObj.port = serverUrlObj.port || "";
+                    targetUrl = urlObj.toString();
+                }
+            } catch(e) {}
+        }
+    }
+    
+    console.log("[Image Fallback] Channel logo: " + originalUrl + " -> Resolved to: " + targetUrl);
+    
+    let triedProxy = false;
+    
+    imgElement.onerror = () => {
+        if (!triedProxy && targetUrl.startsWith('http')) {
+            triedProxy = true;
+            // Use a secure, high-compatibility image proxy to bypass Mixed Content and DNS blocking
+            const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(targetUrl)}`;
+            console.log("[Image Fallback] Logo load failed. Retrying via secure image proxy:", proxyUrl);
+            imgElement.src = proxyUrl;
+            return;
+        }
+        
+        console.log("[Image Fallback] Logo failed completely. Falling back to default poster.");
+        imgElement.src = defaultPoster || "";
+        imgElement.onerror = null; // Prevent loops
+    };
+    
+    imgElement.src = targetUrl;
 }
 
 // Generic fetch handler with DNS-over-HTTPS (DoH) resolution and fallback to original URL on failure

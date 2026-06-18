@@ -32,8 +32,13 @@ async function openSeriesDetails(item) {
         document.getElementById("series-director").innerText = "N/A";
         
         const posterImg = document.getElementById("series-poster");
-        posterImg.src = item.cover || PLACEHOLDERS.vod;
-        posterImg.onerror = () => { posterImg.src = PLACEHOLDERS.vod; };
+        const coverUrl = item.cover || PLACEHOLDERS.vod;
+        if (typeof loadImageWithFallback === 'function') {
+            loadImageWithFallback(posterImg, coverUrl, PLACEHOLDERS.vod);
+        } else {
+            posterImg.src = coverUrl;
+            posterImg.onerror = () => { posterImg.src = PLACEHOLDERS.vod; };
+        }
         
         const backdropEl = document.getElementById("series-backdrop");
         if (item.cover) {
@@ -71,8 +76,13 @@ async function openSeriesDetails(item) {
         document.getElementById("series-director").innerText = info.director || "N/A";
         
         const posterImg = document.getElementById("series-poster");
-        posterImg.src = info.cover || item.cover || PLACEHOLDERS.vod;
-        posterImg.onerror = () => { posterImg.src = PLACEHOLDERS.vod; };
+        const coverUrl = info.cover || item.cover || PLACEHOLDERS.vod;
+        if (typeof loadImageWithFallback === 'function') {
+            loadImageWithFallback(posterImg, coverUrl, PLACEHOLDERS.vod);
+        } else {
+            posterImg.src = coverUrl;
+            posterImg.onerror = () => { posterImg.src = PLACEHOLDERS.vod; };
+        }
         
         const backdropUrl = (info.backdrop_path && info.backdrop_path.length > 0) ? info.backdrop_path[0] : (info.cover || item.cover);
         const backdropEl = document.getElementById("series-backdrop");
@@ -177,10 +187,10 @@ function renderEpisodes(epList, seasonNum) {
             
             state.currentPlayingStream = { item: ep, section: 'series', seasonNum: seasonNum };
             
-            // On Android TV, use native ExoPlayer for MKV files (full codec support)
-            if (window.AndroidApp && ext === "mkv") {
+            // On Android TV, use native ExoPlayer for all series episodes (full codec support)
+            if (window.AndroidApp) {
                 resolveUrlWithDoH(playUrl, false).then(resolvedUrl => {
-                    console.log("[Android TV] Playing MKV series via ExoPlayer:", resolvedUrl);
+                    console.log("[Android TV] Playing series via ExoPlayer:", resolvedUrl);
                     window.AndroidApp.playStream(resolvedUrl, displayTitle, state.currentSeriesDetails.info.cover || "");
                 });
                 return;
