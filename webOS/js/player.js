@@ -264,8 +264,12 @@ function bindFullscreenVideoHandlers() {
         if (icon) icon.innerText = "play_arrow";
     };
     video.onerror = () => {
+        let errDetail = "";
+        if (video.error) {
+            errDetail = ` (Code ${video.error.code}: ${video.error.message || ''})`;
+        }
         if (isLive) {
-            console.warn("[Player] Video error event fired. Attempting recovery.");
+            console.warn("[Player] Video error event fired. Attempting recovery." + errDetail);
             if (!state.reconnectTimer) {
                 state.reconnectTimer = setTimeout(() => {
                     state.reconnectTimer = null;
@@ -274,7 +278,8 @@ function bindFullscreenVideoHandlers() {
             }
         } else {
             playerLoader.style.display = "none";
-            showToast(t.playerStreamError || "Erreur de lecture du flux", 5000);
+            const currentSrc = video.src || "";
+            showToast(`${t.playerStreamError || "Erreur de lecture du flux"}${errDetail}\nURL: ${currentSrc.substring(0, 100)}`, 10000);
             closeVideoPlayer();
         }
     };
