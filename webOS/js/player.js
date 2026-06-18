@@ -877,22 +877,29 @@ function togglePlayPause() {
 }
 
 function toggleFullscreen() {
-    if (!document.fullscreenElement) {
+    const video = document.getElementById("video-player");
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
         try {
-            const promise = document.documentElement.requestFullscreen();
-            if (promise && typeof promise.catch === 'function') {
-                promise.catch(err => {
+            const container = document.getElementById("player-screen") || document.documentElement;
+            if (container.requestFullscreen) {
+                container.requestFullscreen().catch(err => {
                     console.error(`Error entering fullscreen: ${err.message}`);
                 });
+            } else if (container.webkitRequestFullscreen) {
+                container.webkitRequestFullscreen();
+            } else if (video && video.webkitEnterFullscreen) {
+                console.log("[Player] Falling back to webkitEnterFullscreen for iOS Safari");
+                video.webkitEnterFullscreen();
             }
         } catch (err) {
             console.error(`Error entering fullscreen: ${err.message}`);
         }
     } else {
         try {
-            const promise = document.exitFullscreen();
-            if (promise && typeof promise.catch === 'function') {
-                promise.catch(() => {});
+            if (document.exitFullscreen) {
+                document.exitFullscreen().catch(err => console.error(err));
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
             }
         } catch (err) {
             console.error(err);
