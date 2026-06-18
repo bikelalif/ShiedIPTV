@@ -82,10 +82,8 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
     try {
         return await tryFetch(resolvedUrl);
     } catch (error) {
-        // Only fall back to original URL if DoH is NOT enabled.
-        // When DoH is active and resolved a different URL, the original URL would
-        // go through the ISP's DNS which may redirect to a fake/intercepted server.
-        if (resolvedUrl !== url && !state.isDohEnabled) {
+        // Fall back to original URL if the resolved URL failed (e.g. direct IP access blocked by server host checking)
+        if (resolvedUrl !== url) {
             console.warn(`[DoH] Fetch failed for resolved URL (${resolvedUrl}). Retrying with original URL (${url})...`, error);
             return await tryFetch(url);
         }
@@ -105,30 +103,32 @@ async function makeApiCall(action = '', additionalParams = '') {
     } catch (error) {
         console.error(`API Error on action: ${action}`, error);
         
-        // Attempt to fall back to locally generated mock JSON files in case of server failure/timeout
-        try {
-            console.log(`[Local Fallback] Server unreachable. Trying local files for action: ${action || 'user_info'}`);
-            let localFile = 'user_info.json';
-            if (action === 'get_live_categories') localFile = 'live_categories.json';
-            else if (action === 'get_live_streams') localFile = 'live_streams.json';
-            else if (action === 'get_vod_categories') localFile = 'vod_categories.json';
-            else if (action === 'get_vod_streams') localFile = 'vod_streams.json';
-            else if (action === 'get_series_categories') localFile = 'series_categories.json';
-            else if (action === 'get_series') localFile = 'series.json';
-            else if (action === 'get_series_info') {
-                const match = additionalParams.match(/series_id=(\d+)/);
-                const seriesId = match ? match[1] : '3001';
-                localFile = `series_info_${seriesId}.json`;
+        // Attempt to fall back to locally generated mock JSON files ONLY when in demo mode
+        if (state.currentPlaylistType === 'demo') {
+            try {
+                console.log(`[Local Fallback] Demo mode active. Loading local files for action: ${action || 'user_info'}`);
+                let localFile = 'user_info.json';
+                if (action === 'get_live_categories') localFile = 'live_categories.json';
+                else if (action === 'get_live_streams') localFile = 'live_streams.json';
+                else if (action === 'get_vod_categories') localFile = 'vod_categories.json';
+                else if (action === 'get_vod_streams') localFile = 'vod_streams.json';
+                else if (action === 'get_series_categories') localFile = 'series_categories.json';
+                else if (action === 'get_series') localFile = 'series.json';
+                else if (action === 'get_series_info') {
+                    const match = additionalParams.match(/series_id=(\d+)/);
+                    const seriesId = match ? match[1] : '3001';
+                    localFile = `series_info_${seriesId}.json`;
+                }
+                
+                const localResponse = await fetch(localFile);
+                if (localResponse.ok) {
+                    const data = await localResponse.json();
+                    console.log(`[Local Fallback] Successfully loaded ${localFile} locally.`);
+                    return data;
+                }
+            } catch (fallbackErr) {
+                console.warn(`[Local Fallback] Failed to load local file:`, fallbackErr);
             }
-            
-            const localResponse = await fetch(localFile);
-            if (localResponse.ok) {
-                const data = await localResponse.json();
-                console.log(`[Local Fallback] Successfully loaded ${localFile} locally.`);
-                return data;
-            }
-        } catch (fallbackErr) {
-            console.warn(`[Local Fallback] Failed to load local file:`, fallbackErr);
         }
         
         // Give a human-readable error message based on error type
