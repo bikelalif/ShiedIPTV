@@ -9,15 +9,10 @@ async function playMedia(item, section) {
                         !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
                         window.location.hostname !== 'localhost' && 
                         window.location.hostname !== '127.0.0.1';
-    
-    // On mobile web, only block MKV movies (unsupported codec). TS live streams and MP4 movies work fine.
-    if (isMobileWeb && section === 'movies') {
-        const ext = (item.container_extension || "mp4").toLowerCase();
-        if (ext === 'mkv') {
-            const t = TRANSLATIONS[state.language || 'en'];
-            showToast(t.browserPlayBlocked || "Les fichiers MKV ne sont pas supportés sur navigateur mobile. Utilisez l'application ShieldIPTV.", 5000);
-            return;
-        }
+    if (isMobileWeb && (section === 'live' || section === 'movies')) {
+        const t = TRANSLATIONS[state.language || 'en'];
+        showToast(t.browserPlayBlocked || "Ce contenu nécessite l'application ShieldIPTV pour être lu.", 5000);
+        return;
     }
 
     if (section === 'series') {
@@ -32,7 +27,6 @@ async function playMedia(item, section) {
         
         if (isMobile || isPlayerOpen || (state.currentPlayingStream && state.currentPlayingStream.section === 'live' && state.currentPlayingStream.item.stream_id === item.stream_id)) {
             state.currentPlayingStream = { item, section };
-            // Use .ts if MSE is supported (Android Chrome, etc.), fall back to .m3u8 if MSE is not supported (iOS Safari)
             const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
             const ext = supportsMse ? 'ts' : 'm3u8';
             const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
@@ -101,7 +95,7 @@ function launchVideoPlayer(url, title, logoUrl) {
     destroyPreviewMpegtsPlayer();
     state.currentPlayingStream = preservedStream;
     
-    const isMobile = window.innerWidth <= 1024 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const vlcLoaderBtn = document.getElementById("player-loader-vlc");
     if (vlcLoaderBtn) {
         if (isMobile) {
@@ -173,7 +167,7 @@ function launchVideoPlayer(url, title, logoUrl) {
     
     destroyMpegtsPlayer();
     
-    const startPlayback = (resolvedStreamUrl) => {
+    resolveUrlWithDoH(url).then(resolvedStreamUrl => {
         const isTsStream = (resolvedStreamUrl.includes('.ts') || resolvedStreamUrl.includes('/live/')) && !resolvedStreamUrl.includes('.m3u8');
         
         if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
@@ -224,10 +218,7 @@ function launchVideoPlayer(url, title, logoUrl) {
                 video.play().catch(err => {});
             });
         }
-    };
-
-    state.lastAttemptedStreamUrl = url;
-    startPlayback(url);
+    });
     
     bindFullscreenVideoHandlers();
     
@@ -273,73 +264,18 @@ function bindFullscreenVideoHandlers() {
         if (icon) icon.innerText = "play_arrow";
     };
     video.onerror = () => {
-        if (state.isDohEnabled && state.lastAttemptedStreamUrl === state.currentPlayingStreamUrl) {
-            console.warn("[Player] Stream failed using original URL. Retrying with DNS-over-HTTPS fallback...");
-            state.lastAttemptedStreamUrl = ""; // prevent loop
-            
-            resolveUrlWithDoH(state.currentPlayingStreamUrl).then(resolvedUrl => {
-                if (resolvedUrl && resolvedUrl !== state.currentPlayingStreamUrl) {
-                    console.log("[Player] DoH resolved fallback URL:", resolvedUrl);
-                    state.lastAttemptedStreamUrl = resolvedUrl;
-                    
-                    const isTsStream = (resolvedUrl.includes('.ts') || resolvedUrl.includes('/live/')) && !resolvedUrl.includes('.m3u8');
-                    if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
-                        destroyMpegtsPlayer();
-                        try {
-                            state.mpegtsPlayer = mpegts.createPlayer({
-                                type: 'mpegts',
-                                isLive: isLive,
-                                url: resolvedUrl
-                            }, {
-                                enableWorker: true,
-                                lazyLoadMaxDuration: 3 * 60,
-                                seekType: 'range'
-                            });
-                            state.mpegtsPlayer.attachMediaElement(video);
-                            state.mpegtsPlayer.load();
-                            state.mpegtsPlayer.play().catch(e => {
-                                video.muted = true;
-                                if (state.mpegtsPlayer) state.mpegtsPlayer.play().catch(err => {});
-                            });
-                        } catch (err) {
-                            video.src = resolvedUrl;
-                            video.play().catch(err => {});
-                        }
-                    } else {
-                        video.src = resolvedUrl;
-                        video.load();
-                        video.play().catch(e => {
-                            video.muted = true;
-                            video.play().catch(err => {});
-                        });
-                    }
-                } else {
-                    console.log("[Player] DoH did not yield a different URL. Proceeding with standard error handling.");
-                    triggerStandardError();
-                }
-            }).catch(err => {
-                console.error("[Player] DoH resolution failed during fallback:", err);
-                triggerStandardError();
-            });
-            return;
-        }
-        
-        triggerStandardError();
-        
-        function triggerStandardError() {
-            if (isLive) {
-                console.warn("[Player] Video error event fired. Attempting recovery.");
-                if (!state.reconnectTimer) {
-                    state.reconnectTimer = setTimeout(() => {
-                        state.reconnectTimer = null;
-                        attemptReconnection();
-                    }, 2000);
-                }
-            } else {
-                playerLoader.style.display = "none";
-                showToast(t.playerStreamError || "Erreur de lecture du flux", 5000);
-                closeVideoPlayer();
+        if (isLive) {
+            console.warn("[Player] Video error event fired. Attempting recovery.");
+            if (!state.reconnectTimer) {
+                state.reconnectTimer = setTimeout(() => {
+                    state.reconnectTimer = null;
+                    attemptReconnection();
+                }, 2000);
             }
+        } else {
+            playerLoader.style.display = "none";
+            showToast(t.playerStreamError || "Erreur de lecture du flux", 5000);
+            closeVideoPlayer();
         }
     };
     video.ontimeupdate = () => {
@@ -355,16 +291,6 @@ function bindFullscreenVideoHandlers() {
             const total = document.getElementById("player-time-total");
             if (total) total.innerText = formatTime(video.duration);
         }
-    };
-    
-    // iOS Safari native fullscreen events
-    video.onwebkitbeginfullscreen = () => {
-        console.log("[Player] webkitbeginfullscreen event fired");
-        state.iosIsFullscreen = true;
-    };
-    video.onwebkitendfullscreen = () => {
-        console.log("[Player] webkitendfullscreen event fired");
-        handleiOSFullscreenExit();
     };
 }
 
@@ -390,9 +316,6 @@ function bindPreviewVideoHandlers() {
     video.onplay = null;
     video.onpause = null;
     video.ontimeupdate = null;
-    video.onwebkitbeginfullscreen = null;
-    video.onwebkitendfullscreen = null;
-    state.iosIsFullscreen = false;
 }
 
 function destroyMpegtsPlayer() {
@@ -519,7 +442,6 @@ async function loadLivePreview(item) {
     if (loader) loader.classList.remove("hidden");
     if (playerLoader) playerLoader.style.display = "flex";
     
-    // Use .ts if MSE is supported (Android Chrome, etc.), fall back to .m3u8 if MSE is not supported (iOS Safari)
     const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
     const previewExt = supportsMse ? 'ts' : 'm3u8';
     const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${previewExt}`;
@@ -658,35 +580,6 @@ function goFullscreenFromPreview() {
     resetPlayerActivity();
 }
 
-// iOS Safari native player exit support
-function handleiOSFullscreenExit() {
-    const video = document.getElementById("video-player");
-    if (!video || !state.currentPlayingStream) return;
-    
-    // Only handle exit if we were actually in native iOS fullscreen
-    if (!state.iosIsFullscreen) {
-        console.log("[Player] Ignored webkitendfullscreen (phantom event, not in fullscreen)");
-        return;
-    }
-    state.iosIsFullscreen = false;
-    
-    const wasLive = state.currentPlayingStream.section === 'live';
-    
-    if (wasLive) {
-        console.log("[Player] iOS exit fullscreen: returning Live to preview mode");
-        exitFullscreenToPreview();
-        // Force playback resume since Safari automatically pauses video on native player exit
-        setTimeout(() => {
-            if (video.paused) {
-                video.play().catch(e => console.warn("Failed to resume Live stream after exiting iOS native player:", e));
-            }
-        }, 150);
-    } else {
-        console.log("[Player] iOS exit fullscreen: VOD stream (Movie/Series) native player exit, closing player");
-        closeVideoPlayer();
-    }
-}
-
 function exitFullscreenToPreview() {
     const playerScreen = document.getElementById("player-screen");
     if (!playerScreen || !state.currentPlayingStream) return;
@@ -810,9 +703,8 @@ function closeVideoPlayer() {
     
     const wasLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
     const liveItem = wasLive ? state.currentPlayingStream.item : null;
-    const isMobile = window.innerWidth <= 1024 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     
-    if (wasLive && liveItem && !isMobile) {
+    if (wasLive && liveItem) {
         exitFullscreenToPreview();
         return;
     }
@@ -840,7 +732,6 @@ function closeVideoPlayer() {
     }
     
     state.currentPlayingStream = null;
-    state.iosIsFullscreen = false;
     
     if (state.lastFocusedElement) {
         state.lastFocusedElement.focus();
@@ -861,24 +752,9 @@ function togglePlayPause() {
 }
 
 function toggleFullscreen() {
-    const video = document.getElementById('video-player');
-    
-    // iOS Safari: use webkitEnterFullscreen on the video element
-    if (video && video.webkitEnterFullscreen && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        try {
-            video.webkitEnterFullscreen();
-        } catch (err) {
-            console.error('iOS fullscreen failed:', err);
-        }
-        resetPlayerActivity();
-        return;
-    }
-    
     if (!document.fullscreenElement) {
         try {
-            const el = document.documentElement;
-            const promise = el.requestFullscreen ? el.requestFullscreen() : 
-                           el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : null;
+            const promise = document.documentElement.requestFullscreen();
             if (promise && typeof promise.catch === 'function') {
                 promise.catch(err => {
                     console.error(`Error entering fullscreen: ${err.message}`);
@@ -889,8 +765,7 @@ function toggleFullscreen() {
         }
     } else {
         try {
-            const promise = document.exitFullscreen ? document.exitFullscreen() :
-                           document.webkitExitFullscreen ? document.webkitExitFullscreen() : null;
+            const promise = document.exitFullscreen();
             if (promise && typeof promise.catch === 'function') {
                 promise.catch(() => {});
             }
