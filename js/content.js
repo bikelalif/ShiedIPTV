@@ -196,7 +196,17 @@ function renderEpisodes(epList, seasonNum) {
                 return;
             }
             
-            launchVideoPlayer(playUrl, displayTitle, state.currentSeriesDetails.info.cover);
+            // On Web, PC and Mobile Web, attempt to play HLS (.m3u8) format first to leverage
+            // automatic server-side audio transcoding (e.g. AC-3/E-AC-3 to AAC) and browser container compatibility
+            const preferHls = !isTvWrapper;
+            state.tryingHlsFallback = preferHls;
+            state.currentPlayingStreamName = displayTitle;
+            state.currentPlayingStreamLogo = state.currentSeriesDetails.info.cover;
+            
+            const playExt = preferHls ? "m3u8" : ext;
+            const finalPlayUrl = ep.url || `${state.serverUrl}/series/${state.username}/${state.password}/${ep.id}.${playExt}`;
+            
+            launchVideoPlayer(finalPlayUrl, displayTitle, state.currentSeriesDetails.info.cover);
         });
         
         episodesList.appendChild(card);
