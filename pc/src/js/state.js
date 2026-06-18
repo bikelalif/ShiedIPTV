@@ -195,6 +195,7 @@ const state = {
     overlayTimeout: null,
     zapDrawerOpen: false,
     iosIsFullscreen: false,
+    playerHasError: false,
     mpegtsPlayer: null, // mpegts.js instance reference
     previewMpegtsPlayer: null, // mpegts.js preview instance reference
     testerHlsPlayer: null, // HLS.js instance reference for tester
