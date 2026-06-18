@@ -106,6 +106,7 @@ async function switchSection(section) {
     const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
                         window.location.protocol !== 'file:' && 
                         !window.cordova && 
+                        !window.AndroidApp &&
                         !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
                         window.location.hostname !== 'localhost' && 
                         window.location.hostname !== '127.0.0.1';

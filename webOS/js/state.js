@@ -57,6 +57,7 @@ const safeStorage = {
 };
 
 const isTvWrapper = window.cordova || 
+                    window.AndroidApp ||
                     /SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent);
 
 // Fallback dynamic placeholder SVG Data-URIs

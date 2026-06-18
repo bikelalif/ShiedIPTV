@@ -299,3 +299,67 @@ function ensureArray(data) {
     }
     return [];
 }
+
+// IndexedDB Storage Helper for caching playlist categories and streams
+const DB_NAME = 'ShieldIPTVCache';
+const STORE_NAME = 'playlist_cache';
+
+const dbHelper = {
+    open() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, 1);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME);
+                }
+            };
+            request.onsuccess = (e) => resolve(e.target.result);
+            request.onerror = (e) => reject(e.target.error);
+        });
+    },
+    async set(key, value) {
+        try {
+            const db = await this.open();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(STORE_NAME, 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.put(value, key);
+                request.onsuccess = () => resolve();
+                request.onerror = (e) => reject(e.target.error);
+            });
+        } catch (e) {
+            console.error("IndexedDB set failed", e);
+        }
+    },
+    async get(key) {
+        try {
+            const db = await this.open();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(STORE_NAME, 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.get(key);
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onerror = (e) => reject(e.target.error);
+            });
+        } catch (e) {
+            console.error("IndexedDB get failed", e);
+            return null;
+        }
+    },
+    async delete(key) {
+        try {
+            const db = await this.open();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(STORE_NAME, 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.delete(key);
+                request.onsuccess = () => resolve();
+                request.onerror = (e) => reject(e.target.error);
+            });
+        } catch (e) {
+            console.error("IndexedDB delete failed", e);
+        }
+    }
+};
+
