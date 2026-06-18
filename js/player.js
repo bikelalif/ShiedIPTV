@@ -277,10 +277,35 @@ function bindFullscreenVideoHandlers() {
                 }, 2000);
             }
         } else {
-            playerLoader.style.display = "none";
             const currentSrc = video.src || "";
-            showToast(`${t.playerStreamError || "Erreur de lecture du flux"}${errDetail}\nURL: ${currentSrc.substring(0, 100)}`, 10000);
-            closeVideoPlayer();
+            console.error("[Player] Video playback error:" + errDetail, "URL:", currentSrc);
+            
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            const isCode4 = video.error && video.error.code === 4;
+            
+            if (isMobile || isSafari || isCode4) {
+                let ext = "";
+                try {
+                    const cleanUrl = currentSrc.split('?')[0].split('#')[0];
+                    const parts = cleanUrl.split('.');
+                    if (parts.length > 1) {
+                        ext = parts.pop().toLowerCase();
+                    }
+                } catch (e) {}
+                if (!ext || ext.length > 4) ext = "MKV/TS";
+                
+                let errorMsg;
+                if (state.language === 'fr') {
+                    errorMsg = `Ce format de flux (${ext.toUpperCase()}) n'est pas supporté par votre navigateur. Vous pouvez l'ouvrir directement dans l'application VLC.`;
+                } else {
+                    errorMsg = `This stream format (${ext.toUpperCase()}) is not supported by your browser. You can open it directly in the VLC app.`;
+                }
+                showPlayerErrorVlc(errorMsg);
+            } else {
+                playerLoader.style.display = "none";
+                showToast(`${t.playerStreamError || "Erreur de lecture du flux"}${errDetail}\nURL: ${currentSrc.substring(0, 100)}`, 10000);
+                closeVideoPlayer();
+            }
         }
     };
     video.ontimeupdate = () => {
@@ -297,6 +322,45 @@ function bindFullscreenVideoHandlers() {
             if (total) total.innerText = formatTime(video.duration);
         }
     };
+}
+
+function showPlayerErrorVlc(msg) {
+    state.playerHasError = true;
+    
+    const playerLoader = document.getElementById("player-loader");
+    if (playerLoader) {
+        playerLoader.style.display = "flex";
+        
+        const spinner = playerLoader.querySelector(".loader-spinner");
+        if (spinner) {
+            spinner.style.display = "none";
+        }
+        
+        const loaderText = playerLoader.querySelector(".player-loader-text");
+        if (loaderText) {
+            loaderText.innerText = msg;
+            loaderText.style.color = "#ffdd99";
+            loaderText.style.fontSize = "1.2rem";
+            loaderText.style.margin = "1rem 2rem";
+            loaderText.style.textAlign = "center";
+        }
+        
+        const vlcLoaderBtn = document.getElementById("player-loader-vlc");
+        if (vlcLoaderBtn) {
+            vlcLoaderBtn.classList.remove("hidden");
+            vlcLoaderBtn.classList.add("force-show");
+        }
+    }
+    
+    const bottomBar = document.querySelector(".player-bottom-bar");
+    if (bottomBar) {
+        bottomBar.style.display = "none";
+    }
+    
+    const overlay = document.getElementById("player-overlay");
+    if (overlay) {
+        overlay.classList.remove("hidden");
+    }
 }
 
 function bindPreviewVideoHandlers() {
@@ -695,6 +759,34 @@ function closeVideoPlayer() {
     }
     state.reconnectAttempts = 0;
 
+    // Reset error state and loader modifications
+    state.playerHasError = false;
+    const playerLoader = document.getElementById("player-loader");
+    if (playerLoader) {
+        const spinner = playerLoader.querySelector(".loader-spinner");
+        if (spinner) {
+            spinner.style.display = "";
+        }
+        const loaderText = playerLoader.querySelector(".player-loader-text");
+        if (loaderText) {
+            const t = TRANSLATIONS[state.language || 'en'];
+            loaderText.innerText = t.playerLoaderText || "Chargement du flux...";
+            loaderText.style.color = "";
+            loaderText.style.fontSize = "";
+            loaderText.style.margin = "";
+            loaderText.style.textAlign = "";
+        }
+        const vlcLoaderBtn = document.getElementById("player-loader-vlc");
+        if (vlcLoaderBtn) {
+            vlcLoaderBtn.classList.add("hidden");
+            vlcLoaderBtn.classList.remove("force-show");
+        }
+    }
+    const bottomBar = document.querySelector(".player-bottom-bar");
+    if (bottomBar) {
+        bottomBar.style.display = "";
+    }
+
     if (document.fullscreenElement) {
         try {
             const promise = document.exitFullscreen();
@@ -812,6 +904,9 @@ function resetPlayerActivity() {
     playerScreen.style.cursor = "default";
     
     clearTimeout(state.overlayTimeout);
+    if (state.playerHasError) {
+        return;
+    }
     state.overlayTimeout = setTimeout(() => {
         overlay.classList.add("hidden");
         playerScreen.style.cursor = "none";
