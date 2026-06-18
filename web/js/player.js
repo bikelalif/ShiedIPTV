@@ -624,8 +624,7 @@ function handleiOSFullscreenExit() {
             }
         }, 150);
     } else {
-        console.log("[Player] iOS exit fullscreen: closing Movie/Series player");
-        closeVideoPlayer();
+        console.log("[Player] iOS exit fullscreen: VOD stream (Movie/Series) native player exit, staying inline on player screen");
     }
 }
 
