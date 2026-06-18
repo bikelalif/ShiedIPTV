@@ -358,6 +358,24 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="section-title" style="margin-top: 1.5rem;">Captures d'écran Téléphone (1080 x 1920 — 9:16)</div>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 0.75rem 0;">Importez 2 à 8 images. Elles seront redimensionnées en 1080 x 1920 px (portrait 9:16).</p>
+                    <div class="drop-zone" id="drop-zone-phone" style="min-height: 120px; padding: 1rem;">
+                        <span class="material-icons icon" style="font-size: 2rem;">add_photo_alternate</span>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 0.9rem;">Glissez ou cliquez pour ajouter des captures téléphone</p>
+                        <input type="file" id="file-input-phone" accept="image/*" multiple style="display:none;">
+                    </div>
+                    <div id="phone-screenshots-grid" class="grid-previews" style="margin-top: 0.75rem;"></div>
+
+                    <div class="section-title" style="margin-top: 1.5rem;">Captures d'écran Tablette (1920 x 1080 — 16:9)</div>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 0.75rem 0;">Importez 2 à 8 images. Elles seront redimensionnées en 1920 x 1080 px (paysage 16:9).</p>
+                    <div class="drop-zone" id="drop-zone-tablet" style="min-height: 120px; padding: 1rem;">
+                        <span class="material-icons icon" style="font-size: 2rem;">add_photo_alternate</span>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 0.9rem;">Glissez ou cliquez pour ajouter des captures tablette</p>
+                        <input type="file" id="file-input-tablet" accept="image/*" multiple style="display:none;">
+                    </div>
+                    <div id="tablet-screenshots-grid" class="grid-previews" style="margin-top: 0.75rem;"></div>
                 </div>
 
                 <!-- Android APK Previews -->
@@ -763,6 +781,115 @@
                 link.click();
             };
         }
+
+        // ===== Screenshot Upload Logic =====
+        function setupScreenshotZone(dropZoneId, fileInputId, gridId, targetW, targetH, filenamePrefix) {
+            const zone = document.getElementById(dropZoneId);
+            const input = document.getElementById(fileInputId);
+            const grid = document.getElementById(gridId);
+            let count = 0;
+
+            zone.addEventListener('click', () => input.click());
+
+            ['dragenter', 'dragover'].forEach(ev => {
+                zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.add('dragover'); }, false);
+            });
+            ['dragleave', 'drop'].forEach(ev => {
+                zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.remove('dragover'); }, false);
+            });
+
+            zone.addEventListener('drop', (e) => {
+                const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                processFiles(files);
+            });
+
+            input.addEventListener('change', () => {
+                processFiles(Array.from(input.files));
+                input.value = '';
+            });
+
+            function processFiles(files) {
+                const remaining = 8 - count;
+                if (remaining <= 0) { alert('Maximum 8 captures atteint.'); return; }
+                files.slice(0, remaining).forEach((file, idx) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            count++;
+                            const num = count;
+                            
+                            // Create canvas at target size
+                            const canvas = document.createElement('canvas');
+                            canvas.width = targetW;
+                            canvas.height = targetH;
+                            const ctx = canvas.getContext('2d');
+
+                            // Crop to target ratio (center)
+                            const targetRatio = targetW / targetH;
+                            let srcW, srcH, srcX, srcY;
+                            const imgRatio = img.width / img.height;
+
+                            if (imgRatio > targetRatio) {
+                                srcH = img.height;
+                                srcW = img.height * targetRatio;
+                                srcX = (img.width - srcW) / 2;
+                                srcY = 0;
+                            } else {
+                                srcW = img.width;
+                                srcH = img.width / targetRatio;
+                                srcX = 0;
+                                srcY = (img.height - srcH) / 2;
+                            }
+
+                            ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH);
+
+                            // Create preview box
+                            const box = document.createElement('div');
+                            box.className = 'preview-box';
+                            
+                            const isPortrait = targetH > targetW;
+                            const wrapW = isPortrait ? 50 : 120;
+                            const wrapH = isPortrait ? 89 : 67;
+
+                            box.innerHTML = `
+                                <div class="preview-canvas-wrapper" style="width: ${wrapW}px; height: ${wrapH}px;">
+                                    <img src="${canvas.toDataURL('image/png')}" style="width:100%;height:100%;object-fit:contain;">
+                                </div>
+                                <div class="preview-info">
+                                    <h4>${filenamePrefix}_${num}.png</h4>
+                                    <p>${targetW} x ${targetH} px</p>
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <button class="btn-download btn-dl-screenshot">Enregistrer</button>
+                                        <button class="btn-secondary btn-del-screenshot" style="padding:0.45rem 0.8rem;font-size:0.85rem;">✕</button>
+                                    </div>
+                                </div>
+                            `;
+
+                            box.querySelector('.btn-dl-screenshot').onclick = () => {
+                                const link = document.createElement('a');
+                                link.download = `${filenamePrefix}_${num}.png`;
+                                link.href = canvas.toDataURL('image/png');
+                                link.click();
+                            };
+
+                            box.querySelector('.btn-del-screenshot').onclick = () => {
+                                box.remove();
+                                count--;
+                            };
+
+                            grid.appendChild(box);
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        }
+
+        // Init screenshot zones
+        setupScreenshotZone('drop-zone-phone', 'file-input-phone', 'phone-screenshots-grid', 1080, 1920, 'screenshot_phone');
+        setupScreenshotZone('drop-zone-tablet', 'file-input-tablet', 'tablet-screenshots-grid', 1920, 1080, 'screenshot_tablet');
     </script>
 </body>
 </html>
