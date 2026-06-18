@@ -1,6 +1,6 @@
 {
   "name": "shieldiptv-root",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "ShieldIPTV Multi-platform Workspace",
   "scripts": {
     "sync:webos": "node scripts/sync-platforms.js --platform webos",
