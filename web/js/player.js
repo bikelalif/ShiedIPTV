@@ -173,7 +173,7 @@ function launchVideoPlayer(url, title, logoUrl) {
     
     destroyMpegtsPlayer();
     
-    resolveUrlWithDoH(url).then(resolvedStreamUrl => {
+    const startPlayback = (resolvedStreamUrl) => {
         const isTsStream = (resolvedStreamUrl.includes('.ts') || resolvedStreamUrl.includes('/live/')) && !resolvedStreamUrl.includes('.m3u8');
         
         if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
@@ -224,7 +224,15 @@ function launchVideoPlayer(url, title, logoUrl) {
                 video.play().catch(err => {});
             });
         }
-    });
+    };
+
+    if (!state.isDohEnabled) {
+        startPlayback(url);
+    } else {
+        resolveUrlWithDoH(url).then(resolvedStreamUrl => {
+            startPlayback(resolvedStreamUrl);
+        });
+    }
     
     bindFullscreenVideoHandlers();
     
