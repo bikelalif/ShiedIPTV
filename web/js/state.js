@@ -191,6 +191,7 @@ const state = {
     // Video Player state
     currentPlayingStream: null,
     currentPlayingStreamUrl: '',
+    lastAttemptedStreamUrl: '',
     overlayTimeout: null,
     zapDrawerOpen: false,
     iosIsFullscreen: false,

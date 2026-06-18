@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>ShieldIPTV</title>
     <script>
         (function() {
@@ -78,6 +78,11 @@
             }
             
             window.onerror = function(message, source, lineno, colno, error) {
+                // Ignore Keychain/autofill/extensions and cross-origin censored errors
+                if (message === 'Script error.' || lineno === 0 || !source) {
+                    console.warn("Ignored browser extension/autofill error:", message);
+                    return true;
+                }
                 showError(message, source, lineno, colno, error);
                 return false;
             };
@@ -86,6 +91,12 @@
                 var reason = event.reason;
                 var message = reason && reason.message ? reason.message : String(reason);
                 var stack = reason && reason.stack ? reason.stack : '';
+                
+                // Ignore video playback interruption errors (AbortError) common during zapping
+                if (message.indexOf('AbortError') !== -1 || message.indexOf('play()') !== -1) {
+                    console.warn("Ignored video playback promise interruption:", message);
+                    return;
+                }
                 showError('Unhandled Promise Rejection: ' + message, 'Promise', 0, 0, reason);
             });
 
@@ -450,7 +461,7 @@
                             <div class="about-grid">
                                 <div class="about-row">
                                     <span class="about-label" id="about-label-version">Version de l'application :</span>
-                                    <span class="about-value">Build 1.0.5 (Corporate Utility)</span>
+                                    <span class="about-value">Build 1.0.6 (Corporate Utility)</span>
                                 </div>
                                 <div class="about-row">
                                     <span class="about-label" id="about-label-privacy">Politique de Confidentialité :</span>
@@ -675,7 +686,7 @@
 
         <!-- Standalone Screen: Stream Tester (Sandbox) -->
         <div id="streamtester-screen" class="screen hidden">
-            <div class="diagnostic-container-fullscreen glass" style="height: 100vh; display: flex; flex-direction: column;">
+            <div class="diagnostic-container-fullscreen glass" style="height: 100%; display: flex; flex-direction: column;">
                 <div class="login-header-bar">
                     <button class="focusable btn-back-round" id="btn-streamtester-back" title="Retour au portail">
                         <span class="material-icons">arrow_back</span>

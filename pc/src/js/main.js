@@ -466,17 +466,27 @@ function setupEventListeners() {
     
     // Search
     const triggerSearch = () => {
-        const query = document.getElementById("search-bar").value.toLowerCase().trim();
-        let filtered = state.categoryGridItems;
+        const queryEl = document.getElementById("search-bar");
+        const query = queryEl ? queryEl.value.toLowerCase().trim() : "";
+        let filtered = state.categoryGridItems || [];
+        if (!Array.isArray(filtered)) filtered = [];
+        
         if (query) {
-            filtered = state.categoryGridItems.filter(item => item.name.toLowerCase().includes(query));
+            filtered = filtered.filter(item => {
+                if (!item) return false;
+                const name = (item.name || item.title || "").toString().toLowerCase();
+                return name.includes(query);
+            });
         }
         state.currentGridItems = filtered;
         state.gridCurrentPage = 1;
         renderGrid(filtered, state.currentSection);
     };
     
-    document.getElementById("search-bar").addEventListener("input", triggerSearch);
+    const searchInputEl = document.getElementById("search-bar");
+    if (searchInputEl) {
+        searchInputEl.addEventListener("input", triggerSearch);
+    }
     
     // Category search
     const catSearchBar = document.getElementById("category-search-bar");
@@ -484,9 +494,11 @@ function setupEventListeners() {
         catSearchBar.addEventListener("input", (e) => {
             const query = e.target.value.toLowerCase().trim();
             const currentCats = state.categories[state.currentSection] || [];
-            const filteredCats = currentCats.filter(cat => 
-                cat.category_name.toLowerCase().includes(query)
-            );
+            const filteredCats = currentCats.filter(cat => {
+                if (!cat) return false;
+                const catName = (cat.category_name || cat.name || "").toString().toLowerCase();
+                return catName.includes(query);
+            });
             renderCategories(filteredCats);
         });
     }

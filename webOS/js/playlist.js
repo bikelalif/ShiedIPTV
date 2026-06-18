@@ -535,7 +535,7 @@ function renderPlaylistsGrid() {
         const sub = document.createElement("p");
         sub.className = "playlist-card-type";
         if (pl.type === 'demo') {
-            sub.innerText = "Flux libres (NASA, Blender)";
+            sub.innerText = "Flux libres (Démo)";
         } else if (pl.type === 'xtream') {
             sub.innerText = `Xtream • ${pl.serverUrl}`;
         } else {

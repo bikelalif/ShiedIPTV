@@ -226,13 +226,8 @@ function launchVideoPlayer(url, title, logoUrl) {
         }
     };
 
-    if (!state.isDohEnabled) {
-        startPlayback(url);
-    } else {
-        resolveUrlWithDoH(url).then(resolvedStreamUrl => {
-            startPlayback(resolvedStreamUrl);
-        });
-    }
+    state.lastAttemptedStreamUrl = url;
+    startPlayback(url);
     
     bindFullscreenVideoHandlers();
     
@@ -278,18 +273,73 @@ function bindFullscreenVideoHandlers() {
         if (icon) icon.innerText = "play_arrow";
     };
     video.onerror = () => {
-        if (isLive) {
-            console.warn("[Player] Video error event fired. Attempting recovery.");
-            if (!state.reconnectTimer) {
-                state.reconnectTimer = setTimeout(() => {
-                    state.reconnectTimer = null;
-                    attemptReconnection();
-                }, 2000);
+        if (state.isDohEnabled && state.lastAttemptedStreamUrl === state.currentPlayingStreamUrl) {
+            console.warn("[Player] Stream failed using original URL. Retrying with DNS-over-HTTPS fallback...");
+            state.lastAttemptedStreamUrl = ""; // prevent loop
+            
+            resolveUrlWithDoH(state.currentPlayingStreamUrl).then(resolvedUrl => {
+                if (resolvedUrl && resolvedUrl !== state.currentPlayingStreamUrl) {
+                    console.log("[Player] DoH resolved fallback URL:", resolvedUrl);
+                    state.lastAttemptedStreamUrl = resolvedUrl;
+                    
+                    const isTsStream = (resolvedUrl.includes('.ts') || resolvedUrl.includes('/live/')) && !resolvedUrl.includes('.m3u8');
+                    if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
+                        destroyMpegtsPlayer();
+                        try {
+                            state.mpegtsPlayer = mpegts.createPlayer({
+                                type: 'mpegts',
+                                isLive: isLive,
+                                url: resolvedUrl
+                            }, {
+                                enableWorker: true,
+                                lazyLoadMaxDuration: 3 * 60,
+                                seekType: 'range'
+                            });
+                            state.mpegtsPlayer.attachMediaElement(video);
+                            state.mpegtsPlayer.load();
+                            state.mpegtsPlayer.play().catch(e => {
+                                video.muted = true;
+                                if (state.mpegtsPlayer) state.mpegtsPlayer.play().catch(err => {});
+                            });
+                        } catch (err) {
+                            video.src = resolvedUrl;
+                            video.play().catch(err => {});
+                        }
+                    } else {
+                        video.src = resolvedUrl;
+                        video.load();
+                        video.play().catch(e => {
+                            video.muted = true;
+                            video.play().catch(err => {});
+                        });
+                    }
+                } else {
+                    console.log("[Player] DoH did not yield a different URL. Proceeding with standard error handling.");
+                    triggerStandardError();
+                }
+            }).catch(err => {
+                console.error("[Player] DoH resolution failed during fallback:", err);
+                triggerStandardError();
+            });
+            return;
+        }
+        
+        triggerStandardError();
+        
+        function triggerStandardError() {
+            if (isLive) {
+                console.warn("[Player] Video error event fired. Attempting recovery.");
+                if (!state.reconnectTimer) {
+                    state.reconnectTimer = setTimeout(() => {
+                        state.reconnectTimer = null;
+                        attemptReconnection();
+                    }, 2000);
+                }
+            } else {
+                playerLoader.style.display = "none";
+                showToast(t.playerStreamError || "Erreur de lecture du flux", 5000);
+                closeVideoPlayer();
             }
-        } else {
-            playerLoader.style.display = "none";
-            showToast(t.playerStreamError || "Erreur de lecture du flux", 5000);
-            closeVideoPlayer();
         }
     };
     video.ontimeupdate = () => {
@@ -632,7 +682,8 @@ function handleiOSFullscreenExit() {
             }
         }, 150);
     } else {
-        console.log("[Player] iOS exit fullscreen: VOD stream (Movie/Series) native player exit, staying inline on player screen");
+        console.log("[Player] iOS exit fullscreen: VOD stream (Movie/Series) native player exit, closing player");
+        closeVideoPlayer();
     }
 }
 
@@ -789,6 +840,7 @@ function closeVideoPlayer() {
     }
     
     state.currentPlayingStream = null;
+    state.iosIsFullscreen = false;
     
     if (state.lastFocusedElement) {
         state.lastFocusedElement.focus();
