@@ -3052,6 +3052,12 @@ body.is-webapp #player-loader-vlc,
     display: none !important;
 }
 
+body.is-webapp #player-loader-vlc.force-show,
+#player-screen #player-loader-vlc.force-show,
+.vlc-btn-loader.force-show {
+    display: flex !important;
+}
+
 /* Webapp layout: 4 columns for Movies & Series */
 body:not(.tv-mode) #home-screen[data-section="movies"] .media-grid,
 body:not(.tv-mode) #home-screen[data-section="series"] .media-grid {
