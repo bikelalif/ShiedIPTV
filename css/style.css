@@ -1042,12 +1042,12 @@ body.tv-mode .preview-overlay-btn:focus-visible {
 }
 
 /* Hide video element by default when loading/stopped to prevent native play placeholder graphic */
-#live-preview-video, #streamtester-video {
+#video-player, #streamtester-video {
     opacity: 0;
     transition: opacity 0.3s ease;
 }
 
-#live-preview-video.video-active, #streamtester-video.video-active {
+#video-player.video-active, #streamtester-video.video-active {
     opacity: 1;
 }
 
@@ -1477,6 +1477,7 @@ body.tv-mode .episode-card:focus-visible .episode-play-icon .material-icons, bod
     height: 100%;
     object-fit: contain;
     pointer-events: none;
+    background-color: black !important;
 }
 
 /* Hide native WebView/Chromium play button overlay during loading */
@@ -2920,12 +2921,14 @@ body.tv-mode .category-item {
 body.tv-mode .media-grid-container {
     flex-grow: 1 !important;
     height: 100% !important;
+    padding: 0 !important;
 }
 
 body.tv-mode .media-grid {
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
     gap: 1.5rem !important;
     padding: 1.5rem 0.5rem !important;
+    width: 100% !important;
 }
 
 body.tv-mode .live-preview-panel {
@@ -3154,16 +3157,16 @@ body.tv-mode .series-details-container {
 
 /* 3. Prevent focus scale/glow animation clipping on scrollable grids, sidebars and cards */
 body.tv-mode .media-grid {
-    padding-left: 1.25rem !important;
-    padding-right: 1.25rem !important;
-}
-body.tv-mode .category-list {
     padding-left: 0.5rem !important;
     padding-right: 0.5rem !important;
+}
+body.tv-mode .category-list {
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
     gap: 0.3rem !important;
 }
 body.tv-mode .category-item {
-    width: calc(100% - 1rem) !important;
+    width: calc(100% - 0.5rem) !important;
     margin: 0.25rem auto !important;
     padding: 0.5rem 0.75rem !important;
     font-size: 0.82rem !important;
@@ -3185,62 +3188,81 @@ body.tv-mode .seasons-bar {
 body.tv-mode .live-preview-panel:not(.hidden) {
     display: flex !important;
 }
+body.tv-mode .live-preview-panel {
+    width: 280px !important;
+    padding: 1rem !important;
+    gap: 1rem !important;
+}
+body.tv-mode .preview-epg-item {
+    padding: 0.65rem !important;
+}
+body.tv-mode .content-body {
+    gap: 0.75rem !important;
+}
 
-/* Reduce sidebar width and optimize grid layout when preview panel is open in TV mode */
+/* Keep sidebar width same even when preview panel is open in TV mode */
 body.tv-mode .category-sidebar {
-    width: 200px !important;
+    width: 240px !important;
     padding: 1rem 0.5rem !important;
 }
 body.tv-mode #home-screen.preview-open .category-sidebar {
-    width: 180px !important;
+    width: 240px !important;
 }
 
-/* Horizontal Channel Row Layout (TV Mode) */
+/* Live TV Card Layout (TV Mode - matching Web/PC version) */
 body.tv-mode #home-screen[data-section="live"] .media-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 0.75rem !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 1.25rem !important;
 }
 body.tv-mode #home-screen[data-section="live"].preview-open .media-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.75rem !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 1rem !important;
 }
 body.tv-mode .media-card.live-card {
     display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    height: 60px !important;
-    padding: 0 0.5rem !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    height: auto !important;
+    padding: 0 !important;
     background: rgba(15, 23, 42, 0.4) !important;
-    border-radius: 12px !important;
-    gap: 0.75rem !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 18px !important;
+    gap: 0 !important;
+    overflow: hidden !important;
 }
 body.tv-mode .media-card.live-card .media-poster-wrapper {
-    width: 70px !important;
-    height: 40px !important;
+    position: relative !important;
+    width: 100% !important;
+    height: 110px !important;
     padding-top: 0 !important;
-    background: transparent !important;
-    border-radius: 6px !important;
+    background: #0b0d14 !important;
+    border-radius: 18px 18px 0 0 !important;
     overflow: hidden !important;
     flex-shrink: 0 !important;
 }
 body.tv-mode .media-card.live-card .media-poster-wrapper img {
-    position: static !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
     width: 100% !important;
     height: 100% !important;
     object-fit: contain !important;
-    padding: 1px !important;
+    padding: 0.5rem !important;
 }
 body.tv-mode .media-card.live-card .media-name {
-    flex-grow: 1 !important;
-    font-size: 0.95rem !important;
-    text-align: left !important;
-    padding: 0 !important;
-    height: auto !important;
-    white-space: nowrap !important;
+    display: -webkit-box !important;
+    font-size: 0.8rem !important;
+    text-align: center !important;
+    padding: 0.4rem 0.3rem !important;
+    height: 3.8rem !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    display: block !important;
+    -webkit-line-clamp: 3 !important;
+    -webkit-box-orient: vertical !important;
     margin: 0 !important;
+    box-sizing: border-box !important;
 }
 
 /* Playlist Manager Screen Constraints (Fit entirely without scrolling) */
@@ -3248,14 +3270,14 @@ body.tv-mode #playlist-manager-screen {
     overflow: hidden !important;
 }
 body.tv-mode .playlist-manager-container {
-    height: calc(100% - 7rem) !important;
-    width: calc(100% - 6rem) !important;
-    margin: 3.5rem 3rem !important;
-    padding: 1.5rem 1rem !important;
+    height: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 2.5rem 3rem !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
-    gap: 1.25rem !important;
+    gap: 1.5rem !important;
 }
 body.tv-mode .playlist-manager-container .playlists-grid {
     flex-grow: 1 !important;
@@ -3278,17 +3300,17 @@ body.tv-mode .main-content {
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
-    height: calc(100% - 7rem) !important;
-    width: calc(100% - 6rem) !important;
-    margin: 3.5rem 3rem !important;
-    padding: 1.5rem 1rem 0 1rem !important;
+    height: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 1.5rem 2rem 0 2rem !important;
 }
 
 body.tv-mode .series-details-container {
-    height: calc(100% - 7rem) !important;
-    width: calc(100% - 6rem) !important;
-    margin: 3.5rem 3rem !important;
-    padding: 2rem 1.5rem 3.5rem 1.5rem !important;
+    height: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 2rem 2.5rem 3.5rem 2.5rem !important;
 }
 
 body.tv-mode .seasons-bar {
