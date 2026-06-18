@@ -120,6 +120,12 @@ function proceedAfterCgu() {
                 // Allow DOM paint tick to show the spinner before starting heavy connection logic
                 setTimeout(() => {
                     try {
+                        // Clear last screen states so we always open in the main menu (portal-screen) on startup!
+                        safeStorage.local.removeItem("shield_last_screen");
+                        safeStorage.local.removeItem("shield_last_section");
+                        safeStorage.local.removeItem("shield_last_category_id");
+                        safeStorage.local.removeItem("shield_last_series_id");
+                        
                         connectPlaylist(activePlaylist, true);
                     } catch (connErr) {
                         console.error("Failed to connect playlist on start:", connErr);
@@ -215,7 +221,12 @@ function setupEventListeners() {
             const nextIndex = (currentIndex + 1) % cycle.length;
             const nextLang = cycle[nextIndex];
             applyLanguage(nextLang);
-            btnCguLang.focus();
+            
+            // Re-focus the language button after UI re-render and any other timeouts complete
+            setTimeout(() => {
+                const btn = document.getElementById("btn-cgu-lang");
+                if (btn) btn.focus();
+            }, 120);
         });
     }
 
@@ -343,6 +354,9 @@ function setupEventListeners() {
     });
     bindUtilityBtn("portal-btn-settings", null, () => {
         switchSection("settings");
+    });
+    bindUtilityBtn("portal-btn-reload", null, () => {
+        reloadActivePlaylist();
     });
 
     document.getElementById("portal-btn-accounts").addEventListener("click", () => {

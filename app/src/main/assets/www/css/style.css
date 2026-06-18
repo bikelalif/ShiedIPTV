@@ -3052,6 +3052,10 @@ body.is-webapp #player-loader-vlc,
     display: none !important;
 }
 
+body.is-webapp #portal-btn-reload {
+    display: none !important;
+}
+
 body.is-webapp #player-loader-vlc.force-show,
 #player-screen #player-loader-vlc.force-show,
 .vlc-btn-loader.force-show {
@@ -3129,5 +3133,132 @@ body:not(.tv-mode) #home-screen[data-section="series"] .media-grid {
 #player-screen.preview-mode .player-loader {
     transform: translate(-50%, -50%) scale(0.65) !important;
     background: transparent !important;
-    z-index: 52;
 }
+
+/* TV Mode / Android TV UI Customizations */
+body.tv-mode #player-btn-fullscreen {
+    display: none !important;
+}
+
+/* 1. Divide movies and series into exactly 3 columns in TV mode */
+body.tv-mode #home-screen[data-section="movies"] .media-grid,
+body.tv-mode #home-screen[data-section="series"] .media-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+}
+
+/* 2. Prevent bottom row cutoff (allow generous scrolling past the last items) */
+body.tv-mode .media-grid {
+    padding-bottom: 9rem !important; /* plenty of breathing room at the bottom of the grid */
+}
+body.tv-mode .series-details-container {
+    padding-bottom: 9rem !important; /* plenty of room at the bottom of series page */
+}
+
+/* 3. Prevent focus scale/glow animation clipping on scrollable grids, sidebars and cards */
+body.tv-mode .media-grid {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+}
+body.tv-mode .category-list {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+}
+body.tv-mode .category-item {
+    width: calc(100% - 1rem) !important;
+    margin: 0.25rem auto !important;
+}
+body.tv-mode .playlists-grid {
+    padding: 1.25rem !important;
+}
+body.tv-mode .episodes-list {
+    padding: 1.25rem !important;
+}
+body.tv-mode .seasons-bar {
+    padding: 0.75rem 0.5rem !important;
+}
+
+/* Force show the live preview panel on TV even if viewport width triggers mobile/tablet max-width media query */
+body.tv-mode .live-preview-panel:not(.hidden) {
+    display: flex !important;
+}
+
+/* Reduce sidebar width and optimize grid layout when preview panel is open in TV mode */
+body.tv-mode #home-screen.preview-open .category-sidebar {
+    width: 200px !important;
+}
+
+body.tv-mode #home-screen[data-section="live"].preview-open .media-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+}
+
+/* Optimize channel logo visibility inside live cards in TV mode */
+body.tv-mode .media-card.live-card .media-poster-wrapper img {
+    padding: 0.5rem !important;
+}
+
+/* TV safe-area layout fixes for margins/overscan to prevent cutoffs */
+body.tv-mode .main-content {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: calc(100% - 7rem) !important;
+    width: calc(100% - 6rem) !important;
+    margin: 3.5rem 3rem !important;
+    padding: 1.5rem 1rem 0 1rem !important;
+}
+
+body.tv-mode .series-details-container {
+    height: calc(100% - 7rem) !important;
+    width: calc(100% - 6rem) !important;
+    margin: 3.5rem 3rem !important;
+    padding: 2rem 1.5rem 9rem 1.5rem !important;
+}
+
+body.tv-mode .seasons-bar {
+    padding: 1.5rem 1.5rem !important;
+    margin-left: -1rem !important;
+    margin-right: -1rem !important;
+    margin-top: -1rem !important;
+    margin-bottom: -1rem !important;
+    overflow-y: hidden !important;
+}
+
+body.tv-mode .seasons-bar::-webkit-scrollbar {
+    display: none !important;
+    height: 0 !important;
+    width: 0 !important;
+}
+
+/* Prevent clipping of focused states by ensuring a scroll margin safety zone */
+body.tv-mode .focusable {
+    scroll-margin: 2rem !important;
+}
+
+/* Fix media grid card height to auto to prevent title clippings inside the cards */
+body.tv-mode .media-card {
+    height: auto !important;
+}
+
+body.tv-mode .media-card:not(.live-card) .media-poster-wrapper {
+    padding-top: 0 !important;
+    aspect-ratio: 1 / 1.4 !important;
+}
+
+body.tv-mode .media-card.live-card .media-poster-wrapper {
+    padding-top: 0 !important;
+    aspect-ratio: 16 / 9 !important;
+}
+
+/* Force horizontal layout for details section on TV mode to make metadata visible next to the poster */
+body.tv-mode .series-info-section {
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+}
+
+body.tv-mode #series-plot {
+    text-align: left !important;
+}
+
+
+

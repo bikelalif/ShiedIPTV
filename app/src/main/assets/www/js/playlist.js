@@ -2,6 +2,217 @@
    SHIELDIPTV ACCOUNT PLAYLIST & LOGIN SERVICES
    ========================================================================== */
 
+async function loadPlaylistDataFromCache(playlistId) {
+    try {
+        const categories = await dbHelper.get(`playlist_cache_${playlistId}_categories`);
+        const streams = await dbHelper.get(`playlist_cache_${playlistId}_streams`);
+        const userInfo = await dbHelper.get(`playlist_cache_${playlistId}_user_info`);
+        
+        if (categories && streams) {
+            return { categories, streams, userInfo };
+        }
+    } catch (e) {
+        console.error("Error loading playlist data from cache", e);
+    }
+    return null;
+}
+
+async function savePlaylistDataToCache(playlistId, categories, streams, userInfo) {
+    try {
+        await dbHelper.set(`playlist_cache_${playlistId}_categories`, categories);
+        await dbHelper.set(`playlist_cache_${playlistId}_streams`, streams);
+        if (userInfo) {
+            await dbHelper.set(`playlist_cache_${playlistId}_user_info`, userInfo);
+        }
+        console.log(`[Cache] Saved playlist data to cache for ${playlistId}`);
+    } catch (e) {
+        console.error("Error saving playlist data to cache", e);
+    }
+}
+
+async function tryConnectPlaylistFromCache(playlist, isAuto) {
+    const isWebapp = document.body.classList.contains("is-webapp");
+    if (isWebapp) {
+        return false; // Web version does not use cache
+    }
+    
+    const cachedData = await loadPlaylistDataFromCache(playlist.id);
+    if (cachedData) {
+        const t = TRANSLATIONS[state.language || 'en'];
+        console.log(`[Cache] Loading playlist from cache for ID: ${playlist.id}`);
+        
+        state.categories = cachedData.categories;
+        state.streams = cachedData.streams;
+        state.userInfo = cachedData.userInfo;
+        
+        state.isLoggedIn = true;
+        state.currentPlaylistType = playlist.type;
+        safeStorage.local.setItem("shield_active_playlist_id", playlist.id);
+        
+        if (playlist.type === 'demo') {
+            state.username = "Démo";
+            document.getElementById("portal-username").innerText = "Démo";
+            document.getElementById("info-status").innerText = t.activeText;
+            document.getElementById("info-server-url").innerText = "Démo (Local)";
+            document.getElementById("info-max-connections").innerText = "Illimité";
+            document.getElementById("info-exp").innerText = "Jamais";
+        } else if (playlist.type === 'xtream') {
+            state.serverUrl = playlist.serverUrl;
+            state.username = playlist.username;
+            state.password = playlist.password;
+            
+            safeStorage.local.setItem("shield_iptv_session", JSON.stringify({
+                serverUrl: state.serverUrl,
+                username: state.username,
+                password: state.password
+            }));
+            
+            if (document.getElementById("status-username")) {
+                document.getElementById("status-username").innerText = state.username;
+            }
+            document.getElementById("portal-username").innerText = state.username;
+            
+            const userInfo = cachedData.userInfo;
+            if (userInfo) {
+                document.getElementById("info-status").innerText = userInfo.status === "Active" ? t.activeText : userInfo.status;
+                document.getElementById("info-server-url").innerText = state.serverUrl;
+                document.getElementById("info-max-connections").innerText = userInfo.max_connections || "N/A";
+                if (userInfo.exp_date) {
+                    const date = new Date(parseInt(userInfo.exp_date) * 1000);
+                    const dateStr = date.toLocaleDateString(state.language === 'fr' ? 'fr-FR' : 'en-US');
+                    if (document.getElementById("status-expiry")) {
+                        document.getElementById("status-expiry").innerText = `Expire: ${dateStr}`;
+                    }
+                    document.getElementById("info-exp").innerText = dateStr;
+                } else {
+                    if (document.getElementById("status-expiry")) {
+                        document.getElementById("status-expiry").innerText = "Expire: N/A";
+                    }
+                    document.getElementById("info-exp").innerText = "N/A";
+                }
+            }
+        } else if (playlist.type === 'm3u') {
+            state.username = playlist.name;
+            document.getElementById("portal-username").innerText = playlist.name;
+            document.getElementById("info-status").innerText = t.activeText;
+            document.getElementById("info-server-url").innerText = playlist.url;
+            document.getElementById("info-max-connections").innerText = "1";
+            document.getElementById("info-exp").innerText = "N/A";
+        }
+        
+        hideLoader();
+        showScreen("portal-screen");
+        showToast(t.toastLoginSuccess, 3000);
+        return true;
+    }
+    return false;
+}
+
+async function reloadActivePlaylist() {
+    const activePlaylistId = safeStorage.local.getItem("shield_active_playlist_id");
+    if (!activePlaylistId) {
+        showToast("Aucune playlist active.", 3000);
+        return;
+    }
+    
+    const playlists = loadSavedPlaylists();
+    const activePlaylist = Array.isArray(playlists) ? playlists.find(p => p && p.id === activePlaylistId) : null;
+    if (!activePlaylist) {
+        showToast("Impossible de trouver la playlist active.", 3000);
+        return;
+    }
+    
+    const t = TRANSLATIONS[state.language || 'en'];
+    showLoader(t.toastPreloadCats || "Mise à jour des catégories...");
+    
+    try {
+        if (activePlaylist.type === 'xtream') {
+            state.serverUrl = activePlaylist.serverUrl;
+            state.username = activePlaylist.username;
+            state.password = activePlaylist.password;
+            state.currentPlaylistType = 'xtream';
+            
+            const data = await makeApiCall();
+            if (data && data.user_info && data.user_info.auth === 1) {
+                state.userInfo = data.user_info;
+                await preloadAllData();
+                
+                const isWebapp = document.body.classList.contains("is-webapp");
+                if (!isWebapp) {
+                    await savePlaylistDataToCache(activePlaylistId, state.categories, state.streams, data.user_info);
+                }
+                
+                document.getElementById("portal-username").innerText = state.username;
+                document.getElementById("info-status").innerText = data.user_info.status === "Active" ? t.activeText : data.user_info.status;
+                document.getElementById("info-server-url").innerText = state.serverUrl;
+                document.getElementById("info-max-connections").innerText = data.user_info.max_connections || "N/A";
+                if (data.user_info.exp_date) {
+                    const date = new Date(parseInt(data.user_info.exp_date) * 1000);
+                    const dateStr = date.toLocaleDateString(state.language === 'fr' ? 'fr-FR' : 'en-US');
+                    document.getElementById("info-exp").innerText = dateStr;
+                } else {
+                    document.getElementById("info-exp").innerText = "N/A";
+                }
+            } else {
+                throw new Error("Authentification expirée ou invalide.");
+            }
+        } else if (activePlaylist.type === 'm3u') {
+            state.currentPlaylistType = 'm3u';
+            const response = await fetchWithFallback(activePlaylist.url, {}, 30000);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const text = await response.text();
+            
+            const streams = parseM3U(text);
+            state.streams = streams;
+            
+            const liveCatsMap = new Map();
+            streams.live.forEach(item => {
+                const catId = item.category_id || "m3u_live_default";
+                const catName = item.category_name || "Général";
+                liveCatsMap.set(catId, catName);
+            });
+            state.categories.live = [{ category_id: "all", category_name: "Tout" }];
+            liveCatsMap.forEach((name, id) => {
+                state.categories.live.push({ category_id: id, category_name: name });
+            });
+            
+            const movieCatsMap = new Map();
+            streams.movies.forEach(item => {
+                const catId = item.category_id || "m3u_movie_default";
+                const catName = item.category_name || "Général";
+                movieCatsMap.set(catId, catName);
+            });
+            state.categories.movies = [{ category_id: "all", category_name: "Tout" }];
+            movieCatsMap.forEach((name, id) => {
+                state.categories.movies.push({ category_id: id, category_name: name });
+            });
+            
+            const seriesCatsMap = new Map();
+            streams.series.forEach(item => {
+                const catId = item.category_id || "m3u_series_default";
+                const catName = item.category_name || "Général";
+                seriesCatsMap.set(catId, catName);
+            });
+            state.categories.series = [{ category_id: "all", category_name: "Tout" }];
+            seriesCatsMap.forEach((name, id) => {
+                state.categories.series.push({ category_id: id, category_name: name });
+            });
+            
+            const isWebapp = document.body.classList.contains("is-webapp");
+            if (!isWebapp) {
+                await savePlaylistDataToCache(activePlaylistId, state.categories, state.streams, { status: "Active", max_connections: "1", exp_date: null });
+            }
+        }
+        
+        hideLoader();
+        showToast(state.language === 'fr' ? "Playlist rechargée avec succès !" : "Playlist reloaded successfully!", 3000);
+    } catch (err) {
+        hideLoader();
+        console.error("Reload failed:", err);
+        showToast((state.language === 'fr' ? "Échec de la mise à jour : " : "Update failed: ") + err.message, 5000);
+    }
+}
+
 function loadSavedPlaylists() {
     let playlists = [];
     const saved = safeStorage.local.getItem("shield_playlists");
@@ -50,6 +261,13 @@ function logout() {
 
 async function connectPlaylist(playlist, isAuto = false) {
     const t = TRANSLATIONS[state.language || 'en'];
+    
+    // Attempt cache load first if not on webapp
+    const cacheLoaded = await tryConnectPlaylistFromCache(playlist, isAuto);
+    if (cacheLoaded) {
+        return;
+    }
+    
     state.currentPlaylistType = playlist.type;
     safeStorage.local.setItem("shield_active_playlist_id", playlist.id);
     
@@ -162,6 +380,11 @@ async function connectPlaylist(playlist, isAuto = false) {
             document.getElementById("info-max-connections").innerText = "1";
             document.getElementById("info-exp").innerText = "N/A";
             
+            const isWebapp = document.body.classList.contains("is-webapp");
+            if (!isWebapp) {
+                await savePlaylistDataToCache(playlist.id, state.categories, state.streams, { status: "Active", max_connections: "1", exp_date: null });
+            }
+            
             hideLoader();
             showToast(t.toastLoginSuccess, 3000);
             if (isAuto) {
@@ -226,6 +449,12 @@ async function performLogin(url, username, password, isAutoLogin = false) {
             }
             
             await preloadAllData();
+            
+            const activePlaylistId = safeStorage.local.getItem("shield_active_playlist_id");
+            const isWebapp = document.body.classList.contains("is-webapp");
+            if (activePlaylistId && !isWebapp) {
+                await savePlaylistDataToCache(activePlaylistId, state.categories, state.streams, data.user_info);
+            }
             
             hideLoader();
             showToast(t.toastLoginSuccess, 3000);
@@ -378,6 +607,11 @@ async function addXtreamCodesPlaylist(name, url, username, password) {
             
             await preloadAllData();
             
+            const isWebapp = document.body.classList.contains("is-webapp");
+            if (!isWebapp) {
+                await savePlaylistDataToCache(id, state.categories, state.streams, data.user_info);
+            }
+            
             hideLoader();
             showToast(t.toastLoginSuccess, 3000);
             showScreen("portal-screen");
@@ -473,6 +707,11 @@ async function addM3UPlaylist(name, url) {
         document.getElementById("info-max-connections").innerText = "1";
         document.getElementById("info-exp").innerText = "N/A";
         
+        const isWebapp = document.body.classList.contains("is-webapp");
+        if (!isWebapp) {
+            await savePlaylistDataToCache(id, state.categories, state.streams, { status: "Active", max_connections: "1", exp_date: null });
+        }
+        
         hideLoader();
         showToast(t.toastLoginSuccess, 3000);
         showScreen("portal-screen");
@@ -487,6 +726,15 @@ function deletePlaylist(id) {
     const playlists = loadSavedPlaylists();
     const filtered = playlists.filter(p => p.id !== id);
     safeStorage.local.setItem("shield_playlists", JSON.stringify(filtered));
+    
+    // Clear cache from IndexedDB
+    try {
+        dbHelper.delete(`playlist_cache_${id}_categories`);
+        dbHelper.delete(`playlist_cache_${id}_streams`);
+        dbHelper.delete(`playlist_cache_${id}_user_info`);
+    } catch (e) {
+        console.error("Failed to clear deleted playlist cache", e);
+    }
     
     const activePlaylistId = safeStorage.local.getItem("shield_active_playlist_id");
     if (activePlaylistId === id) {
@@ -590,6 +838,11 @@ function renderPlaylistsGrid() {
     
     if (isTvWrapper) {
         setTimeout(() => {
+            const cguModal = document.getElementById("cgu-modal");
+            if (cguModal && !cguModal.classList.contains("hidden")) {
+                // Do not steal focus if CGU modal is open
+                return;
+            }
             const firstCard = gridEl.querySelector(".playlist-card");
             if (firstCard) firstCard.focus();
         }, 100);

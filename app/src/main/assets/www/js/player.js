@@ -6,6 +6,7 @@ async function playMedia(item, section) {
     const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
                         window.location.protocol !== 'file:' && 
                         !window.cordova && 
+                        !window.AndroidApp &&
                         !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
                         window.location.hostname !== 'localhost' && 
                         window.location.hostname !== '127.0.0.1';
@@ -22,7 +23,7 @@ async function playMedia(item, section) {
     
     if (section === 'live') {
         const isPlayerOpen = activeScreenId() === 'player-screen';
-        const isMobile = window.innerWidth <= 1024;
+        const isMobile = (window.innerWidth <= 1024) && !window.AndroidApp && !isTvWrapper;
         const isMobileWeb = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.cordova && !window.AndroidApp;
         
         if (isMobile || isPlayerOpen || (state.currentPlayingStream && state.currentPlayingStream.section === 'live' && state.currentPlayingStream.item.stream_id === item.stream_id)) {
@@ -98,6 +99,7 @@ function launchVideoPlayer(url, title, logoUrl) {
     const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
                         window.location.protocol !== 'file:' && 
                         !window.cordova && 
+                        !window.AndroidApp &&
                         !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
                         window.location.hostname !== 'localhost' && 
                         window.location.hostname !== '127.0.0.1';
@@ -108,6 +110,16 @@ function launchVideoPlayer(url, title, logoUrl) {
             vlcLoaderBtn.classList.remove("hidden");
         } else {
             vlcLoaderBtn.classList.add("hidden");
+        }
+    }
+    
+    // Hide fullscreen button on TV mode/wrapper
+    const fullscreenBtn = document.getElementById("player-btn-fullscreen");
+    if (fullscreenBtn) {
+        if (isTvWrapper || window.AndroidApp || document.body.classList.contains("tv-mode")) {
+            fullscreenBtn.style.display = "none";
+        } else {
+            fullscreenBtn.style.display = "";
         }
     }
     
@@ -289,6 +301,7 @@ function bindFullscreenVideoHandlers() {
             const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
                                 window.location.protocol !== 'file:' && 
                                 !window.cordova && 
+                                !window.AndroidApp &&
                                 !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
                                 window.location.hostname !== 'localhost' && 
                                 window.location.hostname !== '127.0.0.1';
@@ -532,7 +545,19 @@ async function loadLivePreview(item) {
     // Set player screen to preview mode and make it visible
     playerScreen.classList.add("preview-mode");
     playerScreen.classList.remove("hidden");
+    
+    const homeScreen = document.getElementById("home-screen");
+    if (homeScreen) {
+        homeScreen.classList.add("preview-open");
+    }
+    
     updatePreviewVideoPosition();
+    
+    // Multiple layout updates to guarantee positioning matches container dimensions after reflow
+    setTimeout(updatePreviewVideoPosition, 100);
+    setTimeout(updatePreviewVideoPosition, 300);
+    setTimeout(updatePreviewVideoPosition, 500);
+    setTimeout(updatePreviewVideoPosition, 800);
     
     destroyMpegtsPlayer();
     
@@ -755,13 +780,14 @@ function exitFullscreenToPreview() {
 
 function stopVideoPlaybackCompletely() {
     console.log("[Player] Stopping video playback completely");
+    destroyMpegtsPlayer();
+    
     const video = document.getElementById("video-player");
     if (video) {
         video.pause();
         video.removeAttribute("src");
         try { video.load(); } catch(e){}
     }
-    destroyMpegtsPlayer();
     
     const playerScreen = document.getElementById("player-screen");
     if (playerScreen) {
@@ -828,7 +854,7 @@ function closeVideoPlayer() {
     
     const wasLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
     const liveItem = wasLive ? state.currentPlayingStream.item : null;
-    const isMobile = window.innerWidth <= 1024;
+    const isMobile = (window.innerWidth <= 1024) && !window.AndroidApp && !isTvWrapper;
     if (wasLive && liveItem && !isMobile) {
         exitFullscreenToPreview();
         return;
