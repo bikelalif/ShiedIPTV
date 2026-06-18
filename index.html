@@ -83,6 +83,26 @@
                     console.warn("Ignored browser extension/autofill error:", message);
                     return true;
                 }
+                
+                var msgStr = String(message || '');
+                var srcStr = String(source || '');
+                var stackStr = error && error.stack ? String(error.stack) : '';
+                
+                // Ignore non-critical background playback / library errors during fast zapping/detaching
+                if (srcStr.indexOf('mpegts') !== -1 || 
+                    srcStr.indexOf('hls') !== -1 ||
+                    msgStr.indexOf('mpegts') !== -1 ||
+                    msgStr.indexOf('SourceBuffer') !== -1 ||
+                    msgStr.indexOf('updateend') !== -1 ||
+                    msgStr.indexOf('RemoveRanges') !== -1 ||
+                    msgStr.indexOf('play()') !== -1 ||
+                    msgStr.indexOf('AbortError') !== -1 ||
+                    stackStr.indexOf('mpegts') !== -1 ||
+                    stackStr.indexOf('SourceBuffer') !== -1) {
+                    console.warn("Ignored non-critical playback/zapping error:", message, "from", source);
+                    return true;
+                }
+                
                 showError(message, source, lineno, colno, error);
                 return false;
             };
@@ -315,6 +335,9 @@
                         </button>
                         <button class="focusable icon-btn" id="portal-btn-settings" title="Paramètres">
                             <span class="material-icons">settings</span>
+                        </button>
+                        <button class="focusable icon-btn" id="portal-btn-reload" title="Recharger la playlist">
+                            <span class="material-icons">refresh</span>
                         </button>
                     </div>
                 </div>
