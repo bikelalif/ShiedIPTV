@@ -60,10 +60,10 @@ const isTvWrapper = window.cordova ||
                     window.AndroidApp ||
                     /SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent);
 
-// Fallback dynamic placeholder SVG Data-URIs
+// Fallback dynamic placeholders (using local PNG assets for universal compatibility on older WebViews)
 const PLACEHOLDERS = {
-    live: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150" viewBox="0 0 300 150"><rect width="300" height="150" fill="%230f1423"/><text x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Outfit,sans-serif" font-size="18" fill="%2364748b">Direct TV</text></svg>',
-    vod: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450" viewBox="0 0 300 450"><rect width="300" height="450" fill="%230f1423"/><text x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Outfit,sans-serif" font-size="18" fill="%2364748b">ShieldIPTV</text></svg>'
+    live: 'assets/banner.png',
+    vod: 'assets/icon.png'
 };
 
 // Corporate Demo Playlist Data (France 24 removed)
@@ -214,6 +214,8 @@ const state = {
     
     // Focus management helper
     lastFocusedElement: null,
+    lastFocusedHomeElement: null,
+    lastFocusedSeriesDetailsElement: null,
     // Parent screen tracking for settings/diagnostics return behavior
     utilityParentScreen: ''
 };
