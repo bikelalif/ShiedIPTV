@@ -64,7 +64,12 @@ function showScreen(screenId) {
         if (isTvWrapper) {
             setTimeout(() => {
                 try {
-                    focusFirst();
+                    const active = document.activeElement;
+                    const activeOverlay = document.querySelector(".screen-overlay:not(.hidden)");
+                    const targetContainer = activeOverlay || document.getElementById(screenId);
+                    if (!active || active === document.body || !targetContainer || !targetContainer.contains(active)) {
+                        focusFirst();
+                    }
                 } catch(e) {
                     console.warn("Failed to focus first element:", e);
                 }
@@ -596,6 +601,19 @@ function setupSpatialNavigation() {
         const target = e.target;
         if (target && target.classList.contains("focusable")) {
             state.lastFocusedElement = target;
+            
+            // Remove focused class from all other focusable elements
+            document.querySelectorAll(".focusable.focused").forEach(el => {
+                if (el !== target) el.classList.remove("focused");
+            });
+            target.classList.add("focused");
+        }
+    });
+
+    document.addEventListener("focusout", (e) => {
+        const target = e.target;
+        if (target && target.classList.contains("focusable")) {
+            target.classList.remove("focused");
         }
     });
 }
@@ -681,7 +699,7 @@ function moveFocus(direction) {
                 candidates = cardsAbove;
             } else {
                 // No cards above, allow focusing header actions (like search bar, back button)
-                candidates = candidates.filter(c => !c.classList.contains("media-card") && !c.classList.contains("category-item"));
+                candidates = candidates.filter(c => !c.classList.contains("media-card") && !c.classList.contains("category-item") && c.id !== "category-search-bar");
             }
         }
     } else if (active.classList.contains("category-item")) {

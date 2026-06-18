@@ -3133,9 +3133,7 @@ body:not(.tv-mode) #home-screen[data-section="series"] .media-grid {
 #player-screen.preview-mode .player-loader {
     transform: translate(-50%, -50%) scale(0.65) !important;
     background: transparent !important;
-}
-
-/* TV Mode / Android TV UI Customizations */
+}/* TV Mode / Android TV UI Customizations */
 body.tv-mode #player-btn-fullscreen {
     display: none !important;
 }
@@ -3148,10 +3146,10 @@ body.tv-mode #home-screen[data-section="series"] .media-grid {
 
 /* 2. Prevent bottom row cutoff (allow generous scrolling past the last items) */
 body.tv-mode .media-grid {
-    padding-bottom: 9rem !important; /* plenty of breathing room at the bottom of the grid */
+    padding-bottom: 3.5rem !important; /* reasonable padding to prevent bottom row clipping */
 }
 body.tv-mode .series-details-container {
-    padding-bottom: 9rem !important; /* plenty of room at the bottom of series page */
+    padding-bottom: 3.5rem !important;
 }
 
 /* 3. Prevent focus scale/glow animation clipping on scrollable grids, sidebars and cards */
@@ -3162,10 +3160,16 @@ body.tv-mode .media-grid {
 body.tv-mode .category-list {
     padding-left: 0.5rem !important;
     padding-right: 0.5rem !important;
+    gap: 0.3rem !important;
 }
 body.tv-mode .category-item {
     width: calc(100% - 1rem) !important;
     margin: 0.25rem auto !important;
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.82rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 body.tv-mode .playlists-grid {
     padding: 1.25rem !important;
@@ -3183,17 +3187,90 @@ body.tv-mode .live-preview-panel:not(.hidden) {
 }
 
 /* Reduce sidebar width and optimize grid layout when preview panel is open in TV mode */
-body.tv-mode #home-screen.preview-open .category-sidebar {
+body.tv-mode .category-sidebar {
     width: 200px !important;
+    padding: 1rem 0.5rem !important;
+}
+body.tv-mode #home-screen.preview-open .category-sidebar {
+    width: 180px !important;
 }
 
+/* Horizontal Channel Row Layout (TV Mode) */
+body.tv-mode #home-screen[data-section="live"] .media-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.75rem !important;
+}
 body.tv-mode #home-screen[data-section="live"].preview-open .media-grid {
     grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
+}
+body.tv-mode .media-card.live-card {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    height: 60px !important;
+    padding: 0 0.5rem !important;
+    background: rgba(15, 23, 42, 0.4) !important;
+    border-radius: 12px !important;
+    gap: 0.75rem !important;
+}
+body.tv-mode .media-card.live-card .media-poster-wrapper {
+    width: 70px !important;
+    height: 40px !important;
+    padding-top: 0 !important;
+    background: transparent !important;
+    border-radius: 6px !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+}
+body.tv-mode .media-card.live-card .media-poster-wrapper img {
+    position: static !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    padding: 1px !important;
+}
+body.tv-mode .media-card.live-card .media-name {
+    flex-grow: 1 !important;
+    font-size: 0.95rem !important;
+    text-align: left !important;
+    padding: 0 !important;
+    height: auto !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: block !important;
+    margin: 0 !important;
 }
 
-/* Optimize channel logo visibility inside live cards in TV mode */
-body.tv-mode .media-card.live-card .media-poster-wrapper img {
+/* Playlist Manager Screen Constraints (Fit entirely without scrolling) */
+body.tv-mode #playlist-manager-screen {
+    overflow: hidden !important;
+}
+body.tv-mode .playlist-manager-container {
+    height: calc(100% - 7rem) !important;
+    width: calc(100% - 6rem) !important;
+    margin: 3.5rem 3rem !important;
+    padding: 1.5rem 1rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    gap: 1.25rem !important;
+}
+body.tv-mode .playlist-manager-container .playlists-grid {
+    flex-grow: 1 !important;
+    overflow-y: auto !important;
+    max-height: calc(100% - 10rem) !important;
     padding: 0.5rem !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+}
+body.tv-mode .playlist-manager-container .playlist-card {
+    min-height: 130px !important;
+    padding: 1rem 0.75rem !important;
+    gap: 0.5rem !important;
+}
+body.tv-mode .playlist-manager-actions {
+    margin-top: 1rem !important;
 }
 
 /* TV safe-area layout fixes for margins/overscan to prevent cutoffs */
@@ -3211,7 +3288,7 @@ body.tv-mode .series-details-container {
     height: calc(100% - 7rem) !important;
     width: calc(100% - 6rem) !important;
     margin: 3.5rem 3rem !important;
-    padding: 2rem 1.5rem 9rem 1.5rem !important;
+    padding: 2rem 1.5rem 3.5rem 1.5rem !important;
 }
 
 body.tv-mode .seasons-bar {
@@ -3239,14 +3316,10 @@ body.tv-mode .media-card {
     height: auto !important;
 }
 
+/* Fallback aspect ratio padding for older TVs lacking aspect-ratio support */
 body.tv-mode .media-card:not(.live-card) .media-poster-wrapper {
-    padding-top: 0 !important;
-    aspect-ratio: 1 / 1.4 !important;
-}
-
-body.tv-mode .media-card.live-card .media-poster-wrapper {
-    padding-top: 0 !important;
-    aspect-ratio: 16 / 9 !important;
+    padding-top: 140% !important;
+    height: 0 !important;
 }
 
 /* Force horizontal layout for details section on TV mode to make metadata visible next to the poster */
@@ -3259,6 +3332,3 @@ body.tv-mode .series-info-section {
 body.tv-mode #series-plot {
     text-align: left !important;
 }
-
-
-
