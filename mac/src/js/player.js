@@ -64,13 +64,13 @@ async function playMedia(item, section) {
     }
     
     // VOD (movies)
-    const ext = (item.container_extension || "mp4").toLowerCase();
-    const streamUrl = item.url || `${state.serverUrl}/movie/${state.username}/${state.password}/${item.stream_id}.${ext}`;
+    state.currentPlayingStream = { item, section };
     
     // On Android TV, use native ExoPlayer for all VOD movies (full codec support)
     // Resolve URL with DoH first to bypass ISP DNS blocking
     if (window.AndroidApp) {
-        state.currentPlayingStream = { item, section };
+        const ext = (item.container_extension || "mp4").toLowerCase();
+        const streamUrl = item.url || `${state.serverUrl}/movie/${state.username}/${state.password}/${item.stream_id}.${ext}`;
         resolveUrlWithDoH(streamUrl, false).then(resolvedUrl => {
             console.log("[Android TV] Playing VOD via ExoPlayer:", resolvedUrl);
             window.AndroidApp.playStream(resolvedUrl, item.name, item.stream_icon || item.cover || "");
@@ -78,7 +78,16 @@ async function playMedia(item, section) {
         return;
     }
     
-    state.currentPlayingStream = { item, section };
+    // On Web, PC and Mobile Web, attempt to play HLS (.m3u8) format first to leverage
+    // automatic server-side audio transcoding (e.g. AC-3/E-AC-3 to AAC) and browser container compatibility
+    const preferHls = !isTvWrapper;
+    state.tryingHlsFallback = preferHls;
+    state.currentPlayingStreamName = item.name;
+    state.currentPlayingStreamLogo = item.stream_icon || item.cover;
+    
+    const playExt = preferHls ? "m3u8" : (item.container_extension || "mp4").toLowerCase();
+    const streamUrl = item.url || `${state.serverUrl}/movie/${state.username}/${state.password}/${item.stream_id}.${playExt}`;
+    
     launchVideoPlayer(streamUrl, item.name, item.stream_icon || item.cover);
     
     document.getElementById("player-timeline-container").style.display = "flex";
@@ -100,6 +109,27 @@ async function loadEPG(streamId) {
     } catch (e) {
         console.warn("EPG load failed:", e);
         document.getElementById("player-now-playing").innerText = t.playerNowPlaying;
+    }
+}
+
+function triggerDirectStreamFallback() {
+    if (!state.currentPlayingStream) return;
+    
+    console.log("[Player] HLS playback failed. Falling back to direct stream format...");
+    let originalExt = "mp4";
+    if (state.currentPlayingStream.item) {
+        originalExt = (state.currentPlayingStream.item.container_extension || "mp4").toLowerCase();
+    }
+    
+    let fallbackUrl = "";
+    if (state.currentPlayingStream.section === 'movies') {
+        fallbackUrl = state.currentPlayingStream.item.url || `${state.serverUrl}/movie/${state.username}/${state.password}/${state.currentPlayingStream.item.stream_id}.${originalExt}`;
+    } else if (state.currentPlayingStream.section === 'series') {
+        fallbackUrl = state.currentPlayingStream.item.url || `${state.serverUrl}/series/${state.username}/${state.password}/${state.currentPlayingStream.item.id}.${originalExt}`;
+    }
+    
+    if (fallbackUrl) {
+        launchVideoPlayer(fallbackUrl, state.currentPlayingStreamName, state.currentPlayingStreamLogo);
     }
 }
 
@@ -257,6 +287,60 @@ function launchVideoPlayer(url, title, logoUrl) {
                 video.src = resolvedStreamUrl;
                 video.play().catch(err => {});
             }
+        } else if (resolvedStreamUrl.includes('.m3u8')) {
+            if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                console.log("[Player] Initializing HLS.js for stream:", resolvedStreamUrl);
+                state.hlsPlayer = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true
+                });
+                state.hlsPlayer.attachMediaElement(video);
+                state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
+                    state.hlsPlayer.loadSource(resolvedStreamUrl);
+                });
+                state.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+                    video.play().catch(e => {
+                        console.warn("HLS Autoplay failed, trying muted...", e);
+                        video.muted = true;
+                        video.play().catch(err => {});
+                    });
+                });
+                state.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                console.warn("Fatal network error in Hls.js, checking for fallback...");
+                                if (state.tryingHlsFallback) {
+                                    state.tryingHlsFallback = false;
+                                    triggerDirectStreamFallback();
+                                } else {
+                                    state.hlsPlayer.startLoad();
+                                }
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.warn("Fatal media error in Hls.js, trying to recover...");
+                                state.hlsPlayer.recoverMediaError();
+                                break;
+                            default:
+                                console.error("Fatal Hls.js error:", data);
+                                if (state.tryingHlsFallback) {
+                                    state.tryingHlsFallback = false;
+                                    triggerDirectStreamFallback();
+                                } else {
+                                    destroyMpegtsPlayer();
+                                    video.src = resolvedStreamUrl;
+                                    video.play().catch(e => {});
+                                }
+                                break;
+                        }
+                    }
+                });
+            } else {
+                console.log("[Player] HLS.js not supported, falling back to native player:", resolvedStreamUrl);
+                video.src = resolvedStreamUrl;
+                video.load();
+                video.play().catch(e => {});
+            }
         } else {
             console.log("[Player] Launching native HTML5 source:", resolvedStreamUrl);
             video.src = resolvedStreamUrl;
@@ -321,6 +405,15 @@ function bindFullscreenVideoHandlers() {
         if (video.error) {
             errDetail = ` (Code ${video.error.code}: ${video.error.message || ''})`;
         }
+        
+        // HLS fallback logic if the .m3u8 request failed
+        if (state.tryingHlsFallback) {
+            state.tryingHlsFallback = false;
+            console.log("[Player] HLS playback failed natively/network. Falling back to direct stream...");
+            triggerDirectStreamFallback();
+            return;
+        }
+        
         if (isLive) {
             console.warn("[Player] Video error event fired. Attempting recovery." + errDetail);
             if (!state.reconnectTimer) {

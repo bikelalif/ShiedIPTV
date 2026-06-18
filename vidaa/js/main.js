@@ -611,6 +611,73 @@ function setupEventListeners() {
         toggleFullscreen();
     });
     
+    // Volume Control Logic
+    const volumeSlider = document.getElementById("player-volume-slider");
+    const volumeBtn = document.getElementById("player-btn-volume");
+    const volumeIcon = document.getElementById("player-icon-volume");
+    const video = document.getElementById("video-player");
+
+    if (volumeSlider && volumeBtn && volumeIcon && video) {
+        // Set initial volume from local storage if available
+        try {
+            const savedVolume = safeStorage.local.getItem("player_volume");
+            if (savedVolume !== null) {
+                const vol = parseFloat(savedVolume);
+                video.volume = vol;
+                volumeSlider.value = vol;
+                updateVolumeIcon(vol);
+            } else {
+                video.volume = 1.0;
+                volumeSlider.value = 1.0;
+            }
+        } catch (e) {
+            console.warn("Failed to load initial volume:", e);
+        }
+
+        volumeSlider.addEventListener("input", (e) => {
+            const vol = parseFloat(e.target.value);
+            video.volume = vol;
+            video.muted = (vol === 0);
+            try {
+                safeStorage.local.setItem("player_volume", vol.toString());
+            } catch(ex){}
+            updateVolumeIcon(vol);
+        });
+
+        volumeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            video.muted = !video.muted;
+            if (video.muted) {
+                volumeIcon.innerText = "volume_off";
+                volumeSlider.value = 0;
+            } else {
+                const currentVol = video.volume || 1.0;
+                volumeSlider.value = currentVol;
+                updateVolumeIcon(currentVol);
+            }
+        });
+
+        video.addEventListener("volumechange", () => {
+            if (video.muted) {
+                volumeSlider.value = 0;
+                volumeIcon.innerText = "volume_off";
+            } else {
+                volumeSlider.value = video.volume;
+                updateVolumeIcon(video.volume);
+            }
+        });
+    }
+
+    function updateVolumeIcon(vol) {
+        if (vol === 0) {
+            volumeIcon.innerText = "volume_off";
+        } else if (vol < 0.5) {
+            volumeIcon.innerText = "volume_down";
+        } else {
+            volumeIcon.innerText = "volume_up";
+        }
+    }
+    
     // VLC / External Player launching (global for timeout auto-fallback)
     window.launchVlc = () => {
         if (state.currentPlayingStreamUrl) {

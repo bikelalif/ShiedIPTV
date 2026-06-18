@@ -489,6 +489,17 @@ function setupSpatialNavigation() {
                             }
                         }
                     }
+                } else if (key === 'ArrowUp' || key === 'ArrowDown') {
+                    e.preventDefault();
+                    const video = document.getElementById("video-player");
+                    if (video) {
+                        let newVol = key === 'ArrowUp' ? Math.min(1.0, video.volume + 0.05) : Math.max(0.0, video.volume - 0.05);
+                        video.volume = newVol;
+                        video.muted = (newVol === 0);
+                        try {
+                            safeStorage.local.setItem("player_volume", newVol.toString());
+                        } catch(ex){}
+                    }
                 } else if (key === 'Escape' || key === 'Backspace') {
                     e.preventDefault();
                     closeVideoPlayer();

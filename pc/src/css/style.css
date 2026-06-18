@@ -1744,6 +1744,72 @@ body.tv-mode #player-btn-play:focus-visible, body.tv-mode #player-btn-play.focus
     align-items: center;
 }
 
+/* Volume Controls styling */
+.player-volume-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+    transition: var(--transition-smooth);
+}
+
+.player-volume-slider-wrapper {
+    width: 0;
+    overflow: hidden;
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+    opacity: 0;
+    display: flex;
+    align-items: center;
+}
+
+.player-volume-container:hover .player-volume-slider-wrapper,
+.player-volume-container:focus-within .player-volume-slider-wrapper {
+    width: 100px;
+    opacity: 1;
+}
+
+#player-volume-slider {
+    width: 90px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    outline: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+#player-volume-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 6px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+
+#player-volume-slider::-webkit-slider-thumb {
+    height: 14px;
+    width: 14px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    -webkit-appearance: none;
+    margin-top: -4px; /* Align with track */
+    box-shadow: 0 0 8px var(--primary-glow);
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+#player-volume-slider::-webkit-slider-thumb:hover {
+    background: var(--border-focus);
+    transform: scale(1.2);
+    box-shadow: 0 0 12px var(--focus-glow);
+}
+
+/* Hide volume controls on TV mode since system remote handles it */
+body.tv-mode .player-volume-container {
+    display: none !important;
+}
+
 /* Zap Drawer */
 .zap-drawer {
     position: absolute;
