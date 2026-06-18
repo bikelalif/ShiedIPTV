@@ -9,7 +9,7 @@ async function playMedia(item, section) {
                         !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
                         window.location.hostname !== 'localhost' && 
                         window.location.hostname !== '127.0.0.1';
-    if (isMobileWeb && (section === 'live' || section === 'movies')) {
+    if (isMobileWeb && section === 'movies') {
         const t = TRANSLATIONS[state.language || 'en'];
         showToast(t.browserPlayBlocked || "Ce contenu nécessite l'application ShieldIPTV pour être lu.", 5000);
         return;
