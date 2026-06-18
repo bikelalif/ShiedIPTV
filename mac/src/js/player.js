@@ -57,7 +57,7 @@ async function playMedia(item, section) {
     // Resolve URL with DoH first to bypass ISP DNS blocking
     if (window.AndroidApp && ext === "mkv") {
         state.currentPlayingStream = { item, section };
-        resolveUrlWithDoH(streamUrl).then(resolvedUrl => {
+        resolveUrlWithDoH(streamUrl, false).then(resolvedUrl => {
             console.log("[Android TV] Playing MKV VOD via ExoPlayer:", resolvedUrl);
             window.AndroidApp.playStream(resolvedUrl, item.name, item.stream_icon || item.cover || "");
         });
@@ -95,7 +95,13 @@ function launchVideoPlayer(url, title, logoUrl) {
     destroyPreviewMpegtsPlayer();
     state.currentPlayingStream = preservedStream;
     
-    const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
+                        window.location.protocol !== 'file:' && 
+                        !window.cordova && 
+                        !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
+                        window.location.hostname !== 'localhost' && 
+                        window.location.hostname !== '127.0.0.1';
+    const isMobile = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && !isMobileWeb;
     const vlcLoaderBtn = document.getElementById("player-loader-vlc");
     if (vlcLoaderBtn) {
         if (isMobile) {
@@ -167,7 +173,7 @@ function launchVideoPlayer(url, title, logoUrl) {
     
     destroyMpegtsPlayer();
     
-    resolveUrlWithDoH(url).then(resolvedStreamUrl => {
+    resolveUrlWithDoH(url, isLive).then(resolvedStreamUrl => {
         const isTsStream = (resolvedStreamUrl.includes('.ts') || resolvedStreamUrl.includes('/live/')) && !resolvedStreamUrl.includes('.m3u8');
         
         if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
@@ -280,10 +286,18 @@ function bindFullscreenVideoHandlers() {
             const currentSrc = video.src || "";
             console.error("[Player] Video playback error:" + errDetail, "URL:", currentSrc);
             
+            const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
+                                window.location.protocol !== 'file:' && 
+                                !window.cordova && 
+                                !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
+                                window.location.hostname !== 'localhost' && 
+                                window.location.hostname !== '127.0.0.1';
+            
             const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
             const isCode4 = video.error && video.error.code === 4;
+            const isMobile = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && !isMobileWeb;
             
-            if (isMobile || isSafari || isCode4) {
+            if (isMobile || isMobileWeb || isSafari || isCode4) {
                 let ext = "";
                 try {
                     const cleanUrl = currentSrc.split('?')[0].split('#')[0];
@@ -295,12 +309,21 @@ function bindFullscreenVideoHandlers() {
                 if (!ext || ext.length > 4) ext = "MKV/TS";
                 
                 let errorMsg;
-                if (state.language === 'fr') {
-                    errorMsg = `Ce format de flux (${ext.toUpperCase()}) n'est pas supporté par votre navigateur. Vous pouvez l'ouvrir directement dans l'application VLC.`;
+                if (isMobileWeb) {
+                    if (state.language === 'fr') {
+                        errorMsg = `Ce format de flux (${ext.toUpperCase()}) n'est pas supporté par votre navigateur mobile. Veuillez utiliser l'application ShieldIPTV pour lire ce contenu.`;
+                    } else {
+                        errorMsg = `This stream format (${ext.toUpperCase()}) is not supported by your mobile browser. Please use the ShieldIPTV application to watch this content.`;
+                    }
+                    showPlayerError(errorMsg, false);
                 } else {
-                    errorMsg = `This stream format (${ext.toUpperCase()}) is not supported by your browser. You can open it directly in the VLC app.`;
+                    if (state.language === 'fr') {
+                        errorMsg = `Ce format de flux (${ext.toUpperCase()}) n'est pas supporté par votre navigateur. Vous pouvez l'ouvrir directement dans l'application VLC.`;
+                    } else {
+                        errorMsg = `This stream format (${ext.toUpperCase()}) is not supported by your browser. You can open it directly in the VLC app.`;
+                    }
+                    showPlayerError(errorMsg, true);
                 }
-                showPlayerErrorVlc(errorMsg);
             } else {
                 playerLoader.style.display = "none";
                 showToast(`${t.playerStreamError || "Erreur de lecture du flux"}${errDetail}\nURL: ${currentSrc.substring(0, 100)}`, 10000);
@@ -324,7 +347,7 @@ function bindFullscreenVideoHandlers() {
     };
 }
 
-function showPlayerErrorVlc(msg) {
+function showPlayerError(msg, showVlc = true) {
     state.playerHasError = true;
     
     const playerLoader = document.getElementById("player-loader");
@@ -347,8 +370,13 @@ function showPlayerErrorVlc(msg) {
         
         const vlcLoaderBtn = document.getElementById("player-loader-vlc");
         if (vlcLoaderBtn) {
-            vlcLoaderBtn.classList.remove("hidden");
-            vlcLoaderBtn.classList.add("force-show");
+            if (showVlc) {
+                vlcLoaderBtn.classList.remove("hidden");
+                vlcLoaderBtn.classList.add("force-show");
+            } else {
+                vlcLoaderBtn.classList.add("hidden");
+                vlcLoaderBtn.classList.remove("force-show");
+            }
         }
     }
     
@@ -442,7 +470,7 @@ function attemptReconnection() {
     video.removeAttribute("src");
     try { video.load(); } catch(e){}
     
-    resolveUrlWithDoH(url).then(resolvedStreamUrl => {
+    resolveUrlWithDoH(url, true).then(resolvedStreamUrl => {
         const isTsStream = (resolvedStreamUrl.includes('.ts') || resolvedStreamUrl.includes('/live/')) && !resolvedStreamUrl.includes('.m3u8');
         
         if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
@@ -515,7 +543,7 @@ async function loadLivePreview(item) {
     const previewExt = supportsMse ? 'ts' : 'm3u8';
     const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${previewExt}`;
     
-    resolveUrlWithDoH(streamUrl).then(resolvedUrl => {
+    resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
         const isTsStream = (resolvedUrl.includes('.ts') || resolvedUrl.includes('/live/')) && !resolvedUrl.includes('.m3u8');
         
         if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
@@ -971,7 +999,7 @@ function showZapDrawer() {
                 
                 // On Android TV, use native ExoPlayer with DoH resolution
                 if (window.AndroidApp) {
-                    resolveUrlWithDoH(playUrl).then(resolvedUrl => {
+                    resolveUrlWithDoH(playUrl, false).then(resolvedUrl => {
                         console.log("[Android TV] Playing series (zap) via ExoPlayer:", resolvedUrl);
                         window.AndroidApp.playStream(resolvedUrl, displayTitle, state.currentSeriesDetails.info.cover || "");
                     });

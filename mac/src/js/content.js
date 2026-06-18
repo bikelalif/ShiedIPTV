@@ -179,7 +179,7 @@ function renderEpisodes(epList, seasonNum) {
             
             // On Android TV, use native ExoPlayer for MKV files (full codec support)
             if (window.AndroidApp && ext === "mkv") {
-                resolveUrlWithDoH(playUrl).then(resolvedUrl => {
+                resolveUrlWithDoH(playUrl, false).then(resolvedUrl => {
                     console.log("[Android TV] Playing MKV series via ExoPlayer:", resolvedUrl);
                     window.AndroidApp.playStream(resolvedUrl, displayTitle, state.currentSeriesDetails.info.cover || "");
                 });
