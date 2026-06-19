@@ -1,0 +1,152 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{tcolorbox}
+\usepackage{titlesec}
+\usepackage{charter} % Modern clean font
+
+% Define professional color palette
+\definecolor{primary}{HTML}{3B82F6}     % Bright Blue
+\definecolor{secondary}{HTML}{1E3A8A}   % Deep Blue
+\definecolor{dark}{HTML}{0F172A}        % Slate Dark
+\definecolor{light}{HTML}{F8FAFC}       % Light Slate BG
+\definecolor{border}{HTML}{E2E8F0}      % Light Slate Border
+
+% Page style setup
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textcolor{secondary}{\textbf{ShieldIPTV} -- Guide UX / QA}}
+\lhead{\textcolor{secondary}{webOS TV Submission}}
+\rfoot{\thepage}
+\renewcommand{\headrulewidth}{1pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{primary}\leaders\hrule height \headrulewidth\hfill}}
+
+% Section title styling
+\titleformat{\section}
+  {\color{secondary}\normalfont\Large\bfseries}
+  {\thesection}{1em}{}
+\titlespacing*{\section}{0pt}{15pt}{10pt}
+
+% Custom command for Scenarios
+\newenvironment{scenario}[2]{%
+  \begin{tcolorbox}[
+    colback=light,
+    colframe=primary,
+    coltitle=white,
+    title={\textbf{#1} : #2},
+    fonttitle=\large\bfseries,
+    arc=4px,
+    boxrule=1.5pt,
+    top=10pt,
+    bottom=10pt,
+    left=10pt,
+    right=10pt
+  ]
+}{%
+  \end{tcolorbox}
+  \vspace{10pt}
+}
+
+\begin{document}
+
+% Title / Header Layout
+\begin{center}
+    \vspace*{10pt}
+    {\Huge \textbf{Shield\textcolor{primary}{IPTV}}} \\[5pt]
+    {\Large \textbf{Guide des Scénarios d'Utilisation \& QA}} \\[5pt]
+    {\large Soumission LG Content Store (webOS TV)}
+    \vspace{20pt}
+\end{center}
+
+% Metadata Box
+\begin{tcolorbox}[colback=light, colframe=border, arc=6px, boxrule=1pt]
+\begin{tabular}{ll}
+    \textbf{Nom de l'application :} & Shield IPTV Player \\
+    \textbf{App ID :} & \texttt{com.shieldiptv.app} \\
+    \textbf{Version de l'application :} & 1.0.8 (ou 1.0.0) \\
+    \textbf{Mode de contrôle :} & Télécommande Magic Remote \& Touches directionnelles D-Pad
+\end{tabular}
+\end{tcolorbox}
+
+\vspace{15pt}
+
+\section{Présentation}
+ShieldIPTV est une application client conçue pour le chargement et la lecture de listes de lecture IPTV appartenant à l'utilisateur (Xtream Codes API ou format de lien M3U).
+\begin{itemize}[label=\textbullet]
+    \item L'application \textbf{ne fournit et n'intègre aucun contenu multimédia}.
+    \item Une \textbf{"Playlist de Démonstration"} intégrée est mise à disposition pour permettre aux testeurs QA de valider immédiatement les fonctionnalités de l'application avec des flux légaux du domaine public.
+\end{itemize}
+
+\vspace{15pt}
+
+\section{Scénarios de test étape par étape}
+
+\begin{scenario}{Scénario 1}{Lancement de l'application \& CGU}
+\textbf{Action :} Lancer l'application ShieldIPTV sur le téléviseur ou l'émulateur webOS.\\
+\textbf{Comportement attendu :}
+\begin{itemize}[leftmargin=15pt, label=\textbullet]
+    \item Un écran de démarrage s'affiche, puis la fenêtre des Conditions Générales d'Utilisation (CGU) s'ouvre.
+    \item Le focus de la télécommande est automatiquement positionné sur le bouton \textbf{"Accepter" (Accepter)}.
+    \item Le testeur peut modifier la langue de l'interface en utilisant le bouton de changement de langue (Français, Anglais, Espagnol, Italien).
+    \item L'activation du bouton \textbf{"Accepter"} ferme la fenêtre et redirige vers le gestionnaire de listes de lecture.
+\end{itemize}
+\end{scenario}
+
+\begin{scenario}{Scénario 2}{Connexion avec la Playlist Démo}
+\textbf{Action :} Sur l'écran du gestionnaire de listes de lecture, naviguer vers le bas et sélectionner le bouton "Playlist Démo".\\
+\textbf{Comportement attendu :}
+\begin{itemize}[leftmargin=15pt, label=\textbullet]
+    \item Un indicateur de chargement ("Connexion...") s'affiche à l'écran.
+    \item Une fois la connexion établie, l'écran de transition vers le menu principal (\textbf{Portal}) s'affiche automatiquement.
+\end{itemize}
+\end{scenario}
+
+\newpage
+
+\begin{scenario}{Scénario 3}{Navigation sur le Portail principal}
+\textbf{Action :} Navigation au sein du tableau de bord de l'application.\\
+\textbf{Comportement attendu :}
+\begin{itemize}[leftmargin=15pt, label=\textbullet]
+    \item Trois grandes catégories sont proposées côte à côte : \textbf{LIVE TV}, \textbf{FILMS}, et \textbf{SÉRIES}.
+    \item Des raccourcis d'outils sont présents en haut à droite : Gestion de compte, Test de débit, Vérificateur de lien, Test de flux, Paramètres, et Actualisation.
+    \item L'utilisateur utilise les touches directionnelles \textbf{Gauche / Droite} pour basculer d'une catégorie à l'autre. Le focus est clairement matérialisé par une bordure lumineuse.
+    \item Cliquer sur \textbf{LIVE TV} ouvre la grille des chaînes.
+\end{itemize}
+\end{scenario}
+
+\begin{scenario}{Scénario 4}{Lecture en direct \& Plein écran}
+\textbf{Action :} Sélection d'une catégorie et démarrage de la lecture d'une chaîne.\\
+\textbf{Comportement attendu :}
+\begin{itemize}[leftmargin=15pt, label=\textbullet]
+    \item L'interface se sépare en une liste de catégories à gauche et une grille de chaînes à droite avec un mini-lecteur.
+    \item Naviguer dans la grille et appuyer sur \textbf{OK} sur une chaîne. Le flux démarre dans le mini-lecteur de prévisualisation à droite.
+    \item Appuyer de nouveau sur \textbf{OK} sur la chaîne sélectionnée (ou sur le mini-lecteur) pour activer le mode \textbf{Plein écran}.
+    \item En plein écran, appuyer sur \textbf{OK} pour afficher les contrôles de lecture. Les touches \textbf{Haut / Bas} ouvrent la liste de zapping rapide.
+    \item Appuyer sur la touche \textbf{RETOUR} (Back) de la télécommande pour fermer le plein écran et revenir à la grille.
+\end{itemize}
+\end{scenario}
+
+\begin{scenario}{Scénario 5}{Test de débit réseau (Speed Test)}
+\textbf{Action :} Naviguer sur le portail et lancer le test de débit.\\
+\textbf{Comportement attendu :}
+\begin{itemize}[leftmargin=15pt, label=\textbullet]
+    \item Cliquer sur l'icône de test de débit (compteur de vitesse) dans la barre d'outils supérieure.
+    \item Cliquer sur \textbf{"Lancer le test"} pour démarrer la mesure de bande passante descendante.
+    \item La jauge s'anime et affiche le résultat final en Mbps.
+    \item Appuyer sur la touche \textbf{RETOUR} pour revenir au Portail principal.
+\end{itemize}
+\end{scenario}
+
+\vfill
+\begin{center}
+    \small\textcolor{gray}{Ce document sert de guide de validation d'expérience utilisateur (UX Scenario) pour la certification LG Content Store (webOS).}
+\end{center}
+
+\end{document}
