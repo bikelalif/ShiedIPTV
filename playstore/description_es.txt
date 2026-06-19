@@ -1,0 +1,23 @@
+=== DESCRIPCIÓN CORTA ===
+Reproductor IPTV premium ultrafluido para sus propias listas M3U y Xtream Codes.
+
+=== DESCRIPCIÓN LARGA ===
+ShieldIPTV Player es un reproductor multimedia de última generación diseñado para ofrecerle la mejor experiencia de zapping y reproducción en todas sus pantallas. Disfrute de una interfaz premium fluida y moderna, especialmente optimizada para una navegación natural con el control remoto (televisores y dispositivos Android TV).
+
+IMPORTANTE: ShieldIPTV no proporciona, vende ni alquila ningún contenido multimedia. La aplicación es un reproductor técnico vacío. Debe importar sus propias listas de reproducción legítimas (enlaces M3U, claves API de Xtream) proporcionadas por su proveedor.
+
+CARACTERÍSTICAS PRINCIPALES:
+• Soporte universal: Conéctese fácilmente a través de la API de Xtream Codes o importe sus enlaces de listas de reproducción M3U/M3U8.
+• Zapping ultrarrápido: Motor de reproducción optimizado para cargar instantáneamente sus canales en vivo sin latencia.
+• Guía de programación (EPG): Integración completa de la guía de TV para saber de un vistazo qué se está transmitiendo actualmente o lo que viene a continuación.
+• Mini reproductor (Picture-in-Picture): Visualice una transmisión en vivo en una miniatura mientras navega por el resto de su lista de canales.
+• Evasión de bloqueos de ISP: Integración opcional del protocolo seguro DNS over HTTPS (DoH) para resolver los bloqueos de transmisiones de red impuestos por algunos operadores.
+• Modo Películas y Series (VOD): Sección dedicada para ver sus películas y series bajo demanda, con clasificación por temporada y episodio.
+• Reproductor externo: Compatibilidad total y redirección a ExoPlayer para obtener el máximo soporte de códecs de audio/video nativos de su dispositivo.
+• Ergonomía para Android TV: Interfaz 100% diseñada para el D-pad y el control remoto con mandos a distancia clásicos.
+
+AVISO LEGAL:
+- ShieldIPTV Player no proporciona ni incluye ningún medio o contenido.
+- Los usuarios deben proporcionar su propio contenido a través de listas de reproducción válidas.
+- ShieldIPTV no tiene afiliación con ningún proveedor de transmisiones externo.
+- No respaldamos la transmisión de material protegido por derechos de autor sin el permiso del titular de dichos derechos.

@@ -1,0 +1,23 @@
+=== DESCRIZIONE BREVE ===
+Lettore IPTV premium ultra-fluido per le tue playlist M3U e Xtream Codes.
+
+=== DESCRIZIONE DETTAGLIATA ===
+ShieldIPTV Player è un lettore multimediale all'avanguardia progettato per offrirti la migliore esperienza di zapping e riproduzione su tutti i tuoi schermi. Goditi un'interfaccia premium fluida e moderna, appositamente ottimizzata per una navigazione naturale tramite telecomando (televisori e box Android TV).
+
+IMPORTANTE: ShieldIPTV non fornisce, vende o affitta alcun contenuto multimediale. L'applicazione è un lettore tecnico vuoto. È necessario importare le proprie playlist legittime (link M3U, chiavi API Xtream) fornite dal proprio distributore.
+
+CARATTERISTICHE PRINCIPALI:
+• Supporto universale: Connettiti facilmente tramite le API Xtream Codes o importa i tuoi link di playlist M3U/M3U8.
+• Zapping ultra-veloce: Motore di riproduzione ottimizzato per caricare istantaneamente i tuoi canali in diretta senza latenza.
+• Guida ai programmi (EPG): Integrazione completa della guida TV per sapere a colpo d'occhio cosa è in onda al momento o in arrivo.
+• Mini-lettore (Picture-in-Picture): Visualizza un flusso in diretta in una miniatura mentre navighi nel resto della tua lista di canali.
+• Aggiramento dei blocchi ISP: Integrazione opzionale del protocollo sicuro DNS over HTTPS (DoH) per risolvere i blocchi dei flussi di rete imposti da alcuni operatori.
+• Modalità Film e Serie (VOD): Sezione dedicata per guardare i tuoi film e serie on-demand, con ordinamento per stagione ed episodio.
+• Lettore esterno: Compatibilità totale e reindirizzamento a ExoPlayer per il massimo supporto dei codec audio/video nativi del tuo dispositivo.
+• Ergonomia Android TV: Interfaccia pensata al 100% per il D-pad e il controllo a distanza con un classico telecomando.
+
+AVVISO LEGALE:
+- ShieldIPTV Player non fornisce né include alcun file multimediale o contenuto.
+- Gli utenti devono fornire i propri contenuti tramite playlist valide.
+- ShieldIPTV non ha alcuna affiliazione con fornitori di flussi di terze parti.
+- Non approviamo lo streaming di materiale protetto da copyright senza l'autorizzazione del titolare del copyright.
