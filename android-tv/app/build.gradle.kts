@@ -19,13 +19,13 @@ android {
         applicationId = "com.shieldiptv.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.0.8"
+        versionCode = 11
+        versionName = "1.1.6"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
         }

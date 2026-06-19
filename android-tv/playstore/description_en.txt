@@ -1,0 +1,23 @@
+=== SHORT DESCRIPTION ===
+Ultra-smooth premium IPTV player for your own M3U & Xtream Codes playlists.
+
+=== FULL DESCRIPTION ===
+ShieldIPTV Player is a state-of-the-art media player designed to offer you the best zapping and viewing experience on all your screens. Enjoy a modern, fluid premium interface, specially optimized for natural navigation via remote control (Android TV televisions and boxes).
+
+IMPORTANT: ShieldIPTV does not provide, sell, or rent any media content. The application is an empty technical player. You must import your own legitimate playlists (M3U links, Xtream API keys) provided by your distributor.
+
+KEY FEATURES:
+• Universal Support: Easily connect via Xtream Codes API or import your M3U/M3U8 playlist links.
+• Ultra-Fast Zapping: Optimized playback engine to instantly load your live channels without latency.
+• Program Guide (EPG): Full TV guide integration to see at a glance what is currently broadcasting or coming up.
+• Mini-Player (Picture-in-Picture): View a live stream in a thumbnail while you browse the rest of your channel list.
+• ISP Block Bypass: Optional integration of the secure DNS over HTTPS (DoH) protocol to bypass network stream blocks imposed by certain operators.
+• Movies & Series Mode (VOD): Dedicated section to watch your movies and series on-demand, sorted by season and episode.
+• External Player: Full compatibility and redirection to ExoPlayer for maximum support of your device's native audio/video codecs.
+• Android TV Ergonomics: 100% designed for D-pad and remote control with classic remote controls.
+
+LEGAL DISCLAIMER:
+- ShieldIPTV Player does not provide or include any media or content.
+- Users must provide their own content via valid playlists.
+- ShieldIPTV has no affiliation with any third-party stream providers.
+- We do not condone the streaming of copyrighted material without permission of the copyright holder.
