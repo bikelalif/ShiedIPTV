@@ -3420,3 +3420,120 @@ body.tv-mode .series-info-section {
 body.tv-mode #series-plot {
     text-align: left !important;
 }
+
+/* ==========================================================================
+   VLC EMBEDDED DOCK & CONTROL PANEL STYLES
+   ========================================================================== */
+#vlc-embedded-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    background: #050811;
+    z-index: 100;
+}
+
+#vlc-video-dock {
+    width: 100%;
+    height: 100%;
+    background: #000;
+}
+
+#vlc-control-panel {
+    display: none !important;
+}
+
+#vlc-btn-close {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.1rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    font-weight: 600;
+    border: none;
+    background: var(--error);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+    transition: var(--transition-smooth);
+}
+
+#vlc-btn-close:focus, #vlc-btn-close:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+}
+
+.vlc-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding-bottom: 1.5rem;
+}
+
+#vlc-info-logo {
+    width: 100px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}
+
+#vlc-info-title {
+    font-size: 1.3rem;
+    margin: 0;
+    font-weight: 700;
+}
+
+#vlc-info-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.vlc-help {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.vlc-help h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--primary);
+    text-shadow: 0 0 10px rgba(59,130,246,0.3);
+}
+
+.vlc-help ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    font-size: 0.85rem;
+}
+
+.vlc-help li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #cbd5e1;
+}
+
+.vlc-help kbd {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    padding: 0.15rem 0.4rem;
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: white;
+}
+

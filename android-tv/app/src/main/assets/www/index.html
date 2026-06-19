@@ -583,6 +583,32 @@
                 </button>
             </div>
 
+            <!-- VLC Embedded Container (hidden by default) -->
+            <div id="vlc-embedded-container" class="hidden">
+                <div id="vlc-video-dock"></div>
+                <div id="vlc-control-panel">
+                    <button class="focusable btn-danger" id="vlc-btn-close">
+                        <span class="material-icons">arrow_back</span>
+                        <span>Quitter / Retour</span>
+                    </button>
+                    <div class="vlc-info">
+                        <img id="vlc-info-logo" src="" alt="" onerror="this.style.display='none'">
+                        <h2 id="vlc-info-title">Titre</h2>
+                        <p id="vlc-info-subtitle">Saison ...</p>
+                    </div>
+                    <div class="vlc-help">
+                        <h3>Contrôles VLC</h3>
+                        <ul>
+                            <li><kbd>Espace</kbd> : Pause / Lecture</li>
+                            <li><kbd>Double Clic</kbd> : Plein écran</li>
+                            <li><kbd>F</kbd> : Plein écran</li>
+                            <li><kbd>Molette</kbd> : Volume</li>
+                            <li><kbd>→</kbd> / <kbd>←</kbd> : Reculer / Avancer</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             <!-- Custom Remote Control Overlay -->
             <div id="player-overlay" class="player-overlay-container">
                 <!-- Top Bar: Channel Details -->

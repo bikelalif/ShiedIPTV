@@ -681,6 +681,12 @@ function setupEventListeners() {
     // VLC / External Player launching (global for timeout auto-fallback)
     window.launchVlc = () => {
         if (state.currentPlayingStreamUrl) {
+            // On Electron, launch directly via main process spawn
+            if (window.electronAPI && window.electronAPI.isElectron) {
+                console.log("[VLC] Launching stream via Electron helper:", state.currentPlayingStreamUrl);
+                window.electronAPI.openVlcExternal(state.currentPlayingStreamUrl);
+                return;
+            }
             // On Android TV, use native intent to open external player (VLC, MX Player, etc.)
             if (window.AndroidApp && typeof window.AndroidApp.openExternalPlayer === 'function') {
                 console.log("[VLC] Launching stream via Android native intent:", state.currentPlayingStreamUrl);
@@ -715,6 +721,21 @@ function setupEventListeners() {
         overlayVlcBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             launchVlc();
+        });
+    }
+
+    const vlcBtnClose = document.getElementById("vlc-btn-close");
+    if (vlcBtnClose) {
+        vlcBtnClose.addEventListener("click", (e) => {
+            e.stopPropagation();
+            closeVideoPlayer();
+        });
+    }
+
+    if (window.electronAPI && window.electronAPI.isElectron && window.electronAPI.onVlcExited) {
+        window.electronAPI.onVlcExited(() => {
+            console.log("[VLC] Received vlc-exited event from main process, closing player...");
+            closeVideoPlayer();
         });
     }
     

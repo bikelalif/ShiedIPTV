@@ -139,6 +139,113 @@ function launchVideoPlayer(url, title, logoUrl) {
     destroyPreviewMpegtsPlayer();
     state.currentPlayingStream = preservedStream;
     
+    const isVodOrSeries = state.currentPlayingStream && (state.currentPlayingStream.section === 'movies' || state.currentPlayingStream.section === 'series');
+    if (isVodOrSeries && !window.AndroidApp && !isTvWrapper) {
+        destroyMpegtsPlayer();
+        
+        // Show player screen
+        showScreen("player-screen");
+        
+        // If Electron is running, dock VLC in the UI
+        if (window.electronAPI && window.electronAPI.isElectron) {
+            // Show embedded container
+            const vlcContainer = document.getElementById("vlc-embedded-container");
+            if (vlcContainer) vlcContainer.classList.remove("hidden");
+            
+            // Hide standard video player and loader
+            const video = document.getElementById("video-player");
+            if (video) video.style.display = "none";
+            const loader = document.getElementById("player-loader");
+            if (loader) loader.style.display = "none";
+            
+            // Update control panel info
+            document.getElementById("vlc-info-title").innerText = title;
+            document.getElementById("vlc-info-logo").src = logoUrl || "";
+            
+            const subtitleEl = document.getElementById("vlc-info-subtitle");
+            const t = TRANSLATIONS[state.language || 'en'];
+            if (state.currentPlayingStream && state.currentPlayingStream.section === 'series') {
+                const season = state.currentPlayingStream.seasonNum || "1";
+                const ep = state.currentPlayingStream.item;
+                const epNum = ep.episode_num || ep.num || "";
+                subtitleEl.innerText = `${t.seasonPrefix} ${season} - ${t.episodeLabelZap} ${epNum}`;
+            } else {
+                subtitleEl.innerText = "";
+            }
+            
+            // Display notice inside the dock element
+            const playbackMsg = state.language === 'fr' 
+                ? "Lecture en cours dans VLC (Fenêtre Externe)" 
+                : "Playback in progress in VLC (External Window)";
+            const returnMsg = state.language === 'fr'
+                ? "Le flux vidéo a été ouvert dans une fenêtre VLC séparée.<br>Fermez VLC ou cliquez ci-dessous pour retourner à l'application."
+                : "The video stream was opened in a separate VLC window.<br>Close VLC or click below to return to the application.";
+            const btnMsg = state.language === 'fr'
+                ? "Retourner à l'application"
+                : "Return to the application";
+
+            const dockEl = document.getElementById("vlc-video-dock");
+            dockEl.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #fff; text-align: center; gap: 1.5rem; padding: 2rem; background: #050811; border-radius: 12px; box-shadow: inset 0 0 50px rgba(0,0,0,0.8);">
+                    <span class="material-icons" style="font-size: 80px; color: #ff8800; animation: pulse 2s infinite;">play_circle_outline</span>
+                    <h2 style="margin: 0; font-size: 1.8rem; font-weight: 600; color: #ff8800;">${playbackMsg}</h2>
+                    <p style="margin: 0; color: #8a99ad; font-size: 1.1rem; max-width: 500px; line-height: 1.6;">
+                        ${returnMsg}
+                    </p>
+                    <button class="focusable" id="vlc-external-btn-close" style="padding: 0.8rem 2rem; font-size: 1.1rem; border-radius: 10px; border: none; background: #ef4444; color: white; cursor: pointer; font-weight: 600; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; transition: background 0.2s; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);">
+                        <span class="material-icons">arrow_back</span>
+                        <span>${btnMsg}</span>
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById("vlc-external-btn-close").addEventListener("click", () => {
+                closeVideoPlayer();
+            });
+
+            // Resolve the URL using DoH (forcing IP substitution to bypass ISP DNS block)
+            resolveUrlWithDoH(url, true).then(resolvedUrl => {
+                console.log("[VLC] Launching with DoH resolved URL:", resolvedUrl);
+                window.electronAPI.dockVlc(resolvedUrl, { x: 0, y: 0, width: 0, height: 0 });
+            });
+            return;
+        }
+
+        // Fallback for non-Electron web browsers (VLC:// launching)
+        document.getElementById("player-channel-name").innerText = title;
+        document.getElementById("player-channel-logo").src = logoUrl || "";
+        document.getElementById("player-timeline-container").style.display = "none";
+        
+        const nowPlayingEl = document.getElementById("player-now-playing");
+        const t = TRANSLATIONS[state.language || 'en'];
+        if (state.currentPlayingStream && state.currentPlayingStream.section === 'series') {
+            const season = state.currentPlayingStream.seasonNum || "1";
+            const ep = state.currentPlayingStream.item;
+            const epNum = ep.episode_num || ep.num || "";
+            nowPlayingEl.innerText = `${t.seasonPrefix} ${season} - ${t.episodeLabelZap} ${epNum}`;
+        } else {
+            nowPlayingEl.innerText = "";
+        }
+        
+        const msg = state.language === 'fr' 
+            ? "Lancement automatique du flux dans VLC..." 
+            : "Launching stream automatically in VLC...";
+        
+        showPlayerError(msg, true);
+        
+        // Update button text to Relaunch VLC
+        const vlcLoaderBtnSpan = document.querySelector("#player-loader-vlc span:not(.material-icons)");
+        if (vlcLoaderBtnSpan) {
+            vlcLoaderBtnSpan.innerText = state.language === 'fr' ? "Relancer VLC" : "Relaunch VLC";
+        }
+        
+        // Launch VLC immediately
+        if (typeof window.launchVlc === 'function') {
+            window.launchVlc();
+        }
+        return;
+    }
+    
     const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
                         window.location.protocol !== 'file:' && 
                         !window.cordova && 
@@ -949,6 +1056,21 @@ function destroyPreviewMpegtsPlayer() {
 }
 
 function closeVideoPlayer() {
+    // Undock VLC and stop process if Electron
+    if (window.electronAPI && window.electronAPI.isElectron) {
+        window.electronAPI.undockVlc();
+        if (window.vlcResizeHandler) {
+            window.removeEventListener("resize", window.vlcResizeHandler);
+            window.vlcResizeHandler = null;
+        }
+        const vlcContainer = document.getElementById("vlc-embedded-container");
+        if (vlcContainer) vlcContainer.classList.add("hidden");
+        const videoEl = document.getElementById("video-player");
+        if (videoEl) videoEl.style.display = "";
+        const loaderEl = document.getElementById("player-loader");
+        if (loaderEl) loaderEl.style.display = "";
+    }
+
     if (state.reconnectTimer) {
         clearTimeout(state.reconnectTimer);
         state.reconnectTimer = null;
@@ -976,6 +1098,11 @@ function closeVideoPlayer() {
         if (vlcLoaderBtn) {
             vlcLoaderBtn.classList.add("hidden");
             vlcLoaderBtn.classList.remove("force-show");
+            const btnSpan = vlcLoaderBtn.querySelector("span:not(.material-icons)");
+            if (btnSpan) {
+                const t = TRANSLATIONS[state.language || 'en'];
+                btnSpan.innerText = t.vlcBtnText || "Ouvrir dans VLC";
+            }
         }
     }
     const bottomBar = document.querySelector(".player-bottom-bar");
