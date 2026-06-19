@@ -30,6 +30,15 @@
       "package.json",
       "src/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "bin/vlc",
+        "to": "vlc",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
     "win": {
       "target": "nsis"
     },
