@@ -482,27 +482,39 @@
                     <div class="section-title">Icônes LG webOS TV</div>
                     <div class="grid-previews">
                         
-                        <!-- 1. icon.png (400x400) -->
+                        <!-- 1. icon.png (80x80) -->
                         <div class="preview-box">
                             <div class="preview-canvas-wrapper" style="width: 80px; height: 80px;">
-                                <canvas id="canvas-80" width="400" height="400"></canvas>
+                                <canvas id="canvas-80" width="80" height="80"></canvas>
                             </div>
                             <div class="preview-info">
                                 <h4>icon.png</h4>
-                                <p>400 x 400 px (Icône liste d'applications LG TV)</p>
+                                <p>80 x 80 px (Icône liste d'applications LG TV)</p>
                                 <button class="btn-download" id="btn-dl-80">Enregistrer</button>
                             </div>
                         </div>
 
-                        <!-- 2. largeIcon.png (400x400) -->
+                        <!-- 2. largeIcon.png (130x130) -->
                         <div class="preview-box">
                             <div class="preview-canvas-wrapper" style="width: 130px; height: 130px;">
-                                <canvas id="canvas-130" width="400" height="400"></canvas>
+                                <canvas id="canvas-130" width="130" height="130"></canvas>
                             </div>
                             <div class="preview-info">
                                 <h4>largeIcon.png</h4>
-                                <p>400 x 400 px (Grande icône webOS)</p>
+                                <p>130 x 130 px (Grande icône webOS)</p>
                                 <button class="btn-download" id="btn-dl-130">Enregistrer</button>
+                            </div>
+                        </div>
+
+                        <!-- 3. store_icon.png (400x400) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 100px; height: 100px;">
+                                <canvas id="canvas-400" width="400" height="400"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>store_icon.png</h4>
+                                <p>400 x 400 px (Icône de soumission LG Content Store)</p>
+                                <button class="btn-download" id="btn-dl-400">Enregistrer</button>
                             </div>
                         </div>
                     </div>
@@ -575,10 +587,12 @@
         // webOS Canvases
         const canvas80 = document.getElementById('canvas-80');
         const canvas130 = document.getElementById('canvas-130');
+        const canvas400 = document.getElementById('canvas-400');
         
         // webOS Download buttons
         const btnDl80 = document.getElementById('btn-dl-80');
         const btnDl130 = document.getElementById('btn-dl-130');
+        const btnDl400 = document.getElementById('btn-dl-400');
 
         // Vidaa Canvases
         const canvasVidaaIcon = document.getElementById('canvas-vidaa-icon');
@@ -679,8 +693,9 @@
             cropSquare(loadedImage, canvas192, 192);
             cropSquare(loadedImage, canvas144, 144);
             cropSquare(loadedImage, canvas96, 96);
-            cropSquare(loadedImage, canvas80, 400);
-            cropSquare(loadedImage, canvas130, 400);
+            cropSquare(loadedImage, canvas80, 80);
+            cropSquare(loadedImage, canvas130, 130);
+            cropSquare(loadedImage, canvas400, 400);
             
             // PC specific
             cropSquare(loadedImage, canvasPcBuild, 256);
@@ -711,6 +726,7 @@
             // webOS Download setups
             setupDownload(canvas80, btnDl80, 'icon.png');
             setupDownload(canvas130, btnDl130, 'largeIcon.png');
+            setupDownload(canvas400, btnDl400, 'store_icon.png');
 
             // Vidaa Download setups
             setupDownload(canvasVidaaIcon, btnDlVidaaIcon, 'icon.png');
