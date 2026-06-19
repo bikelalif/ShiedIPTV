@@ -27,6 +27,7 @@
     "appId": "com.shieldiptv.app",
     "files": [
       "main.js",
+      "preload.js",
       "package.json",
       "src/**/*"
     ],
