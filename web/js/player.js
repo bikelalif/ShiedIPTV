@@ -203,8 +203,17 @@ function launchVideoPlayer(url, title, logoUrl) {
                 closeVideoPlayer();
             });
 
+            // Use the original container extension (MKV/MP4) for VLC instead of M3U8, since VLC has native codec support
+            let targetUrl = url;
+            if (state.currentPlayingStream && state.currentPlayingStream.item) {
+                const originalExt = (state.currentPlayingStream.item.container_extension || "mp4").toLowerCase();
+                const section = state.currentPlayingStream.section;
+                const streamId = state.currentPlayingStream.item.stream_id || state.currentPlayingStream.item.id;
+                targetUrl = `${state.serverUrl}/${section === 'series' ? 'series' : 'movie'}/${state.username}/${state.password}/${streamId}.${originalExt}`;
+            }
+
             // Resolve the URL using DoH (forcing IP substitution to bypass ISP DNS block)
-            resolveUrlWithDoH(url, true).then(resolvedUrl => {
+            resolveUrlWithDoH(targetUrl, true).then(resolvedUrl => {
                 console.log("[VLC] Launching with DoH resolved URL:", resolvedUrl);
                 window.electronAPI.dockVlc(resolvedUrl, { x: 0, y: 0, width: 0, height: 0 });
             });

@@ -681,10 +681,18 @@ function setupEventListeners() {
     // VLC / External Player launching (global for timeout auto-fallback)
     window.launchVlc = () => {
         if (state.currentPlayingStreamUrl) {
+            let targetUrl = state.currentPlayingStreamUrl;
+            if (state.currentPlayingStream && state.currentPlayingStream.item && (state.currentPlayingStream.section === 'movies' || state.currentPlayingStream.section === 'series')) {
+                const originalExt = (state.currentPlayingStream.item.container_extension || "mp4").toLowerCase();
+                const section = state.currentPlayingStream.section;
+                const streamId = state.currentPlayingStream.item.stream_id || state.currentPlayingStream.item.id;
+                targetUrl = `${state.serverUrl}/${section === 'series' ? 'series' : 'movie'}/${state.username}/${state.password}/${streamId}.${originalExt}`;
+            }
+
             // On Electron, launch directly via main process spawn
             if (window.electronAPI && window.electronAPI.isElectron) {
-                console.log("[VLC] Launching stream via Electron helper:", state.currentPlayingStreamUrl);
-                window.electronAPI.openVlcExternal(state.currentPlayingStreamUrl);
+                console.log("[VLC] Launching stream via Electron helper:", targetUrl);
+                window.electronAPI.openVlcExternal(targetUrl);
                 return;
             }
             // On Android TV, use native intent to open external player (VLC, MX Player, etc.)

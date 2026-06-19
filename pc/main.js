@@ -219,6 +219,29 @@ function getVlcPath() {
     return 'vlc'; // Fallback to path
 }
 
+function spawnVlc(vlcPath, args) {
+    console.log("[Main] Spawning VLC:", vlcPath, args.join(' '));
+    const child = spawn(vlcPath, args);
+    
+    child.on('error', (err) => {
+        console.error("[Main] VLC process spawn error:", err);
+    });
+    
+    if (child.stdout) {
+        child.stdout.on('data', (data) => {
+            console.log(`[VLC Stdout] ${data.toString().trim()}`);
+        });
+    }
+    
+    if (child.stderr) {
+        child.stderr.on('data', (data) => {
+            console.error(`[VLC Stderr] ${data.toString().trim()}`);
+        });
+    }
+    
+    return child;
+}
+
 function createWindow() {
     const win = new BrowserWindow({
         width: 1280,
@@ -264,7 +287,7 @@ app.on('window-all-closed', () => {
 ipcMain.handle('open-vlc-external', async (event, url) => {
     console.log("[Main] open-vlc-external request:", url);
     const vlcPath = getVlcPath();
-    spawn(vlcPath, [url]);
+    spawnVlc(vlcPath, [url]);
     return true;
 });
 
@@ -298,7 +321,7 @@ ipcMain.handle('dock-vlc', async (event, url, rect) => {
         console.error("[Main] Failed to write temp VLC config:", e);
     }
 
-    currentVlcProcess = spawn(vlcPath, [
+    currentVlcProcess = spawnVlc(vlcPath, [
         url,
         '--config', tempVlcConfig,
         '--no-video-title-show',
