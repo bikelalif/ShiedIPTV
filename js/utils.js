@@ -3,7 +3,7 @@
    ========================================================================== */
 
 // DNS-over-HTTPS (DoH) Resolver
-async function resolveUrlWithDoH(url, isLiveStream = false) {
+async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
     if (!state.isDohEnabled) return url;
     
     try {
@@ -51,12 +51,18 @@ async function resolveUrlWithDoH(url, isLiveStream = false) {
             }
         }
         
-        if (ip && !isHttps && isLiveStream) {
-            // Only substitute IP for plain HTTP Live TV streams to bypass DNS blocking.
-            // We keep the original domain name for VOD (Movies/Series) to avoid iOS Safari AVPlayer playback issues with raw IPs.
-            parsedUrl.hostname = ip;
-            console.log(`[DoH] Resolved & Substituted IP (Live TV): ${hostname} -> ${ip}`);
-            return parsedUrl.toString();
+        if (ip && !isHttps) {
+            const serverHostname = state.serverUrl ? new URL(state.serverUrl).hostname : "";
+            const isIptvServer = (hostname === serverHostname);
+            
+            // Only substitute IP if:
+            // 1. It is a live stream (which we always want to bypass DNS for)
+            // 2. OR it is an image hosted on our IPTV server (to bypass ISP block on server domain)
+            if (isLiveStream || (isImage && isIptvServer)) {
+                parsedUrl.hostname = ip;
+                console.log(`[DoH] Resolved & Substituted IP (${isLiveStream ? 'Live Stream' : 'IPTV Image'}): ${hostname} -> ${ip}`);
+                return parsedUrl.toString();
+            }
         }
     } catch (error) {
         console.warn("[DoH] DNS lookup failed, using fallback URL:", error);
@@ -113,26 +119,30 @@ function loadImageWithFallback(imgElement, originalUrl, defaultPoster) {
         }
     }
     
-    console.log("[Image Fallback] Channel logo: " + originalUrl + " -> Resolved to: " + targetUrl);
-    
-    let triedProxy = false;
-    
-    imgElement.onerror = () => {
-        if (!triedProxy && targetUrl.startsWith('http')) {
-            triedProxy = true;
-            // Use a secure, high-compatibility image proxy to bypass Mixed Content and DNS blocking
-            const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(targetUrl)}`;
-            console.log("[Image Fallback] Logo load failed. Retrying via secure image proxy:", proxyUrl);
-            imgElement.src = proxyUrl;
-            return;
-        }
+    // Asynchronously resolve the target URL via DoH to bypass ISP DNS hijacking
+    resolveUrlWithDoH(targetUrl, false, true).then(resolvedUrl => {
+        console.log("[Image Fallback] Channel logo: " + originalUrl + " -> Resolved to: " + resolvedUrl);
         
-        console.log("[Image Fallback] Logo failed completely. Falling back to default poster.");
-        imgElement.src = defaultPoster || "";
-        imgElement.onerror = null; // Prevent loops
-    };
-    
-    imgElement.src = targetUrl;
+        let triedProxy = false;
+        
+        imgElement.onerror = () => {
+            if (!triedProxy && resolvedUrl.startsWith('http')) {
+                triedProxy = true;
+                // Use a secure, high-compatibility image proxy to bypass Mixed Content and DNS blocking
+                // We pass the original targetUrl with the domain name so the proxy can resolve it from its own server
+                const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(targetUrl)}`;
+                console.log("[Image Fallback] Logo load failed. Retrying via secure image proxy:", proxyUrl);
+                imgElement.src = proxyUrl;
+                return;
+            }
+            
+            console.log("[Image Fallback] Logo failed completely. Falling back to default poster.");
+            imgElement.src = defaultPoster || "";
+            imgElement.onerror = null; // Prevent loops
+        };
+        
+        imgElement.src = resolvedUrl;
+    });
 }
 
 // Generic fetch handler with DNS-over-HTTPS (DoH) resolution and fallback to original URL on failure
@@ -140,6 +150,19 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
     const resolvedUrl = await resolveUrlWithDoH(url);
     
     const tryFetch = async (targetUrl) => {
+        let actualUrl = targetUrl;
+        const isHostedWeb = window.location.protocol === 'https:' && 
+                            !window.cordova && 
+                            !window.AndroidApp && 
+                            !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) &&
+                            window.location.hostname !== 'localhost' && 
+                            window.location.hostname !== '127.0.0.1';
+                            
+        if (isHostedWeb && (actualUrl.startsWith('http://') || (actualUrl.startsWith('https://') && !actualUrl.startsWith(window.location.origin)))) {
+            actualUrl = 'https://corsproxy.io/?' + encodeURIComponent(actualUrl);
+            console.log(`[CORS Proxy] Wrapped URL: ${actualUrl}`);
+        }
+
         const controller = new AbortController();
         const signal = options.signal || controller.signal;
         
@@ -150,11 +173,21 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
         
         try {
             const fetchOptions = { ...options, signal };
-            const response = await fetch(targetUrl, fetchOptions);
+            const response = await fetch(actualUrl, fetchOptions);
             if (timeoutId) clearTimeout(timeoutId);
             return response;
         } catch (err) {
             if (timeoutId) clearTimeout(timeoutId);
+            // If the proxy failed, let's try the original direct URL as fallback
+            if (actualUrl !== targetUrl) {
+                console.warn("[CORS Proxy] Proxy fetch failed, falling back to direct URL:", err);
+                try {
+                    const fallbackResponse = await fetch(targetUrl, { ...options, signal: options.signal });
+                    return fallbackResponse;
+                } catch (fallbackErr) {
+                    throw fallbackErr;
+                }
+            }
             throw err;
         }
     };

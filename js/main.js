@@ -53,6 +53,22 @@ function initApp() {
                 if (toggleEl) toggleEl.checked = state.isDohEnabled;
                 const urlEl = document.getElementById("setting-doh-url");
                 if (urlEl) urlEl.value = state.dohResolver;
+
+                if (settings.playerSettings) {
+                    state.playerSettings = {
+                        live: settings.playerSettings.live || 'html5',
+                        movies: settings.playerSettings.movies || 'exoplayer',
+                        series: settings.playerSettings.series || 'exoplayer'
+                    };
+                }
+                
+                // Update dropdown values in DOM if they exist
+                const playerLiveEl = document.getElementById("setting-player-live");
+                if (playerLiveEl) playerLiveEl.value = state.playerSettings.live;
+                const playerMoviesEl = document.getElementById("setting-player-movies");
+                if (playerMoviesEl) playerMoviesEl.value = state.playerSettings.movies;
+                const playerSeriesEl = document.getElementById("setting-player-series");
+                if (playerSeriesEl) playerSeriesEl.value = state.playerSettings.series;
             } catch (e) {
                 console.error("Error reading settings", e);
             }
@@ -209,7 +225,13 @@ function setupEventListeners() {
             if (window.close) {
                 window.close();
             }
-            alert("Vous devez accepter les conditions d'utilisation pour accéder à l'application.");
+            const declineMsg = {
+                fr: "Vous devez accepter les conditions d'utilisation pour accéder à l'application.",
+                en: "You must accept the terms of use to access the application.",
+                es: "Debe aceptar las condiciones de uso para acceder a la aplicación.",
+                it: "Devi accettare le condizioni d'uso per accedere all'applicazione."
+            };
+            alert(declineMsg[state.language] || declineMsg.en);
         });
     }
 
@@ -554,6 +576,29 @@ function setupEventListeners() {
         const t = TRANSLATIONS[newLang];
         showToast(t.langUpdatedToast, 2000);
     });
+
+    // Player selection change listeners
+    const playerLiveEl = document.getElementById("setting-player-live");
+    if (playerLiveEl) {
+        playerLiveEl.addEventListener("change", (e) => {
+            state.playerSettings.live = e.target.value;
+            saveSettings();
+        });
+    }
+    const playerMoviesEl = document.getElementById("setting-player-movies");
+    if (playerMoviesEl) {
+        playerMoviesEl.addEventListener("change", (e) => {
+            state.playerSettings.movies = e.target.value;
+            saveSettings();
+        });
+    }
+    const playerSeriesEl = document.getElementById("setting-player-series");
+    if (playerSeriesEl) {
+        playerSeriesEl.addEventListener("change", (e) => {
+            state.playerSettings.series = e.target.value;
+            saveSettings();
+        });
+    }
     
     // Hash routing change listener
     window.addEventListener("hashchange", () => {
@@ -681,10 +726,18 @@ function setupEventListeners() {
     // VLC / External Player launching (global for timeout auto-fallback)
     window.launchVlc = () => {
         if (state.currentPlayingStreamUrl) {
+            let targetUrl = state.currentPlayingStreamUrl;
+            if (state.currentPlayingStream && state.currentPlayingStream.item && (state.currentPlayingStream.section === 'movies' || state.currentPlayingStream.section === 'series')) {
+                const originalExt = (state.currentPlayingStream.item.container_extension || "mp4").toLowerCase();
+                const section = state.currentPlayingStream.section;
+                const streamId = state.currentPlayingStream.item.stream_id || state.currentPlayingStream.item.id;
+                targetUrl = `${state.serverUrl}/${section === 'series' ? 'series' : 'movie'}/${state.username}/${state.password}/${streamId}.${originalExt}`;
+            }
+
             // On Electron, launch directly via main process spawn
             if (window.electronAPI && window.electronAPI.isElectron) {
-                console.log("[VLC] Launching stream via Electron helper:", state.currentPlayingStreamUrl);
-                window.electronAPI.openVlcExternal(state.currentPlayingStreamUrl);
+                console.log("[VLC] Launching stream via Electron helper:", targetUrl);
+                window.electronAPI.openVlcExternal(targetUrl);
                 return;
             }
             // On Android TV, use native intent to open external player (VLC, MX Player, etc.)
