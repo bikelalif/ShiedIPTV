@@ -365,6 +365,20 @@
                         </div>
                     </div>
 
+                    <div class="section-title" style="margin-top: 1.5rem;">Bannière Android TV (1280 x 720)</div>
+                    <div class="grid-previews">
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 160px; height: 90px;">
+                                <canvas id="canvas-ps-tvbanner" width="1280" height="720" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>tv_banner.png</h4>
+                                <p>1280 x 720 px (16:9) — PNG ou JPEG, max 8 Mo</p>
+                                <button class="btn-download" id="btn-dl-ps-tvbanner">Enregistrer</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="section-title" style="margin-top: 1.5rem;">Captures d'écran Téléphone (1920 x 1080 — 16:9)</div>
                     <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 0.75rem 0;">Importez 2 à 8 images. Elles seront redimensionnées en 1920 x 1080 px (paysage 16:9).</p>
                     <div class="drop-zone" id="drop-zone-phone" style="min-height: 120px; padding: 1rem;">
@@ -613,10 +627,12 @@
         // Play Store Canvases
         const canvasPsIcon = document.getElementById('canvas-ps-icon');
         const canvasPsFeature = document.getElementById('canvas-ps-feature');
+        const canvasPsTvBanner = document.getElementById('canvas-ps-tvbanner');
         
         // Play Store Download buttons
         const btnDlPsIcon = document.getElementById('btn-dl-ps-icon');
         const btnDlPsFeature = document.getElementById('btn-dl-ps-feature');
+        const btnDlPsTvBanner = document.getElementById('btn-dl-ps-tvbanner');
 
         // Tabs
         function switchTab(tabName) {
@@ -693,6 +709,7 @@
             // Google Play Store
             cropSquare(loadedImage, canvasPsIcon, 512);
             cropFeature(loadedImage, canvasPsFeature, 1024, 500);
+            crop169(loadedImage, canvasPsTvBanner, 1280, 720);
 
             // Generate Square icons (Center cropped)
             cropSquare(loadedImage, canvas512, 512);
@@ -717,6 +734,7 @@
             // Play Store Download setups
             setupDownload(canvasPsIcon, btnDlPsIcon, 'play_store_icon.png');
             setupDownload(canvasPsFeature, btnDlPsFeature, 'feature_graphic.png');
+            setupDownload(canvasPsTvBanner, btnDlPsTvBanner, 'tv_banner.png');
 
             // Setup download triggers
             setupDownload(canvas512, btnDl512, 'play_store_icon.png');
