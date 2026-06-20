@@ -15,6 +15,9 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.AspectRatioFrameLayout
 
@@ -27,6 +30,16 @@ class PlayerActivity : ComponentActivity() {
     private lateinit var playerView: PlayerView
     private var retryCount = 0
     private var streamUrl = ""
+    private var isControllerVisible = false
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val hideControllerRunnable = Runnable {
+        playerView.hideController()
+    }
+
+    private fun resetHideControllerTimer() {
+        handler.removeCallbacks(hideControllerRunnable)
+        handler.postDelayed(hideControllerRunnable, 3000) // Auto-hide after 3 seconds of inactivity
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,8 +65,18 @@ class PlayerActivity : ComponentActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
             useController = true
+            controllerAutoShow = false
             keepScreenOn = true
             resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+
+            setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
+                isControllerVisible = (visibility == View.VISIBLE)
+                if (isControllerVisible) {
+                    resetHideControllerTimer()
+                } else {
+                    handler.removeCallbacks(hideControllerRunnable)
+                }
+            })
         }
         container.addView(playerView)
 
@@ -72,8 +95,27 @@ class PlayerActivity : ComponentActivity() {
         val renderersFactory = DefaultRenderersFactory(this).apply {
             setEnableDecoderFallback(true)
         }
+        
+        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+            .setConnectTimeoutMs(15000)
+            .setReadTimeoutMs(15000)
+            .setAllowCrossProtocolRedirects(true)
+            
+        val mediaSourceFactory = DefaultMediaSourceFactory(httpDataSourceFactory)
+        
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                50000, // Min buffer (50s)
+                100000, // Max buffer (100s)
+                2500, // Buffer for playback (2.5s)
+                5000  // Buffer for resume (5s)
+            )
+            .build()
 
-        player = ExoPlayer.Builder(this, renderersFactory).build().apply {
+        player = ExoPlayer.Builder(this, renderersFactory)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .setLoadControl(loadControl)
+            .build().apply {
             playerView.player = this
             
             val mediaItem = MediaItem.fromUri(url)
@@ -82,23 +124,31 @@ class PlayerActivity : ComponentActivity() {
             playWhenReady = true
             
             addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_READY) {
+                        // Reset retry count when stream successfully plays
+                        retryCount = 0
+                    } else if (playbackState == Player.STATE_ENDED) {
+                        android.util.Log.e("PlayerActivity", "Stream ended unexpectedly. Reconnecting...")
+                        Toast.makeText(this@PlayerActivity, "Reconnexion (Fin de flux)...", Toast.LENGTH_SHORT).show()
+                        releasePlayer()
+                        window.decorView.postDelayed({
+                            initializePlayer(streamUrl)
+                        }, 2000)
+                    }
+                }
+
                 override fun onPlayerError(error: PlaybackException) {
                     super.onPlayerError(error)
                     val msg = error.message ?: "Unknown error"
                     android.util.Log.e("PlayerActivity", "Playback error: $msg", error)
                     
-                    if (retryCount < 1) {
-                        retryCount++
-                        Toast.makeText(this@PlayerActivity, "Reconnexion...", Toast.LENGTH_SHORT).show()
-                        releasePlayer()
-                        window.decorView.postDelayed({
-                            initializePlayer(streamUrl)
-                        }, 1500)
-                    } else {
-                        onErrorCallback?.invoke(msg)
-                        Toast.makeText(this@PlayerActivity, "Erreur de lecture: $msg", Toast.LENGTH_LONG).show()
-                        finish()
-                    }
+                    retryCount++
+                    Toast.makeText(this@PlayerActivity, "Reconnexion ($retryCount)...", Toast.LENGTH_SHORT).show()
+                    releasePlayer()
+                    window.decorView.postDelayed({
+                        initializePlayer(streamUrl)
+                    }, 2000)
                 }
             })
         }
@@ -106,20 +156,40 @@ class PlayerActivity : ComponentActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (isControllerVisible) {
+                playerView.hideController()
+                return true
+            }
             finish()
             return true
+        }
+
+        // For D-pad and media keys, reset timer or show controller if hidden
+        if (isControllerVisible) {
+            resetHideControllerTimer()
+        } else {
+            // Show controller if any other key is pressed
+            if (keyCode != KeyEvent.KEYCODE_BACK) {
+                playerView.showController()
+            }
         }
         return super.onKeyDown(keyCode, event)
     }
 
     override fun onPause() {
         super.onPause()
+        handler.removeCallbacks(hideControllerRunnable)
         player?.playWhenReady = false
     }
 
     override fun onStop() {
         super.onStop()
-        releasePlayer()
+        if (!isFinishing) {
+            MainActivity.wasAppInBackground = true
+            finish()
+        } else {
+            releasePlayer()
+        }
     }
 
     override fun onDestroy() {
