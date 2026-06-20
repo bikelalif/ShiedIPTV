@@ -18,6 +18,7 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.AspectRatioFrameLayout
 
@@ -98,18 +99,27 @@ class PlayerActivity : ComponentActivity() {
         
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setConnectTimeoutMs(15000)
-            .setReadTimeoutMs(15000)
+            .setReadTimeoutMs(20000)
             .setAllowCrossProtocolRedirects(true)
-            
+            .setKeepPostFor302Redirects(true)
+
+        // Retry transient network/segment errors several times before surfacing a fatal error.
+        // For live HLS this keeps playback alive when a single segment request fails.
+        val loadErrorHandlingPolicy = DefaultLoadErrorHandlingPolicy(6)
+
         val mediaSourceFactory = DefaultMediaSourceFactory(httpDataSourceFactory)
-        
+            .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
+
+        // Buffer durations tuned for live: a smaller minimum lets playback resume quickly
+        // after a hiccup instead of waiting to refill a large buffer.
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                50000, // Min buffer (50s)
-                100000, // Max buffer (100s)
-                2500, // Buffer for playback (2.5s)
-                5000  // Buffer for resume (5s)
+                15000, // Min buffer (15s)
+                60000, // Max buffer (60s)
+                2000,  // Buffer for playback (2s)
+                4000   // Buffer for resume (4s)
             )
+            .setBackBuffer(30000, true)
             .build()
 
         player = ExoPlayer.Builder(this, renderersFactory)
@@ -131,10 +141,11 @@ class PlayerActivity : ComponentActivity() {
                     } else if (playbackState == Player.STATE_ENDED) {
                         android.util.Log.e("PlayerActivity", "Stream ended unexpectedly. Reconnecting...")
                         Toast.makeText(this@PlayerActivity, "Reconnexion (Fin de flux)...", Toast.LENGTH_SHORT).show()
+                        retryCount++
                         releasePlayer()
                         window.decorView.postDelayed({
                             initializePlayer(streamUrl)
-                        }, 2000)
+                        }, reconnectDelayMs())
                     }
                 }
 
@@ -148,7 +159,7 @@ class PlayerActivity : ComponentActivity() {
                     releasePlayer()
                     window.decorView.postDelayed({
                         initializePlayer(streamUrl)
-                    }, 2000)
+                    }, reconnectDelayMs())
                 }
             })
         }
@@ -195,6 +206,12 @@ class PlayerActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         releasePlayer()
+    }
+
+    // Progressive backoff between reconnect attempts (capped at 10s) so a flaky
+    // server isn't hammered with a reconnect every 2 seconds, which can make cuts worse.
+    private fun reconnectDelayMs(): Long {
+        return (2000L * retryCount).coerceIn(2000L, 10000L)
     }
 
     private fun releasePlayer() {
