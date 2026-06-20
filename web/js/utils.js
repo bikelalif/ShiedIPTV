@@ -150,19 +150,6 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
     const resolvedUrl = await resolveUrlWithDoH(url);
     
     const tryFetch = async (targetUrl) => {
-        let actualUrl = targetUrl;
-        const isHostedWeb = window.location.protocol === 'https:' && 
-                            !window.cordova && 
-                            !window.AndroidApp && 
-                            !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) &&
-                            window.location.hostname !== 'localhost' && 
-                            window.location.hostname !== '127.0.0.1';
-                            
-        if (isHostedWeb && (actualUrl.startsWith('http://') || (actualUrl.startsWith('https://') && !actualUrl.startsWith(window.location.origin)))) {
-            actualUrl = 'https://corsproxy.io/?' + encodeURIComponent(actualUrl);
-            console.log(`[CORS Proxy] Wrapped URL: ${actualUrl}`);
-        }
-
         const controller = new AbortController();
         const signal = options.signal || controller.signal;
         
@@ -173,21 +160,11 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
         
         try {
             const fetchOptions = { ...options, signal };
-            const response = await fetch(actualUrl, fetchOptions);
+            const response = await fetch(targetUrl, fetchOptions);
             if (timeoutId) clearTimeout(timeoutId);
             return response;
         } catch (err) {
             if (timeoutId) clearTimeout(timeoutId);
-            // If the proxy failed, let's try the original direct URL as fallback
-            if (actualUrl !== targetUrl) {
-                console.warn("[CORS Proxy] Proxy fetch failed, falling back to direct URL:", err);
-                try {
-                    const fallbackResponse = await fetch(targetUrl, { ...options, signal: options.signal });
-                    return fallbackResponse;
-                } catch (fallbackErr) {
-                    throw fallbackErr;
-                }
-            }
             throw err;
         }
     };
