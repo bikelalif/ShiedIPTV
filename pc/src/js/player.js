@@ -489,7 +489,7 @@ function launchVideoPlayer(url, title, logoUrl) {
                     enableWorker: true,
                     lowLatencyMode: true
                 });
-                state.hlsPlayer.attachMediaElement(video);
+                state.hlsPlayer.attachMedia(video);
                 state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
                     state.hlsPlayer.loadSource(resolvedStreamUrl);
                 });
