@@ -217,7 +217,15 @@ const state = {
     lastFocusedHomeElement: null,
     lastFocusedSeriesDetailsElement: null,
     // Parent screen tracking for settings/diagnostics return behavior
-    utilityParentScreen: ''
+    utilityParentScreen: '',
+    
+    // Video player selection settings (ExoPlayer vs HTML5 default)
+    playerSettings: {
+        live: 'html5',
+        movies: 'exoplayer',
+        series: 'exoplayer'
+    },
+    exoplayerLaunchedForLive: false
 };
 
 // Helper to decode Base64 encoded UTF-8 strings
@@ -293,6 +301,14 @@ const TRANSLATIONS = {
         langTitle: "Langue / Language",
         langDesc: "Sélectionnez la langue de l'interface.",
         langLabel: "Langue",
+        settingsPlayerTitle: "Choix des Lecteurs",
+        settingsPlayerDesc: "Sélectionnez le lecteur vidéo à utiliser pour chaque type de contenu.",
+        settingsPlayerLiveLabel: "Direct (Live TV)",
+        settingsPlayerMoviesLabel: "Films (Movies)",
+        settingsPlayerSeriesLabel: "Séries (Series)",
+        playerOptionDefault: "Lecteur par défaut (HTML5)",
+        playerOptionExo: "ExoPlayer (Pur / Plein Écran)",
+        playerOptionExoPreview: "ExoPlayer (Avec Prévisualisation)",
         subInfo: "Informations de l'abonnement",
         subStatus: "Statut du compte :",
         subExpiry: "Date d'expiration :",
@@ -358,6 +374,7 @@ const TRANSLATIONS = {
         cguText3: "En continuant, vous confirmez posséder les droits d'utilisation des flux et contenus que vous importerez dans ce lecteur.",
         cguCheckbox: "J'accepte les Conditions Générales d'Utilisation et je confirme que je possède les droits des contenus importés.",
         cguAcceptBtn: "Accepter et Continuer",
+        cguDeclineBtn: "Refuser",
         pmTitle: "Sélectionnez ou ajoutez une playlist pour commencer",
         pmAddPlaylist: "Ajouter une playlist",
         pmAddPlaylistSub: "Xtream Codes ou Lien M3U",
@@ -415,6 +432,14 @@ const TRANSLATIONS = {
         langTitle: "Language / Langue",
         langDesc: "Select the interface language.",
         langLabel: "Language",
+        settingsPlayerTitle: "Player Selection",
+        settingsPlayerDesc: "Select the video player to use for each content type.",
+        settingsPlayerLiveLabel: "Live TV",
+        settingsPlayerMoviesLabel: "Movies",
+        settingsPlayerSeriesLabel: "Series",
+        playerOptionDefault: "Default Player (HTML5)",
+        playerOptionExo: "ExoPlayer (Pure / Fullscreen)",
+        playerOptionExoPreview: "ExoPlayer (With Preview)",
         subInfo: "Subscription Information",
         subStatus: "Account Status:",
         subExpiry: "Expiration Date:",
@@ -480,6 +505,7 @@ const TRANSLATIONS = {
         cguText3: "By continuing, you confirm that you possess the usage rights for the streams and content you import into this player.",
         cguCheckbox: "I accept the General Terms of Use and confirm that I own the rights to the imported content.",
         cguAcceptBtn: "Accept and Continue",
+        cguDeclineBtn: "Decline",
         pmTitle: "Select or add a playlist to begin",
         pmAddPlaylist: "Add a playlist",
         pmAddPlaylistSub: "Xtream Codes or M3U Link",
@@ -537,6 +563,14 @@ const TRANSLATIONS = {
         langTitle: "Idioma / Language",
         langDesc: "Seleccione el idioma de la interfaz.",
         langLabel: "Idioma",
+        settingsPlayerTitle: "Selección de Reproductor",
+        settingsPlayerDesc: "Seleccione el reproductor de video a usar para cada tipo de contenido.",
+        settingsPlayerLiveLabel: "TV en Vivo",
+        settingsPlayerMoviesLabel: "Películas",
+        settingsPlayerSeriesLabel: "Series",
+        playerOptionDefault: "Reproductor predeterminado (HTML5)",
+        playerOptionExo: "ExoPlayer (Puro / Pantalla completa)",
+        playerOptionExoPreview: "ExoPlayer (Con vista previa)",
         subInfo: "Información de la Suscripción",
         subStatus: "Estado de la cuenta:",
         subExpiry: "Fecha de expiración:",
@@ -602,6 +636,7 @@ const TRANSLATIONS = {
         cguText3: "Al continuar, confirma que posee los derechos de uso de las transmisiones y contenidos que importa a este reproductor.",
         cguCheckbox: "Acepto las Condiciones Generales de Uso y confirmo que poseo los derechos del contenido importado.",
         cguAcceptBtn: "Aceptar y Continuar",
+        cguDeclineBtn: "Rechazar",
         pmTitle: "Seleccione o agregue una lista de reproducción para comenzar",
         pmAddPlaylist: "Agregar una lista de reproducción",
         pmAddPlaylistSub: "Xtream Codes o Enlace M3U",
@@ -659,6 +694,14 @@ const TRANSLATIONS = {
         langTitle: "Lingua / Language",
         langDesc: "Seleziona la lingua dell'interfaccia.",
         langLabel: "Lingua",
+        settingsPlayerTitle: "Scelta del Lettore",
+        settingsPlayerDesc: "Seleziona il lettore video da utilizzare per ciascun tipo di contenuto.",
+        settingsPlayerLiveLabel: "TV in Diretta",
+        settingsPlayerMoviesLabel: "Film",
+        settingsPlayerSeriesLabel: "Serie TV",
+        playerOptionDefault: "Lettore predefinito (HTML5)",
+        playerOptionExo: "ExoPlayer (Puro / Schermo intero)",
+        playerOptionExoPreview: "ExoPlayer (Con anteprima)",
         subInfo: "Informazioni sull'abbonamento",
         subStatus: "Stato dell'account:",
         subExpiry: "Data di scadenza:",
@@ -724,6 +767,7 @@ const TRANSLATIONS = {
         cguText3: "Continuando, confermi di possedere i diritti di utilizzo per i flussi e i contenuti che importi in questo lettore.",
         cguCheckbox: "Accetto le Condizioni Generali d'Uso e confermo di possedere i diritti dei contenuti importati.",
         cguAcceptBtn: "Accetta e Continua",
+        cguDeclineBtn: "Rifiuta",
         pmTitle: "Seleziona o aggiungi una playlist per iniziare",
         pmAddPlaylist: "Aggiungi una playlist",
         pmAddPlaylistSub: "Xtream Codes o Link M3U",
@@ -1006,6 +1050,12 @@ function applyLanguage(lang) {
     }
     const btnCguCloseSpan = document.querySelector("#btn-cgu-close span:not(.material-icons)");
     if (btnCguCloseSpan) btnCguCloseSpan.innerText = t.language === 'fr' ? "Fermer" : "Close";
+
+    const btnCguAcceptSpan = document.querySelector("#btn-cgu-accept span:not(.material-icons)");
+    if (btnCguAcceptSpan) btnCguAcceptSpan.innerText = t.cguAcceptBtn;
+
+    const btnCguDeclineSpan = document.querySelector("#btn-cgu-decline span:not(.material-icons)");
+    if (btnCguDeclineSpan) btnCguDeclineSpan.innerText = t.cguDeclineBtn;
     
     const pmHeaderP = document.querySelector(".playlist-manager-header p");
     if (pmHeaderP) pmHeaderP.innerText = t.pmTitle;
@@ -1079,6 +1129,30 @@ function applyLanguage(lang) {
     
     const loaderVlcBtnSpan = document.querySelector("#player-loader-vlc span:not(.material-icons)");
     if (loaderVlcBtnSpan) loaderVlcBtnSpan.innerText = t.vlcBtnText || "Ouvrir dans VLC";
+
+    // Player Selection Translations
+    const settingsPlayerTitle = document.getElementById("settings-player-title");
+    if (settingsPlayerTitle) settingsPlayerTitle.innerText = t.settingsPlayerTitle || "Player Selection";
+    const settingsPlayerDesc = document.getElementById("settings-player-desc");
+    if (settingsPlayerDesc) settingsPlayerDesc.innerText = t.settingsPlayerDesc || "";
+    const settingsPlayerLiveLabel = document.getElementById("settings-player-live-label");
+    if (settingsPlayerLiveLabel) settingsPlayerLiveLabel.innerText = t.settingsPlayerLiveLabel || "Direct (Live TV)";
+    const settingsPlayerMoviesLabel = document.getElementById("settings-player-movies-label");
+    if (settingsPlayerMoviesLabel) settingsPlayerMoviesLabel.innerText = t.settingsPlayerMoviesLabel || "Films (Movies)";
+    const settingsPlayerSeriesLabel = document.getElementById("settings-player-series-label");
+    if (settingsPlayerSeriesLabel) settingsPlayerSeriesLabel.innerText = t.settingsPlayerSeriesLabel || "Séries (Series)";
+
+    const optionLiveDefault = document.querySelector("#setting-player-live option[value='html5']");
+    if (optionLiveDefault) optionLiveDefault.innerText = t.playerOptionDefault || "Lecteur par défaut (HTML5)";
+    const optionLiveExo = document.querySelector("#setting-player-live option[value='exoplayer']");
+    if (optionLiveExo) optionLiveExo.innerText = t.playerOptionExo || "ExoPlayer (Pur / Plein Écran)";
+    const optionLiveExoPreview = document.querySelector("#setting-player-live option[value='exoplayer_preview']");
+    if (optionLiveExoPreview) optionLiveExoPreview.innerText = t.playerOptionExoPreview || "ExoPlayer (Avec Prévisualisation)";
+    
+    const optionMoviesExo = document.querySelector("#setting-player-movies option[value='exoplayer']");
+    if (optionMoviesExo) optionMoviesExo.innerText = t.playerOptionExo || "ExoPlayer (Pur / Plein Écran)";
+    const optionSeriesExo = document.querySelector("#setting-player-series option[value='exoplayer']");
+    if (optionSeriesExo) optionSeriesExo.innerText = t.playerOptionExo || "ExoPlayer (Pur / Plein Écran)";
     
     updateBreadcrumbs();
     

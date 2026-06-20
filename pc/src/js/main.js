@@ -53,6 +53,22 @@ function initApp() {
                 if (toggleEl) toggleEl.checked = state.isDohEnabled;
                 const urlEl = document.getElementById("setting-doh-url");
                 if (urlEl) urlEl.value = state.dohResolver;
+
+                if (settings.playerSettings) {
+                    state.playerSettings = {
+                        live: settings.playerSettings.live || 'html5',
+                        movies: settings.playerSettings.movies || 'exoplayer',
+                        series: settings.playerSettings.series || 'exoplayer'
+                    };
+                }
+                
+                // Update dropdown values in DOM if they exist
+                const playerLiveEl = document.getElementById("setting-player-live");
+                if (playerLiveEl) playerLiveEl.value = state.playerSettings.live;
+                const playerMoviesEl = document.getElementById("setting-player-movies");
+                if (playerMoviesEl) playerMoviesEl.value = state.playerSettings.movies;
+                const playerSeriesEl = document.getElementById("setting-player-series");
+                if (playerSeriesEl) playerSeriesEl.value = state.playerSettings.series;
             } catch (e) {
                 console.error("Error reading settings", e);
             }
@@ -209,7 +225,13 @@ function setupEventListeners() {
             if (window.close) {
                 window.close();
             }
-            alert("Vous devez accepter les conditions d'utilisation pour accéder à l'application.");
+            const declineMsg = {
+                fr: "Vous devez accepter les conditions d'utilisation pour accéder à l'application.",
+                en: "You must accept the terms of use to access the application.",
+                es: "Debe aceptar las condiciones de uso para acceder a la aplicación.",
+                it: "Devi accettare le condizioni d'uso per accedere all'applicazione."
+            };
+            alert(declineMsg[state.language] || declineMsg.en);
         });
     }
 
@@ -554,6 +576,29 @@ function setupEventListeners() {
         const t = TRANSLATIONS[newLang];
         showToast(t.langUpdatedToast, 2000);
     });
+
+    // Player selection change listeners
+    const playerLiveEl = document.getElementById("setting-player-live");
+    if (playerLiveEl) {
+        playerLiveEl.addEventListener("change", (e) => {
+            state.playerSettings.live = e.target.value;
+            saveSettings();
+        });
+    }
+    const playerMoviesEl = document.getElementById("setting-player-movies");
+    if (playerMoviesEl) {
+        playerMoviesEl.addEventListener("change", (e) => {
+            state.playerSettings.movies = e.target.value;
+            saveSettings();
+        });
+    }
+    const playerSeriesEl = document.getElementById("setting-player-series");
+    if (playerSeriesEl) {
+        playerSeriesEl.addEventListener("change", (e) => {
+            state.playerSettings.series = e.target.value;
+            saveSettings();
+        });
+    }
     
     // Hash routing change listener
     window.addEventListener("hashchange", () => {

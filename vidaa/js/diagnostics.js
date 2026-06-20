@@ -14,10 +14,15 @@ async function runSpeedTest() {
     speedValEl.innerText = "--";
     speedValEl.style.textShadow = "0 0 25px rgba(239, 68, 68, 0.7)";
     
-    const testFile = "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js";
-    const fileSizeInBytes = 89476;
+    // CORS-enabled endpoints tried in order. The Cloudflare endpoint returns an
+    // arbitrary-sized payload for an accurate measurement; the cdnjs file is a
+    // smaller fallback in case the first host is blocked on the user's network.
+    const endpoints = [
+        "https://speed.cloudflare.com/__down?bytes=4000000",
+        "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
+    ];
     let speeds = [];
-    
+
     const animateValue = (start, end, duration) => {
         let startTimestamp = null;
         const step = (timestamp) => {
@@ -33,33 +38,60 @@ async function runSpeedTest() {
         };
         window.requestAnimationFrame(step);
     };
-    
-    try {
-        for (let i = 0; i < 3; i++) {
+
+    // Download once and return the measured throughput in Mbps. An AbortController
+    // guards against a stalled connection hanging the test forever (the original
+    // bug on Android TV WebView where the button stayed stuck on "Testing...").
+    const measure = async (url) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        try {
+            const sep = url.includes("?") ? "&" : "?";
             const startTime = performance.now();
-            const response = await fetch(`${testFile}?t=${Date.now()}_${i}`);
-            if (!response.ok) throw new Error("Fetch failed");
-            await response.blob();
+            const response = await fetch(`${url}${sep}t=${Date.now()}`, {
+                cache: "no-store",
+                signal: controller.signal
+            });
+            if (!response.ok) throw new Error("HTTP " + response.status);
+            const blob = await response.blob();
             const endTime = performance.now();
-            
             const durationSec = (endTime - startTime) / 1000;
-            const bits = fileSizeInBytes * 8;
-            const mbps = (bits / durationSec) / 1000000;
-            speeds.push(mbps);
-            
-            speedValEl.innerText = mbps.toFixed(1);
-            await new Promise(r => setTimeout(r, 150));
+            if (durationSec <= 0 || !blob.size) throw new Error("Invalid measurement");
+            return (blob.size * 8 / durationSec) / 1000000;
+        } finally {
+            clearTimeout(timeoutId);
         }
-        
+    };
+
+    try {
+        let lastError = null;
+        for (const url of endpoints) {
+            try {
+                speeds = [];
+                // First pass warms up the connection (TLS/DNS), the next two are measured.
+                for (let i = 0; i < 3; i++) {
+                    const mbps = await measure(url);
+                    if (i > 0) speeds.push(mbps);
+                    speedValEl.innerText = mbps.toFixed(1);
+                    await new Promise(r => setTimeout(r, 120));
+                }
+                if (speeds.length) break;
+            } catch (err) {
+                lastError = err;
+                speeds = [];
+            }
+        }
+
+        if (!speeds.length) throw lastError || new Error("All endpoints failed");
+
         const avgSpeed = speeds.reduce((sum, val) => sum + val, 0) / speeds.length;
         speedValEl.style.textShadow = "0 0 20px var(--focus-glow)";
         animateValue(0, avgSpeed, 600);
-        
+
     } catch (e) {
         console.error("Speedtest error:", e);
-        const mockSpeed = 45 + Math.random() * 30;
-        speedValEl.style.textShadow = "0 0 20px var(--focus-glow)";
-        animateValue(0, mockSpeed, 800);
+        speedValEl.innerText = state.language === 'fr' ? "Échec" : "Failed";
+        speedValEl.style.textShadow = "0 0 20px rgba(239, 68, 68, 0.7)";
     } finally {
         btn.disabled = false;
         if (btnLabel) btnLabel.innerText = state.language === 'fr' ? "Lancer le test" : "Run Speed Test";

@@ -882,11 +882,30 @@ body.tv-mode .category-item:focus-visible, body.tv-mode .category-item.focused {
 
 /* TV Focus on Cards */
 body.tv-mode .media-card:focus-visible, body.tv-mode .media-card.focused {
-    transform: scale(1.05) translateY(-5px);
+    transform: scale(1.06) translateY(-6px);
     border-color: var(--border-focus);
-    box-shadow: 0 0 25px var(--focus-glow);
+    box-shadow: 0 0 8px rgba(0, 229, 255, 0.95);
     background: rgba(255, 255, 255, 0.08);
     z-index: 10;
+    animation: cardFocusPulse 1.5s ease-in-out infinite;
+}
+
+/* Lively, vivid glow pulse around the focused channel (tight shadow so it stays
+   on the card and never bleeds onto the neighbouring channels). */
+@keyframes cardFocusPulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(0, 229, 255, 0.9), 0 0 2px rgba(0, 229, 255, 0.6); }
+    50% { box-shadow: 0 0 10px rgba(0, 229, 255, 1), 0 0 4px rgba(0, 229, 255, 0.85); }
+}
+
+/* Live channel cards: the base .live-card rule forces border + background with
+   !important, which otherwise swallows the focus highlight. Re-assert the vivid
+   cyan border and the pulsing glow with !important so live channels animate just
+   as brightly as the Movies/Series grids. */
+body.tv-mode .media-card.live-card:focus-visible,
+body.tv-mode .media-card.live-card.focused {
+    border-color: var(--border-focus) !important;
+    background: rgba(0, 229, 255, 0.06) !important;
+    animation: cardFocusPulse 1.5s ease-in-out infinite;
 }
 
 body.tv-mode .media-card:focus-visible img, body.tv-mode .media-card.focused img {
@@ -3279,10 +3298,14 @@ body.tv-mode #home-screen.preview-open .category-sidebar {
 body.tv-mode #home-screen[data-section="live"] .media-grid {
     grid-template-columns: repeat(4, 1fr) !important;
     gap: 1.25rem !important;
+    /* Extra horizontal padding so the focus glow of the edge cards stays inside
+       the grid and never bleeds onto the category sidebar on the left. */
+    padding: 1.5rem 1.25rem !important;
 }
 body.tv-mode #home-screen[data-section="live"].preview-open .media-grid {
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 1rem !important;
+    padding: 1.5rem 1.25rem !important;
 }
 body.tv-mode .media-card.live-card {
     display: flex !important;
@@ -3535,5 +3558,32 @@ body.tv-mode #series-plot {
     font-family: monospace;
     font-size: 0.8rem;
     color: white;
+}
+
+/* ==========================================================================
+   TV PERFORMANCE OPTIMIZATIONS (V5.1)
+   ========================================================================== */
+body.tv-mode,
+body.tv-mode * {
+    /* Limit transition properties to color/bg to prevent layout calculation lags during focus zapping */
+    transition-property: color, background-color, border-color !important;
+    transition-duration: 0.05s !important;
+    transition-timing-function: ease-out !important;
+}
+
+body.tv-mode .category-item:focus-visible, 
+body.tv-mode .category-item.focused {
+    background: var(--primary) !important;
+    color: white !important;
+    transform: none !important; /* Prevent layout shifting */
+    box-shadow: none !important; /* Improve render time */
+    border-color: var(--border-focus) !important;
+}
+
+body.tv-mode .zap-item:focus-visible,
+body.tv-mode .zap-item.focused {
+    transform: none !important; /* Prevent layout shifting in zapping sidebar */
+    box-shadow: none !important; /* Improve render time */
+    border-color: var(--border-focus) !important;
 }
 

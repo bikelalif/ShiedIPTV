@@ -22,6 +22,18 @@ async function playMedia(item, section) {
     }
     
     if (section === 'live') {
+        if (window.AndroidApp && state.playerSettings && state.playerSettings.live === 'exoplayer') {
+            state.currentPlayingStream = { item, section };
+            const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
+            const ext = supportsMse ? 'ts' : 'm3u8';
+            const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
+            resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
+                console.log("[Android TV] Playing Live TV via ExoPlayer:", resolvedUrl);
+                window.AndroidApp.playStream(resolvedUrl, item.name, item.stream_icon || item.cover || "");
+            });
+            return;
+        }
+
         const isPlayerOpen = activeScreenId() === 'player-screen';
         const isMobile = (window.innerWidth <= 1024) && !window.AndroidApp && !isTvWrapper;
         const isMobileWeb = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.cordova && !window.AndroidApp;
@@ -40,6 +52,44 @@ async function playMedia(item, section) {
         }
         
         if (isMobile || isPlayerOpen || (state.currentPlayingStream && state.currentPlayingStream.section === 'live' && state.currentPlayingStream.item.stream_id === item.stream_id)) {
+            if (window.AndroidApp && state.playerSettings && state.playerSettings.live === 'exoplayer_preview') {
+                state.currentPlayingStream = { item, section };
+                
+                // Stop HTML5 preview playback
+                destroyMpegtsPlayer();
+                const video = document.getElementById("video-player");
+                if (video) {
+                    video.pause();
+                    video.src = "";
+                    try { video.load(); } catch(e){}
+                }
+                
+                // Hide HTML5 player screen and reset preview panels
+                const playerScreen = document.getElementById("player-screen");
+                if (playerScreen) {
+                    playerScreen.classList.remove("preview-mode");
+                    playerScreen.classList.add("hidden");
+                }
+                const homeScreen = document.getElementById("home-screen");
+                if (homeScreen) {
+                    homeScreen.classList.remove("preview-open");
+                }
+                const previewPanel = document.getElementById("live-preview-panel");
+                if (previewPanel) {
+                    previewPanel.classList.add("hidden");
+                }
+                
+                const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
+                const ext = supportsMse ? 'ts' : 'm3u8';
+                const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
+                resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
+                    console.log("[Android TV] Playing Live TV via ExoPlayer (from grid click):", resolvedUrl);
+                    state.exoplayerLaunchedForLive = true;
+                    window.AndroidApp.playStream(resolvedUrl, item.name, item.stream_icon || item.cover || "");
+                });
+                return;
+            }
+
             state.currentPlayingStream = { item, section };
             const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
             const ext = supportsMse ? 'ts' : 'm3u8';
@@ -160,7 +210,16 @@ function launchVideoPlayer(url, title, logoUrl) {
             
             // Update control panel info
             document.getElementById("vlc-info-title").innerText = title;
-            document.getElementById("vlc-info-logo").src = logoUrl || "";
+            const vlcLogoImg = document.getElementById("vlc-info-logo");
+            if (vlcLogoImg) {
+                vlcLogoImg.style.display = "";
+                if (typeof loadImageWithFallback === 'function') {
+                    loadImageWithFallback(vlcLogoImg, logoUrl, "");
+                } else {
+                    vlcLogoImg.src = logoUrl || "";
+                    vlcLogoImg.onerror = () => { vlcLogoImg.style.display = "none"; };
+                }
+            }
             
             const subtitleEl = document.getElementById("vlc-info-subtitle");
             const t = TRANSLATIONS[state.language || 'en'];
@@ -222,7 +281,16 @@ function launchVideoPlayer(url, title, logoUrl) {
 
         // Fallback for non-Electron web browsers (VLC:// launching)
         document.getElementById("player-channel-name").innerText = title;
-        document.getElementById("player-channel-logo").src = logoUrl || "";
+        const playerLogoFallback = document.getElementById("player-channel-logo");
+        if (playerLogoFallback) {
+            playerLogoFallback.style.display = "";
+            if (typeof loadImageWithFallback === 'function') {
+                loadImageWithFallback(playerLogoFallback, logoUrl, "");
+            } else {
+                playerLogoFallback.src = logoUrl || "";
+                playerLogoFallback.onerror = () => { playerLogoFallback.style.display = "none"; };
+            }
+        }
         document.getElementById("player-timeline-container").style.display = "none";
         
         const nowPlayingEl = document.getElementById("player-now-playing");
@@ -296,19 +364,30 @@ function launchVideoPlayer(url, title, logoUrl) {
     const channelLogoImg = document.getElementById("player-channel-logo");
     if (channelLogoImg) {
         channelLogoImg.style.display = "";
-        let triedDoh = false;
-        channelLogoImg.onerror = () => {
-            if (!triedDoh && state.isDohEnabled && typeof resolveUrlWithDoHSync === 'function') {
-                triedDoh = true;
-                const resolvedUrl = resolveUrlWithDoHSync(resolvedLogoUrl);
-                if (resolvedUrl && resolvedUrl !== resolvedLogoUrl) {
-                    channelLogoImg.src = resolvedUrl;
-                    return;
+        if (typeof loadImageWithFallback === 'function') {
+            loadImageWithFallback(channelLogoImg, resolvedLogoUrl, "");
+            const originalOnerror = channelLogoImg.onerror;
+            channelLogoImg.onerror = () => {
+                if (typeof originalOnerror === 'function') originalOnerror();
+                if (!channelLogoImg.src || channelLogoImg.src.endsWith('/') || channelLogoImg.src.includes('weserv.nl') === false) {
+                    channelLogoImg.style.display = "none";
                 }
-            }
-            channelLogoImg.style.display = "none";
-        };
-        channelLogoImg.src = resolvedLogoUrl;
+            };
+        } else {
+            let triedDoh = false;
+            channelLogoImg.onerror = () => {
+                if (!triedDoh && state.isDohEnabled && typeof resolveUrlWithDoHSync === 'function') {
+                    triedDoh = true;
+                    const resolvedUrl = resolveUrlWithDoHSync(resolvedLogoUrl);
+                    if (resolvedUrl && resolvedUrl !== resolvedLogoUrl) {
+                        channelLogoImg.src = resolvedUrl;
+                        return;
+                    }
+                }
+                channelLogoImg.style.display = "none";
+            };
+            channelLogoImg.src = resolvedLogoUrl;
+        }
     }
     
     const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
@@ -910,6 +989,42 @@ function goFullscreenFromPreview() {
     const playerScreen = document.getElementById("player-screen");
     if (!playerScreen || !state.currentPlayingStream) return;
     
+    if (window.AndroidApp && state.playerSettings && state.playerSettings.live === 'exoplayer_preview') {
+        const item = state.currentPlayingStream.item;
+        
+        // 1. Stop HTML5 preview playback
+        destroyMpegtsPlayer();
+        const video = document.getElementById("video-player");
+        if (video) {
+            video.pause();
+            video.src = "";
+            try { video.load(); } catch(e){}
+        }
+        
+        // 2. Hide preview mode layout elements
+        playerScreen.classList.remove("preview-mode");
+        playerScreen.classList.add("hidden");
+        const homeScreen = document.getElementById("home-screen");
+        if (homeScreen) {
+            homeScreen.classList.remove("preview-open");
+        }
+        const previewPanel = document.getElementById("live-preview-panel");
+        if (previewPanel) {
+            previewPanel.classList.add("hidden");
+        }
+        
+        // 3. Play stream via native ExoPlayer
+        const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
+        const ext = supportsMse ? 'ts' : 'm3u8';
+        const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
+        resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
+            console.log("[Android TV] Playing Live TV via ExoPlayer (from preview click):", resolvedUrl);
+            state.exoplayerLaunchedForLive = true;
+            window.AndroidApp.playStream(resolvedUrl, item.name, item.stream_icon || item.cover || "");
+        });
+        return;
+    }
+    
     console.log("[Player] Transitioning from preview to fullscreen");
     
     playerScreen.classList.remove("preview-mode");
@@ -919,7 +1034,23 @@ function goFullscreenFromPreview() {
     
     const item = state.currentPlayingStream.item;
     document.getElementById("player-channel-name").innerText = item.name;
-    document.getElementById("player-channel-logo").src = item.stream_icon || item.cover || "";
+    const fsLogoImg = document.getElementById("player-channel-logo");
+    if (fsLogoImg) {
+        fsLogoImg.style.display = "";
+        if (typeof loadImageWithFallback === 'function') {
+            loadImageWithFallback(fsLogoImg, item.stream_icon || item.cover, "");
+            const originalOnerror = fsLogoImg.onerror;
+            fsLogoImg.onerror = () => {
+                if (typeof originalOnerror === 'function') originalOnerror();
+                if (!fsLogoImg.src || fsLogoImg.src.endsWith('/') || fsLogoImg.src.includes('weserv.nl') === false) {
+                    fsLogoImg.style.display = "none";
+                }
+            };
+        } else {
+            fsLogoImg.src = item.stream_icon || item.cover || "";
+            fsLogoImg.onerror = () => { fsLogoImg.style.display = "none"; };
+        }
+    }
     
     const isLive = state.currentPlayingStream.section === 'live';
     document.getElementById("player-timeline-container").style.display = isLive ? "none" : "flex";

@@ -12,7 +12,8 @@
     "resize:android": "powershell -ExecutionPolicy Bypass -File scripts/resize-apk-images.ps1",
     "resize:pc": "powershell -ExecutionPolicy Bypass -File scripts/resize-pc-images.ps1",
     "resize:vidaa": "powershell -ExecutionPolicy Bypass -File scripts/resize-vidaa-images.ps1",
-    "build:vidaa": "powershell -Command \"Compress-Archive -Path .\\vidaa\\* -DestinationPath .\\com.shieldiptv.app.zip -Force\""
+    "build:vidaa": "powershell -Command \"Compress-Archive -Path .\\vidaa\\* -DestinationPath .\\com.shieldiptv.app.zip -Force\"",
+    "build:webos": "powershell -ExecutionPolicy Bypass -File scripts/build-webos.ps1"
   },
   "author": "Bilal",
   "license": "ISC"

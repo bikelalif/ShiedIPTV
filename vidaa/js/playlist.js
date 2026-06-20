@@ -238,7 +238,8 @@ function saveSettings() {
     safeStorage.local.setItem("shield_iptv_settings", JSON.stringify({
         isDohEnabled: state.isDohEnabled,
         dohResolver: state.dohResolver,
-        language: state.language
+        language: state.language,
+        playerSettings: state.playerSettings
     }));
 }
 
