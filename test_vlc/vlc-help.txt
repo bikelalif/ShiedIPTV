@@ -1,0 +1,8 @@
+﻿VLC version 3.0.21 Vetinari (3.0.21-1-0-g9c4768291e)
+Traductions © 2008-2023 Éric Lassauge
+Compilé par videolan sur runner-sgapdqg-project-435-concurrent-1 (Jun  8 2024 21:20:21)
+Compilateur : gcc version 6.4.0 (GCC)
+Ce programme est fourni SANS AUCUNE GARANTIE, tel que permis par la loi.
+Vous pouvez le redistribuer selon les termes de la Licence Publique Générale GNU ;
+voir le fichier COPYING pour plus de détails.
+Écrit par l’équipe VideoLAN ; voir le fichier AUTHORS.

@@ -190,21 +190,6 @@ Add-Type -TypeDefinition $code -ErrorAction SilentlyContinue
 }
 
 function getVlcPath() {
-    let packagedPath = '';
-    if (app.isPackaged) {
-        // In production, extraResources are placed in resources/vlc/
-        packagedPath = path.join(process.resourcesPath, 'vlc', 'vlc.exe');
-    } else {
-        // In development, they are in pc/bin/vlc/
-        packagedPath = path.join(__dirname, 'bin', 'vlc', 'vlc.exe');
-    }
-    
-    if (fs.existsSync(packagedPath)) {
-        console.log("[Main] Using packaged VLC:", packagedPath);
-        return packagedPath;
-    }
-    
-    // Fallbacks
     const paths = [
         'C:\\Program Files\\VideoLAN\\VLC\\vlc.exe',
         'C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe'
@@ -215,7 +200,7 @@ function getVlcPath() {
             return p;
         }
     }
-    console.log("[Main] VLC not found in packaged path or system paths, falling back to 'vlc'");
+    console.log("[Main] VLC not found in system paths, falling back to 'vlc'");
     return 'vlc'; // Fallback to path
 }
 

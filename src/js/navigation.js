@@ -85,6 +85,61 @@ function activeScreenId() {
     return visibleScreen ? visibleScreen.id : "";
 }
 
+function resumeLivePreviewIfNeeded() {
+    const screenId = activeScreenId();
+    if (screenId === 'home-screen' && 
+        state.currentSection === 'live' && 
+        state.playerSettings && 
+        state.playerSettings.live === 'exoplayer_preview' && 
+        state.exoplayerLaunchedForLive && 
+        state.currentPlayingStream && 
+        state.currentPlayingStream.section === 'live') {
+        
+        console.log("[Preview Restore] Resuming Live TV preview...");
+        state.exoplayerLaunchedForLive = false;
+        
+        const previewPanel = document.getElementById("live-preview-panel");
+        if (previewPanel) {
+            previewPanel.classList.remove("hidden");
+        }
+        const homeScreen = document.getElementById("home-screen");
+        if (homeScreen) {
+            homeScreen.classList.add("preview-open");
+        }
+        const playerScreen = document.getElementById("player-screen");
+        if (playerScreen) {
+            playerScreen.classList.add("preview-mode");
+            playerScreen.classList.remove("hidden");
+        }
+        
+        if (typeof loadLivePreview === 'function') {
+            loadLivePreview(state.currentPlayingStream.item);
+        }
+    }
+}
+
+// Global callback for Android native Activity onResume
+window.onAndroidResume = function() {
+    console.log("[Android Native] onAndroidResume event received");
+    resumeLivePreviewIfNeeded();
+};
+
+window.onAndroidAppResumeFromBackground = function() {
+    console.log("[Android Native] onAndroidAppResumeFromBackground event received");
+    if (typeof stopVideoPlaybackCompletely === 'function') {
+        stopVideoPlaybackCompletely();
+    }
+    // Restore focus to last active element or last focused card
+    if (state.lastFocusedElement && document.body.contains(state.lastFocusedElement) && state.lastFocusedElement.offsetWidth > 0) {
+        state.lastFocusedElement.focus();
+        state.lastFocusedElement.scrollIntoView({ block: 'nearest' });
+    } else {
+        if (typeof focusFirst === 'function') {
+            focusFirst();
+        }
+    }
+};
+
 function showLoader(text) {
     const t = TRANSLATIONS[state.language || 'en'];
     document.getElementById("loader-text").innerText = text || t.loaderDefault;
@@ -366,11 +421,7 @@ function appendItemsToGrid(batch, section) {
         
         const defaultPoster = section === 'live' ? PLACEHOLDERS.live : PLACEHOLDERS.vod;
         const logoUrl = item.stream_icon || item.cover || defaultPoster;
-        if (isTvWrapper) {
-            // Simple direct loading (v1.0.6 style) – most reliable on TV WebViews
-            poster.src = logoUrl;
-            poster.onerror = () => { poster.src = defaultPoster; poster.onerror = null; };
-        } else if (typeof loadImageWithFallback === 'function') {
+        if (typeof loadImageWithFallback === 'function') {
             loadImageWithFallback(poster, logoUrl, defaultPoster);
         } else {
             poster.src = logoUrl;
@@ -416,13 +467,14 @@ function loadNextGridBatch(section) {
 }
 
 // Spatial Navigation Setup
+let lastArrowTime = 0;
 function setupSpatialNavigation() {
     window.addEventListener("keydown", (e) => {
         const key = e.key;
         
         // Prevent key events from moving focus or triggering form actions if editing an input
         const activeEl = document.activeElement;
-        if (activeEl && activeEl.tagName === 'INPUT' && (!isTvWrapper || !activeEl.hasAttribute('readonly'))) {
+        if (activeEl && activeEl.tagName === 'INPUT' && activeEl.type !== 'checkbox' && (!isTvWrapper || !activeEl.hasAttribute('readonly'))) {
             if (key === 'Enter') {
                 e.preventDefault();
                 
@@ -456,9 +508,47 @@ function setupSpatialNavigation() {
             }
             return;
         }
+
+        // Throttle rapid D-pad/arrow key navigation presses to prevent backlog congestion on TV
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+            const now = Date.now();
+            const throttleMs = e.repeat ? 85 : 50; // Faster repeat rate (85ms) when holding key, instant (50ms) for manual clicks
+            if (now - lastArrowTime < throttleMs) {
+                e.preventDefault();
+                return;
+            }
+            lastArrowTime = now;
+        }
         
         if (activeScreenId() === "player-screen") {
+            const overlay = document.getElementById("player-overlay");
+            const wasHidden = overlay && overlay.classList.contains("hidden");
             resetPlayerActivity();
+            
+            // If the overlay was hidden, first press of arrow keys or Enter just shows it and focuses Play
+            if (wasHidden && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Select'].includes(key)) {
+                e.preventDefault();
+                const playBtn = document.getElementById("player-btn-play");
+                if (playBtn) playBtn.focus();
+                return;
+            }
+        }
+        
+        // TV Remote Specific Key Bindings
+        if (['ChannelUp', 'ChannelDown', 'PageUp', 'PageDown'].includes(key)) {
+            if (activeScreenId() === "player-screen") {
+                e.preventDefault();
+                zapChannel((key === 'ChannelUp' || key === 'PageUp') ? 'next' : 'prev');
+                return;
+            }
+        }
+        
+        if (['MediaPlay', 'MediaPause', 'MediaPlayPause', 'Play', 'Pause'].includes(key)) {
+            if (activeScreenId() === "player-screen") {
+                e.preventDefault();
+                togglePlayPause();
+                return;
+            }
         }
         
         if (!isTvWrapper) {
@@ -607,7 +697,7 @@ function setupSpatialNavigation() {
             e.preventDefault();
             const direction = key.replace('Arrow', '').toLowerCase();
             moveFocus(direction);
-        } else if (key === 'Enter') {
+        } else if (key === 'Enter' || key === 'Select') {
             const active = document.activeElement;
             if (active && active.classList.contains("focusable")) {
                 if (active.tagName === 'INPUT') {
@@ -616,7 +706,9 @@ function setupSpatialNavigation() {
                         active.removeAttribute('readonly');
                         active.focus();
                     }
-                } else if (active.tagName !== 'BUTTON' && active.tagName !== 'A' && active.tagName !== 'SELECT') {
+                } else if (active.tagName === 'SELECT') {
+                    // Do not preventDefault or call click() so that the native browser/WebView dropdown opens
+                } else {
                     e.preventDefault();
                     active.click();
                 }
@@ -663,6 +755,9 @@ function setupSpatialNavigation() {
         if (fallbackElement && document.body.contains(fallbackElement) && fallbackElement.offsetWidth > 0) {
             fallbackElement.focus();
         }
+
+        // If returning from native ExoPlayer playback in exoplayer_preview mode, restore the HTML5 preview playback
+        resumeLivePreviewIfNeeded();
     });
 
     document.addEventListener("focusout", (e) => {
@@ -695,6 +790,84 @@ function moveFocus(direction) {
     if (!active || !active.classList.contains('focusable')) {
         focusFirst();
         return;
+    }
+    
+    // Custom rule: ArrowUp on first element in settings goes directly to back button
+    if (state.currentSection === 'settings') {
+        if (active.id === 'setting-doh-toggle' && direction === 'up') {
+            const backBtn = document.getElementById("btn-header-back");
+            if (backBtn) {
+                // Reset scroll positions of settings-panel and page viewport instantly
+                const settingsPanel = document.getElementById("settings-panel");
+                if (settingsPanel) {
+                    settingsPanel.scrollTop = 0;
+                }
+                window.scrollTo(0, 0);
+                document.body.scrollTop = 0;
+                document.documentElement.scrollTop = 0;
+                
+                backBtn.focus();
+                return;
+            }
+        }
+    }
+    
+    // Linear list navigation fast-path to prevent laggy bounding-box calculations on large lists
+    if (active.classList.contains("category-item")) {
+        if (direction === 'down') {
+            const categoryItems = Array.from(document.querySelectorAll("#category-list .category-item"));
+            const currentIndex = categoryItems.indexOf(active);
+            if (currentIndex !== -1 && currentIndex < categoryItems.length - 1) {
+                const nextItem = categoryItems[currentIndex + 1];
+                nextItem.focus();
+                nextItem.scrollIntoView({ behavior: 'auto', block: 'center' });
+                return;
+            }
+        } else if (direction === 'up') {
+            const categoryItems = Array.from(document.querySelectorAll("#category-list .category-item"));
+            const currentIndex = categoryItems.indexOf(active);
+            if (currentIndex > 0) {
+                const prevItem = categoryItems[currentIndex - 1];
+                prevItem.focus();
+                prevItem.scrollIntoView({ behavior: 'auto', block: 'center' });
+                return;
+            } else {
+                const catSearchBar = document.getElementById("category-search-bar");
+                if (catSearchBar && catSearchBar.offsetWidth > 0) {
+                    catSearchBar.focus();
+                    return;
+                }
+            }
+        }
+    } else if (active.id === "category-search-bar") {
+        if (direction === 'down') {
+            const firstCat = document.querySelector("#category-list .category-item");
+            if (firstCat) {
+                firstCat.focus();
+                firstCat.scrollIntoView({ behavior: 'auto', block: 'center' });
+                return;
+            }
+        }
+    } else if (active.classList.contains("zap-item")) {
+        if (direction === 'down') {
+            const zapItems = Array.from(document.querySelectorAll("#zap-list .zap-item"));
+            const currentIndex = zapItems.indexOf(active);
+            if (currentIndex !== -1 && currentIndex < zapItems.length - 1) {
+                const nextItem = zapItems[currentIndex + 1];
+                nextItem.focus();
+                nextItem.scrollIntoView({ behavior: 'auto', block: 'center' });
+                return;
+            }
+        } else if (direction === 'up') {
+            const zapItems = Array.from(document.querySelectorAll("#zap-list .zap-item"));
+            const currentIndex = zapItems.indexOf(active);
+            if (currentIndex > 0) {
+                const prevItem = zapItems[currentIndex - 1];
+                prevItem.focus();
+                prevItem.scrollIntoView({ behavior: 'auto', block: 'center' });
+                return;
+            }
+        }
     }
     
     // Custom rule: navigation between category sidebar and media grid
@@ -924,7 +1097,7 @@ function focusFirst() {
 function handleBackButton() {
     const playerScreen = document.getElementById("player-screen");
     if (playerScreen && playerScreen.classList.contains("preview-mode")) {
-        console.log("[Navigation] Back button clicked in minimized preview mode, stopping video playback");
+        console.log("[Navigation] Back button clicked in minimized preview mode, returning to portal screen");
         const livePreviewPanel = document.getElementById("live-preview-panel");
         if (livePreviewPanel) {
             livePreviewPanel.classList.add("hidden");
@@ -938,13 +1111,7 @@ function handleBackButton() {
             el.classList.remove("active-playing");
         });
         
-        if (state.lastFocusedHomeElement && document.body.contains(state.lastFocusedHomeElement) && state.lastFocusedHomeElement.offsetWidth > 0) {
-            state.lastFocusedHomeElement.focus();
-        } else if (state.lastFocusedElement) {
-            state.lastFocusedElement.focus();
-        } else {
-            focusFirst();
-        }
+        showScreen("portal-screen");
         return;
     }
 
