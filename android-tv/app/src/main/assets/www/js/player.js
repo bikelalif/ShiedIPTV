@@ -24,8 +24,9 @@ async function playMedia(item, section) {
     if (section === 'live') {
         if (window.AndroidApp && state.playerSettings && state.playerSettings.live === 'exoplayer') {
             state.currentPlayingStream = { item, section };
-            const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
-            const ext = supportsMse ? 'ts' : 'm3u8';
+            // ExoPlayer handles live HLS (.m3u8) far more reliably than a single progressive
+            // .ts connection (segment-level retry, no false EOF when the server drops the socket).
+            const ext = 'm3u8';
             const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
             resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
                 console.log("[Android TV] Playing Live TV via ExoPlayer:", resolvedUrl);
@@ -79,8 +80,8 @@ async function playMedia(item, section) {
                     previewPanel.classList.add("hidden");
                 }
                 
-                const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
-                const ext = supportsMse ? 'ts' : 'm3u8';
+                // Live HLS for ExoPlayer: segment-level retry keeps playback alive across socket drops.
+                const ext = 'm3u8';
                 const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
                 resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
                     console.log("[Android TV] Playing Live TV via ExoPlayer (from grid click):", resolvedUrl);
@@ -1014,8 +1015,8 @@ function goFullscreenFromPreview() {
         }
         
         // 3. Play stream via native ExoPlayer
-        const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
-        const ext = supportsMse ? 'ts' : 'm3u8';
+        // Live HLS for ExoPlayer: segment-level retry keeps playback alive across socket drops.
+        const ext = 'm3u8';
         const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
         resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
             console.log("[Android TV] Playing Live TV via ExoPlayer (from preview click):", resolvedUrl);
