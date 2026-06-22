@@ -455,7 +455,13 @@ function launchVideoPlayer(url, title, logoUrl) {
                     enableWorker: true,
                     lazyLoad: !isLive, // Disable lazy loading for live streams to prevent connection cutoff
                     lazyLoadMaxDuration: 3 * 60,
-                    seekType: 'range'
+                    seekType: 'range',
+                    autoCleanupSourceBuffer: true,
+                    autoCleanupMaxBackwardDuration: 2 * 60,
+                    autoCleanupMinBackwardDuration: 60,
+                    liveBufferLatencyChasing: isLive,
+                    liveBufferLatencyMaxLatency: 3.0,
+                    liveBufferLatencyMinRemain: 1.0
                 });
                 
                 state.mpegtsPlayer.attachMediaElement(video);
@@ -488,7 +494,7 @@ function launchVideoPlayer(url, title, logoUrl) {
                 console.log("[Player] Initializing HLS.js for stream:", resolvedStreamUrl);
                 state.hlsPlayer = new Hls({
                     enableWorker: true,
-                    lowLatencyMode: true
+                    lowLatencyMode: false
                 });
                 state.hlsPlayer.attachMedia(video);
                 state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
@@ -824,7 +830,13 @@ function attemptReconnection() {
                     enableWorker: true,
                     lazyLoad: false, // Disable lazy loading for live streams to prevent connection cutoff
                     lazyLoadMaxDuration: 3 * 60,
-                    seekType: 'range'
+                    seekType: 'range',
+                    autoCleanupSourceBuffer: true,
+                    autoCleanupMaxBackwardDuration: 2 * 60,
+                    autoCleanupMinBackwardDuration: 60,
+                    liveBufferLatencyChasing: true,
+                    liveBufferLatencyMaxLatency: 3.0,
+                    liveBufferLatencyMinRemain: 1.0
                 });
                 
                 state.mpegtsPlayer.attachMediaElement(video);
@@ -911,7 +923,13 @@ async function loadLivePreview(item) {
                     enableWorker: true,
                     lazyLoad: false, // Disable lazy loading for live streams to prevent connection cutoff
                     lazyLoadMaxDuration: 30,
-                    seekType: 'range'
+                    seekType: 'range',
+                    autoCleanupSourceBuffer: true,
+                    autoCleanupMaxBackwardDuration: 20,
+                    autoCleanupMinBackwardDuration: 10,
+                    liveBufferLatencyChasing: true,
+                    liveBufferLatencyMaxLatency: 3.0,
+                    liveBufferLatencyMinRemain: 1.0
                 });
                 
                 state.mpegtsPlayer.attachMediaElement(video);
