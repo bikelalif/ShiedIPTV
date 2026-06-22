@@ -1,6 +1,10 @@
-/* ==========================================================================
-   SHIELDIPTV PLAYER CONTROLLER
-   ========================================================================== */
+function getLiveStreamExt() {
+    if (state.playerSettings && state.playerSettings.liveFormat) {
+        return state.playerSettings.liveFormat;
+    }
+    const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
+    return supportsMse ? 'ts' : 'm3u8';
+}
 
 async function playMedia(item, section) {
     const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
@@ -24,8 +28,7 @@ async function playMedia(item, section) {
     if (section === 'live') {
         if (window.AndroidApp && state.playerSettings && state.playerSettings.live === 'exoplayer') {
             state.currentPlayingStream = { item, section };
-            const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
-            const ext = supportsMse ? 'ts' : 'm3u8';
+            const ext = getLiveStreamExt();
             const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
             resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
                 console.log("[Android TV] Playing Live TV via ExoPlayer:", resolvedUrl);
@@ -79,8 +82,7 @@ async function playMedia(item, section) {
                     previewPanel.classList.add("hidden");
                 }
                 
-                const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
-                const ext = supportsMse ? 'ts' : 'm3u8';
+                const ext = getLiveStreamExt();
                 const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
                 resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
                     console.log("[Android TV] Playing Live TV via ExoPlayer (from grid click):", resolvedUrl);
@@ -91,8 +93,7 @@ async function playMedia(item, section) {
             }
 
             state.currentPlayingStream = { item, section };
-            const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
-            const ext = supportsMse ? 'ts' : 'm3u8';
+            const ext = getLiveStreamExt();
             const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
             launchVideoPlayer(streamUrl, item.name, item.stream_icon || item.cover);
             return;
@@ -809,7 +810,16 @@ function attemptReconnection() {
         }
     }
     
-    const url = state.currentPlayingStreamUrl;
+    let url = state.currentPlayingStreamUrl;
+    
+    // Auto-fallback: if we are trying to reconnect a .ts stream for 2 or more times,
+    // swap the URL format to .m3u8 (HLS) which is segmented and much more stable.
+    if (state.reconnectAttempts >= 2 && url && url.includes('.ts')) {
+        console.log("[Player] Reconnection failing with TS stream, attempting HLS (.m3u8) fallback...");
+        url = url.replace('.ts', '.m3u8');
+        state.currentPlayingStreamUrl = url;
+    }
+    
     const video = document.getElementById("video-player");
     
     destroyMpegtsPlayer();
@@ -862,6 +872,50 @@ function attemptReconnection() {
                 video.src = resolvedStreamUrl;
                 video.play().catch(err => console.error(err));
             }
+        } else if (resolvedStreamUrl.includes('.m3u8')) {
+            if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                console.log("[Player] Initializing HLS.js for stream in reconnection:", resolvedStreamUrl);
+                state.hlsPlayer = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: false
+                });
+                state.hlsPlayer.attachMedia(video);
+                state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
+                    state.hlsPlayer.loadSource(resolvedStreamUrl);
+                });
+                state.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+                    video.play().catch(e => {
+                        console.warn("HLS Autoplay failed in reconnect, trying muted...", e);
+                        video.muted = true;
+                        video.play().catch(err => {});
+                    });
+                });
+                state.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                console.warn("Fatal network error in Hls.js on reconnect, retrying...");
+                                state.hlsPlayer.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.warn("Fatal media error in Hls.js on reconnect, recovering...");
+                                state.hlsPlayer.recoverMediaError();
+                                break;
+                            default:
+                                console.error("Fatal Hls.js error on reconnect:", data);
+                                destroyMpegtsPlayer();
+                                video.src = resolvedStreamUrl;
+                                video.play().catch(e => {});
+                                break;
+                        }
+                    }
+                });
+            } else {
+                console.log("[Player] HLS.js not supported on reconnect, falling back to native player:", resolvedStreamUrl);
+                video.src = resolvedStreamUrl;
+                video.load();
+                video.play().catch(e => {});
+            }
         } else {
             video.src = resolvedStreamUrl;
             video.load();
@@ -905,8 +959,7 @@ async function loadLivePreview(item) {
     if (loader) loader.classList.remove("hidden");
     if (playerLoader) playerLoader.style.display = "flex";
     
-    const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
-    const previewExt = supportsMse ? 'ts' : 'm3u8';
+    const previewExt = getLiveStreamExt();
     const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${previewExt}`;
     
     resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
@@ -1035,8 +1088,7 @@ function goFullscreenFromPreview() {
         }
         
         // 3. Play stream via native ExoPlayer
-        const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
-        const ext = supportsMse ? 'ts' : 'm3u8';
+        const ext = getLiveStreamExt();
         const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
         resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
             console.log("[Android TV] Playing Live TV via ExoPlayer (from preview click):", resolvedUrl);
