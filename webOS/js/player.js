@@ -459,7 +459,7 @@ function launchVideoPlayer(url, title, logoUrl) {
                     autoCleanupSourceBuffer: true,
                     autoCleanupMaxBackwardDuration: 2 * 60,
                     autoCleanupMinBackwardDuration: 60,
-                    liveBufferLatencyChasing: isLive,
+                    liveBufferLatencyChasing: false,
                     liveBufferLatencyMaxLatency: 3.0,
                     liveBufferLatencyMinRemain: 1.0
                 });
@@ -834,7 +834,7 @@ function attemptReconnection() {
                     autoCleanupSourceBuffer: true,
                     autoCleanupMaxBackwardDuration: 2 * 60,
                     autoCleanupMinBackwardDuration: 60,
-                    liveBufferLatencyChasing: true,
+                    liveBufferLatencyChasing: false,
                     liveBufferLatencyMaxLatency: 3.0,
                     liveBufferLatencyMinRemain: 1.0
                 });
@@ -927,7 +927,7 @@ async function loadLivePreview(item) {
                     autoCleanupSourceBuffer: true,
                     autoCleanupMaxBackwardDuration: 20,
                     autoCleanupMinBackwardDuration: 10,
-                    liveBufferLatencyChasing: true,
+                    liveBufferLatencyChasing: false,
                     liveBufferLatencyMaxLatency: 3.0,
                     liveBufferLatencyMinRemain: 1.0
                 });
