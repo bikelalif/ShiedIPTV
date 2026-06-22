@@ -222,6 +222,7 @@ const state = {
     // Video player selection settings (ExoPlayer vs HTML5 default)
     playerSettings: {
         live: 'html5',
+        liveFormat: 'ts',
         movies: 'exoplayer',
         series: 'exoplayer'
     },
@@ -304,6 +305,7 @@ const TRANSLATIONS = {
         settingsPlayerTitle: "Choix des Lecteurs",
         settingsPlayerDesc: "Sélectionnez le lecteur vidéo à utiliser pour chaque type de contenu.",
         settingsPlayerLiveLabel: "Direct (Live TV)",
+        settingsPlayerLiveFormatLabel: "Format du Direct",
         settingsPlayerMoviesLabel: "Films (Movies)",
         settingsPlayerSeriesLabel: "Séries (Series)",
         playerOptionDefault: "Lecteur par défaut (HTML5)",
@@ -435,6 +437,7 @@ const TRANSLATIONS = {
         settingsPlayerTitle: "Player Selection",
         settingsPlayerDesc: "Select the video player to use for each content type.",
         settingsPlayerLiveLabel: "Live TV",
+        settingsPlayerLiveFormatLabel: "Live Stream Format",
         settingsPlayerMoviesLabel: "Movies",
         settingsPlayerSeriesLabel: "Series",
         playerOptionDefault: "Default Player (HTML5)",
@@ -566,6 +569,7 @@ const TRANSLATIONS = {
         settingsPlayerTitle: "Selección de Reproductor",
         settingsPlayerDesc: "Seleccione el reproductor de video a usar para cada tipo de contenido.",
         settingsPlayerLiveLabel: "TV en Vivo",
+        settingsPlayerLiveFormatLabel: "Formato de TV en Vivo",
         settingsPlayerMoviesLabel: "Películas",
         settingsPlayerSeriesLabel: "Series",
         playerOptionDefault: "Reproductor predeterminado (HTML5)",
@@ -697,6 +701,7 @@ const TRANSLATIONS = {
         settingsPlayerTitle: "Scelta del Lettore",
         settingsPlayerDesc: "Seleziona il lettore video da utilizzare per ciascun tipo di contenuto.",
         settingsPlayerLiveLabel: "TV in Diretta",
+        settingsPlayerLiveFormatLabel: "Formato TV in Diretta",
         settingsPlayerMoviesLabel: "Film",
         settingsPlayerSeriesLabel: "Serie TV",
         playerOptionDefault: "Lettore predefinito (HTML5)",
@@ -1137,6 +1142,8 @@ function applyLanguage(lang) {
     if (settingsPlayerDesc) settingsPlayerDesc.innerText = t.settingsPlayerDesc || "";
     const settingsPlayerLiveLabel = document.getElementById("settings-player-live-label");
     if (settingsPlayerLiveLabel) settingsPlayerLiveLabel.innerText = t.settingsPlayerLiveLabel || "Direct (Live TV)";
+    const settingsPlayerLiveFormatLabel = document.getElementById("settings-player-live-format-label");
+    if (settingsPlayerLiveFormatLabel) settingsPlayerLiveFormatLabel.innerText = t.settingsPlayerLiveFormatLabel || "Format du Direct";
     const settingsPlayerMoviesLabel = document.getElementById("settings-player-movies-label");
     if (settingsPlayerMoviesLabel) settingsPlayerMoviesLabel.innerText = t.settingsPlayerMoviesLabel || "Films (Movies)";
     const settingsPlayerSeriesLabel = document.getElementById("settings-player-series-label");

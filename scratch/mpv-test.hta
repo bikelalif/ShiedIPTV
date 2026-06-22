@@ -1,0 +1,72 @@
+<html>
+<head>
+<title>ShieldMpvHost42</title>
+<HTA:APPLICATION
+  id="mpvTest"
+  applicationName="ShieldMpvHost42"
+  border="thin"
+  caption="yes"
+  showInTaskbar="yes"
+  singleInstance="yes"
+  scroll="no" />
+<style>
+  html, body { height:100%; margin:0; background:#000; overflow:hidden;
+    font-family:"Segoe UI",Arial,sans-serif; }
+  .wrap { height:100%; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:18px; }
+  #play { width:140px; height:140px; border-radius:50%; border:none; cursor:pointer;
+    background:linear-gradient(135deg,#6c8cff,#7c5ce0); color:#fff; font-size:56px;
+    line-height:140px; box-shadow:0 10px 40px rgba(108,140,255,.45); }
+  #play:hover { transform:scale(1.05); }
+  .hint { color:#5a6680; font-size:12px; }
+  .err { color:#ff6b6b; font-size:12px; min-height:14px; }
+</style>
+<script language="javascript">
+  var STREAM_URL = "http://103.176.90.109/movie/bilal000/mpbK2326/1313180.mkv";
+  var MPV = "C:\\Users\\Bilal\\Documents\\ShieldIPTV\\pc\\resources\\mpv\\mpv.exe";
+
+  window.onload = function () {
+    try { window.resizeTo(1000, 620); window.moveTo(180, 120); } catch (e) {}
+  };
+
+  function play() {
+    var err = document.getElementById("err");
+    err.innerHTML = "";
+    try {
+      var fso = new ActiveXObject("Scripting.FileSystemObject");
+      var sh  = new ActiveXObject("WScript.Shell");
+      var tmp = sh.ExpandEnvironmentStrings("%TEMP%");
+      var ps1 = tmp + "\\shield_mpv_test.ps1";
+
+      // PowerShell: find THIS hta window by its title, embed mpv into it via --wid,
+      // and bind ESC/q to quit mpv (closing it reveals the Play button again).
+      var lines = [
+        "Add-Type -Namespace Win -Name U -MemberDefinition '[DllImport(\"user32.dll\", CharSet=CharSet.Unicode)] public static extern System.IntPtr FindWindow(string c, string n);'",
+        "$h = [Win.U]::FindWindow($null, 'ShieldMpvHost42')",
+        "if ($h -eq [System.IntPtr]::Zero) { exit }",
+        "$wid = $h.ToInt64()",
+        "$conf = Join-Path $env:TEMP 'shield_mpv_input.conf'",
+        "Set-Content -Path $conf -Value \"ESC quit`r`nq quit\" -Encoding ASCII",
+        "& '" + MPV + "' '" + STREAM_URL + "' \"--wid=$wid\" '--no-config' '--osc=yes' '--script-opts=osc-visibility=always' '--keep-open=yes' '--hwdec=auto-safe' '--cursor-autohide=no' \"--input-conf=$conf\""
+      ];
+      var ts = fso.CreateTextFile(ps1, true);
+      ts.Write(lines.join("\r\n"));
+      ts.Close();
+
+      // Do NOT hide the button: mpv embeds ON TOP of it; when mpv quits (Esc/q),
+      // the button is revealed again automatically.
+      sh.Run('powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + ps1 + '"', 0, false);
+    } catch (e) {
+      err.innerHTML = "Erreur: " + e.message;
+    }
+  }
+</script>
+</head>
+<body>
+  <div class="wrap">
+    <button id="play" onclick="play()">&#9658;</button>
+    <div class="hint">Clique pour lancer le flux dans mpv (int&eacute;gr&eacute; &agrave; la fen&ecirc;tre)</div>
+    <div class="err" id="err"></div>
+  </div>
+</body>
+</html>

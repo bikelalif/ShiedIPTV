@@ -57,6 +57,7 @@ function initApp() {
                 if (settings.playerSettings) {
                     state.playerSettings = {
                         live: settings.playerSettings.live || 'html5',
+                        liveFormat: settings.playerSettings.liveFormat || 'ts',
                         movies: settings.playerSettings.movies || 'exoplayer',
                         series: settings.playerSettings.series || 'exoplayer'
                     };
@@ -65,6 +66,8 @@ function initApp() {
                 // Update dropdown values in DOM if they exist
                 const playerLiveEl = document.getElementById("setting-player-live");
                 if (playerLiveEl) playerLiveEl.value = state.playerSettings.live;
+                const playerLiveFormatEl = document.getElementById("setting-player-live-format");
+                if (playerLiveFormatEl) playerLiveFormatEl.value = state.playerSettings.liveFormat || 'ts';
                 const playerMoviesEl = document.getElementById("setting-player-movies");
                 if (playerMoviesEl) playerMoviesEl.value = state.playerSettings.movies;
                 const playerSeriesEl = document.getElementById("setting-player-series");
@@ -582,6 +585,13 @@ function setupEventListeners() {
     if (playerLiveEl) {
         playerLiveEl.addEventListener("change", (e) => {
             state.playerSettings.live = e.target.value;
+            saveSettings();
+        });
+    }
+    const playerLiveFormatEl = document.getElementById("setting-player-live-format");
+    if (playerLiveFormatEl) {
+        playerLiveFormatEl.addEventListener("change", (e) => {
+            state.playerSettings.liveFormat = e.target.value;
             saveSettings();
         });
     }
