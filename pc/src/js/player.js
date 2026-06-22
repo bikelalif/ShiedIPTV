@@ -453,6 +453,7 @@ function launchVideoPlayer(url, title, logoUrl) {
                     url: resolvedStreamUrl
                 }, {
                     enableWorker: true,
+                    lazyLoad: !isLive, // Disable lazy loading for live streams to prevent connection cutoff
                     lazyLoadMaxDuration: 3 * 60,
                     seekType: 'range'
                 });
@@ -821,6 +822,7 @@ function attemptReconnection() {
                     url: resolvedStreamUrl
                 }, {
                     enableWorker: true,
+                    lazyLoad: false, // Disable lazy loading for live streams to prevent connection cutoff
                     lazyLoadMaxDuration: 3 * 60,
                     seekType: 'range'
                 });
@@ -907,6 +909,7 @@ async function loadLivePreview(item) {
                     url: resolvedUrl
                 }, {
                     enableWorker: true,
+                    lazyLoad: false, // Disable lazy loading for live streams to prevent connection cutoff
                     lazyLoadMaxDuration: 30,
                     seekType: 'range'
                 });
