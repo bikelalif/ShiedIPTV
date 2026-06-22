@@ -9,6 +9,35 @@ app.commandLine.appendSwitch('ignore-certificate-errors');
 let psProcess = null;
 let currentVlcProcess = null;
 
+// ---------------------------------------------------------------------------
+// Native player (mpv / VLC) embedding
+// ---------------------------------------------------------------------------
+let mainWindow = null;          // the app BrowserWindow
+let nativeProc = null;          // current native player child process
+let nativeEngine = null;        // 'mpv' | 'vlc'
+let nativeRect = null;          // last video rectangle in CSS px {x,y,width,height}
+let nativeEmbedded = false;     // becomes true once the player window is reparented
+let nativeReassertTimer = null; // keeps the video sized & on top of the web view
+
+// Fine-tuning offsets (CSS px) applied to the embedded video position.
+const NATIVE_OFFSET_X = 0;
+const NATIVE_OFFSET_Y = 0;
+
+// Bundled binaries live in pc/resources/ during dev, and in the app's
+// resources/ folder once packaged (via electron-builder extraResources).
+function resourcesDir() {
+    return app.isPackaged ? process.resourcesPath : path.join(__dirname, 'resources');
+}
+function getMpvPath() {
+    return path.join(resourcesDir(), 'mpv', 'mpv.exe');
+}
+function getBundledVlcPath() {
+    return path.join(resourcesDir(), 'vlc', 'vlc.exe');
+}
+function mpvIpcPipe() {
+    return '\\\\.\\pipe\\shieldmpv';
+}
+
 function initPowerShell() {
     console.log("[Main] Initializing PowerShell background helper...");
     try {
@@ -227,6 +256,186 @@ function spawnVlc(vlcPath, args) {
     return child;
 }
 
+// ---------------------------------------------------------------------------
+// Native player manager
+// ---------------------------------------------------------------------------
+
+function buildMpvArgs(url) {
+    return [
+        url,
+        '--no-config',
+        '--no-border',
+        '--force-window=yes',
+        '--idle=no',
+        '--osc=yes',                              // native on-screen controller (play/pause/seek bar)
+        '--script-opts=osc-visibility=always',    // keep the control bar always visible
+        '--input-default-bindings=yes',           // keyboard shortcuts (space, arrows, f...)
+        '--input-vo-keyboard=yes',
+        '--cursor-autohide=no',                   // keep the cursor visible to click the buttons
+        '--auto-window-resize=no',                // don't let mpv shrink its window to the video size
+        '--no-window-dragging',                   // we own the window placement
+        '--hwdec=auto-safe',
+        '--keep-open=no',
+        '--cache=yes',
+        '--network-timeout=20',
+        '--user-agent=ShieldIPTV',
+        `--input-ipc-server=${mpvIpcPipe()}`
+    ];
+}
+
+function spawnMpv(url) {
+    const mpvPath = getMpvPath();
+    if (!fs.existsSync(mpvPath)) {
+        console.error('[Native] mpv.exe not found at', mpvPath);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('native-error', 'mpv-missing');
+        }
+        return null;
+    }
+    console.log('[Native] Spawning mpv:', url);
+    const child = spawn(mpvPath, buildMpvArgs(url), { windowsHide: false });
+    child.on('error', (err) => console.error('[Native] mpv spawn error:', err));
+    if (child.stderr) child.stderr.on('data', d => console.error(`[mpv] ${d.toString().trim()}`));
+    return child;
+}
+
+function spawnBundledVlc(url) {
+    // Prefer the bundled portable VLC; fall back to a system install if present.
+    let vlcPath = getBundledVlcPath();
+    if (!fs.existsSync(vlcPath)) {
+        const sys = getVlcPath();
+        if (sys === 'vlc' || !fs.existsSync(sys)) {
+            console.error('[Native] No bundled or system VLC found.');
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('native-error', 'vlc-missing');
+            }
+            return null;
+        }
+        vlcPath = sys;
+    }
+
+    // Pre-create a temp VLC config to skip the first-run privacy / update prompts,
+    // which otherwise block playback (black screen) until dismissed.
+    const tempVlcConfig = path.join(app.getPath('userData'), 'temp_vlcrc');
+    try {
+        fs.writeFileSync(tempVlcConfig, '[qt]\nqt-privacy-ask=0\nqt-updates-notif=0\n');
+    } catch (e) {}
+
+    return spawnVlc(vlcPath, [
+        url,
+        '--config', tempVlcConfig,
+        '--no-video-title-show',
+        '--no-qt-privacy-ask',
+        '--no-qt-updates-notif',
+        '--qt-minimal-view',
+        '--no-osd'
+    ]);
+}
+
+// Reparent the native player window into the app window so it behaves as a real child
+// window, then keep it sized to the content area and on top of the web view.
+function embedNativeWindow(pid) {
+    if (!mainWindow || mainWindow.isDestroyed() || !psProcess) return;
+    const parentHwnd = mainWindow.getNativeWindowHandle().readInt32LE(0);
+    const cmd = `
+$proc = Get-Process -Id ${pid} -ErrorAction SilentlyContinue
+if ($proc) {
+    $h = $proc.MainWindowHandle
+    $tries = 0
+    while ($h -eq [IntPtr]::Zero -and $tries -lt 80) {
+        Start-Sleep -Milliseconds 50
+        $proc.Refresh()
+        $h = $proc.MainWindowHandle
+        $tries++
+    }
+    if ($h -ne [IntPtr]::Zero) {
+        [Win32]::SetParent($h, [IntPtr]${parentHwnd})
+        # GWL_STYLE=-16 ; WS_CHILD=0x40000000 ; WS_VISIBLE=0x10000000
+        [Win32]::SetWindowLong($h, -16, 0x40000000 -bor 0x10000000)
+    }
+}
+`;
+    psProcess.stdin.write(cmd + "\n");
+    nativeEmbedded = true;
+    positionNativeWindow();
+}
+
+// Size/position the embedded native window to fill the app's content area and keep it on top.
+function positionNativeWindow() {
+    if (!nativeProc || !nativeEmbedded || !mainWindow || mainWindow.isDestroyed() || !psProcess) return;
+    const display = screen.getDisplayMatching(mainWindow.getBounds());
+    const sf = display.scaleFactor || 1;
+    const [cw, ch] = mainWindow.getContentSize();
+    let topFrame = 0;
+    if (!mainWindow.isMaximized() && !mainWindow.isFullScreen()) {
+        const b = mainWindow.getBounds();
+        const c = mainWindow.getContentBounds();
+        topFrame = Math.max(0, c.y - b.y);
+    }
+    const x = Math.round(NATIVE_OFFSET_X * sf);
+    const y = Math.round((NATIVE_OFFSET_Y - topFrame) * sf);
+    const w = Math.round(cw * sf);
+    const h = Math.round(ch * sf);
+    const pid = nativeProc.pid;
+    const cmd = `
+$proc = Get-Process -Id ${pid} -ErrorAction SilentlyContinue
+if ($proc) {
+    $h = $proc.MainWindowHandle
+    if ($h -ne [IntPtr]::Zero) {
+        # HWND_TOP + SWP_NOACTIVATE (0x0010): keep the video above the web view.
+        [Win32]::SetWindowPos($h, [IntPtr]::Zero, ${x}, ${y}, ${w}, ${h}, 0x0010)
+    }
+}
+`;
+    psProcess.stdin.write(cmd + "\n");
+}
+
+// Send a JSON command to mpv over its IPC named pipe (best-effort).
+function sendMpvCommand(obj) {
+    if (nativeEngine !== 'mpv' || !psProcess) return;
+    const json = JSON.stringify(obj).replace(/"/g, '\\"');
+    const cmd = `
+try {
+  $pipe = New-Object System.IO.Pipes.NamedPipeClientStream('.', 'shieldmpv', [System.IO.Pipes.PipeDirection]::Out)
+  $pipe.Connect(300)
+  $sw = New-Object System.IO.StreamWriter($pipe)
+  $sw.WriteLine("${json}")
+  $sw.Flush(); $sw.Dispose(); $pipe.Dispose()
+} catch {}
+`;
+    psProcess.stdin.write(cmd + "\n");
+}
+
+function closeNativeFromShortcut() {
+    // No isFocused() guard: when mpv (a child window) has keyboard focus the
+    // BrowserWindow may report unfocused, which would swallow Escape. The shortcut
+    // is only registered while a native player is active, so this is safe.
+    if (nativeProc) {
+        console.log('[Native] Escape/Back pressed — closing native player.');
+        stopNativePlayer();
+    }
+}
+function registerNativeShortcuts() {
+    try { globalShortcut.register('Escape', closeNativeFromShortcut); } catch (e) {}
+    try { globalShortcut.register('Backspace', closeNativeFromShortcut); } catch (e) {}
+}
+function unregisterNativeShortcuts() {
+    try { globalShortcut.unregister('Escape'); } catch (e) {}
+    try { globalShortcut.unregister('Backspace'); } catch (e) {}
+}
+
+function stopNativePlayer() {
+    unregisterNativeShortcuts();
+    if (nativeReassertTimer) { clearInterval(nativeReassertTimer); nativeReassertTimer = null; }
+    nativeEmbedded = false;
+    nativeRect = null;
+    if (nativeProc) {
+        try { nativeProc.kill(); } catch (e) {}
+        nativeProc = null;
+    }
+    nativeEngine = null;
+}
+
 function createWindow() {
     const win = new BrowserWindow({
         width: 1280,
@@ -246,13 +455,33 @@ function createWindow() {
     // Load local web files from the copy in pc/src/
     win.loadFile(path.join(__dirname, 'src/index.html'));
 
+    mainWindow = win;
+
+    // Keep the embedded native video glued to its rectangle when the window
+    // itself is resized or moved — handled with the OS-native events so there
+    // is no fragile polling from the renderer.
+    const repositionNative = () => {
+        positionNativeWindow();
+        setTimeout(positionNativeWindow, 120);
+    };
+    win.on('resize', repositionNative);
+    win.on('move', repositionNative);
+    win.on('maximize', repositionNative);
+    win.on('unmaximize', repositionNative);
+    win.on('restore', repositionNative);
+    win.on('enter-full-screen', repositionNative);
+    win.on('leave-full-screen', repositionNative);
+    win.on('focus', repositionNative);
+
     win.on('closed', () => {
+        stopNativePlayer();
         if (currentVlcProcess) {
             try { currentVlcProcess.kill(); } catch (e) {}
         }
         if (psProcess) {
             try { psProcess.kill(); } catch (e) {}
         }
+        mainWindow = null;
     });
 }
 
@@ -273,6 +502,65 @@ ipcMain.handle('open-vlc-external', async (event, url) => {
     console.log("[Main] open-vlc-external request:", url);
     const vlcPath = getVlcPath();
     spawnVlc(vlcPath, [url]);
+    return true;
+});
+
+// --- Embedded native player (mpv / VLC) ---
+ipcMain.handle('play-native', async (event, engine, url, rect) => {
+    console.log(`[Native] play-native (${engine}):`, url);
+    stopNativePlayer();
+    nativeEngine = engine;
+    if (rect) nativeRect = rect;
+
+    if (engine === 'mpv') {
+        nativeProc = spawnMpv(url);
+    } else if (engine === 'vlc') {
+        nativeProc = spawnBundledVlc(url);
+    } else {
+        return false;
+    }
+    if (!nativeProc) return false;
+
+    const pid = nativeProc.pid;
+    nativeProc.on('close', () => {
+        if (nativeProc && nativeProc.pid === pid) {
+            nativeProc = null;
+            nativeEmbedded = false;
+            nativeEngine = null;
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('native-exited');
+            }
+        }
+    });
+
+    embedNativeWindow(pid);
+    registerNativeShortcuts();
+
+    if (nativeReassertTimer) clearInterval(nativeReassertTimer);
+    nativeReassertTimer = setInterval(() => {
+        if (nativeProc && nativeEmbedded) {
+            positionNativeWindow();
+        } else {
+            clearInterval(nativeReassertTimer);
+            nativeReassertTimer = null;
+        }
+    }, 700);
+    return true;
+});
+
+ipcMain.handle('update-native-rect', async (event, rect) => {
+    nativeRect = rect;
+    positionNativeWindow();
+    return true;
+});
+
+ipcMain.handle('stop-native', async () => {
+    stopNativePlayer();
+    return true;
+});
+
+ipcMain.handle('native-command', async (event, cmd) => {
+    sendMpvCommand(cmd);
     return true;
 });
 

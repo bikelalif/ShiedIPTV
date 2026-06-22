@@ -5,7 +5,10 @@
 // DNS-over-HTTPS (DoH) Resolver
 async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
     if (!state.isDohEnabled) return url;
-    
+    // If the DoH resolver already proved unreachable this session, skip it entirely
+    // so we don't pay the timeout again on every subsequent request.
+    if (state.dohUnavailable) return url;
+
     try {
         const parsedUrl = new URL(url);
         const hostname = parsedUrl.hostname;
@@ -20,9 +23,9 @@ async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
         let ip = state.dohCache[hostname];
         
         if (!ip) {
-            // DoH fetch with a 5-second timeout so a blocked resolver doesn't hang the whole login
+            // DoH fetch with a short timeout so a blocked resolver doesn't hang the whole login
             const dohController = new AbortController();
-            const dohTimeout = setTimeout(() => dohController.abort(), 5000);
+            const dohTimeout = setTimeout(() => dohController.abort(), 2000);
             
             let dnsData;
             try {
@@ -37,7 +40,10 @@ async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
                 dnsData = await dohResponse.json();
             } catch (dohErr) {
                 clearTimeout(dohTimeout);
-                console.warn(`[DoH] Resolver ${state.dohResolver} unreachable or timed out. Using original URL.`, dohErr);
+                // Resolver is blocked/slow — disable DoH for the rest of the session to avoid
+                // repeating this delay on every request.
+                state.dohUnavailable = true;
+                console.warn(`[DoH] Resolver ${state.dohResolver} unreachable or timed out. Disabling DoH for this session.`, dohErr);
                 return url;
             }
             
