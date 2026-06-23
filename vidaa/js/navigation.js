@@ -349,6 +349,8 @@ async function loadCategoryStreamsCached(section, categoryId) {
             ? !state.sectionFullyLoaded[section]
             : ((categoryId === 'all' && totalCached === 0) || (categoryId !== 'all' && categoryCached.length === 0));
 
+        console.log(`[Stream Loader] Section: ${section}, CategoryId: ${categoryId}, loadAllAtOnce: ${loadAllAtOnce}, sectionFullyLoaded: ${state.sectionFullyLoaded[section]}, totalCached: ${totalCached}, needsLoading: ${needsLoading}`);
+
         if (needsLoading) {
             let loaderText = t.toastPreloadLive || "Chargement...";
             if (section === 'movies') loaderText = t.toastPreloadMovies || "Chargement...";
@@ -361,9 +363,11 @@ async function loadCategoryStreamsCached(section, categoryId) {
                 if (section === 'series') action = 'get_series';
 
                 const params = (loadAllAtOnce || categoryId === 'all') ? '' : `&category_id=${categoryId}`;
+                console.log(`[Stream Loader] Fetching from API: action=${action}, params=${params}`);
                 const data = await makeApiCall(action, params);
                 
                 let fetched = Array.isArray(data) ? data : [];
+                console.log(`[Stream Loader] Received ${fetched.length} streams from server`);
                 
                 if (loadAllAtOnce) {
                     state.streams[section] = fetched;
@@ -406,6 +410,8 @@ async function loadCategoryStreamsCached(section, categoryId) {
             } finally {
                 hideLoader();
             }
+        } else {
+            console.log(`[Stream Loader] Bypassed API call. Using cached list (${totalCached} items)`);
         }
 
         if (categoryId === 'all') {
