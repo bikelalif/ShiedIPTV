@@ -42,11 +42,7 @@ function initApp() {
         if (savedSettings) {
             try {
                 const settings = JSON.parse(savedSettings);
-                // Force DoH to true by default to bypass ISP DNS hijacking
-                state.isDohEnabled = true;
-                if (settings.isDohEnabled === false) {
-                    saveSettings();
-                }
+                state.isDohEnabled = settings.isDohEnabled !== undefined ? settings.isDohEnabled : false;
                 state.dohResolver = settings.dohResolver || 'https://dns.google/resolve';
                 
                 const toggleEl = document.getElementById("setting-doh-toggle");
@@ -550,6 +546,12 @@ function setupEventListeners() {
             e.preventDefault();
             loginDohToggle.checked = !loginDohToggle.checked;
             state.isDohEnabled = loginDohToggle.checked;
+            const mainDoh = document.getElementById("setting-doh-toggle");
+            if (mainDoh) mainDoh.checked = state.isDohEnabled;
+            saveSettings();
+        });
+        loginDohToggle.addEventListener("change", (e) => {
+            state.isDohEnabled = e.target.checked;
             const mainDoh = document.getElementById("setting-doh-toggle");
             if (mainDoh) mainDoh.checked = state.isDohEnabled;
             saveSettings();
