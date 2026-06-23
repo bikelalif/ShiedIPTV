@@ -218,7 +218,7 @@ function triggerDirectStreamFallback() {
     }
 }
 
-function handlePlaybackFallback(originalUrl) {
+function handlePlaybackFallback(originalUrl, onFailCallback) {
     if (state.isDohEnabled && state.lastAttemptedStreamUrl === originalUrl) {
         console.warn("[Player] Stream failed using original URL. Retrying with DNS-over-HTTPS fallback...");
         state.lastAttemptedStreamUrl = ""; // prevent loop
@@ -231,14 +231,61 @@ function handlePlaybackFallback(originalUrl) {
                 startPlayback(resolvedUrl, true);
             } else {
                 console.log("[Player] DoH resolution did not yield a different URL.");
+                if (typeof onFailCallback === 'function') onFailCallback();
             }
         }).catch(err => {
             console.error("[Player] DoH resolution failed during fallback:", err);
+            if (typeof onFailCallback === 'function') onFailCallback();
         });
+    } else {
+        if (typeof onFailCallback === 'function') onFailCallback();
     }
 }
 
-function startPlayback(resolvedStreamUrl, isFallback = false) {
+async function fetchAndRewritePlaylist(playlistUrl) {
+    try {
+        const parsedUrl = new URL(playlistUrl);
+        const originalHostname = parsedUrl.hostname;
+        
+        console.log("[Player] Fetching HLS playlist for rewriting:", playlistUrl);
+        const response = await fetchWithFallback(playlistUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch playlist: HTTP ${response.status}`);
+        }
+        const text = await response.text();
+        
+        const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
+        const resolvedBaseUrl = await resolveUrlWithDoH(playlistUrl, isLive);
+        const resolvedParsed = new URL(resolvedBaseUrl);
+        const ipAddress = resolvedParsed.hostname;
+        
+        const lines = text.split(/\r?\n/);
+        const rewrittenLines = lines.map(line => {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('#')) return line;
+            
+            try {
+                const absoluteWithIp = new URL(trimmed, resolvedBaseUrl);
+                if (absoluteWithIp.hostname === originalHostname) {
+                    absoluteWithIp.hostname = ipAddress;
+                }
+                return absoluteWithIp.toString();
+            } catch (e) {
+                console.warn("[Player] Failed to rewrite line in playlist:", line, e);
+                return line;
+            }
+        });
+        
+        const rewrittenText = rewrittenLines.join('\n');
+        const blob = new Blob([rewrittenText], { type: 'application/x-mpegURL' });
+        return URL.createObjectURL(blob);
+    } catch (err) {
+        console.error("[Player] fetchAndRewritePlaylist failed:", err);
+        throw err;
+    }
+}
+
+async function startPlayback(resolvedStreamUrl, isFallback = false) {
     destroyMpegtsPlayer();
     
     const video = document.getElementById("video-player");
@@ -272,14 +319,14 @@ function startPlayback(resolvedStreamUrl, isFallback = false) {
             
             state.mpegtsPlayer.on(mpegts.Events.ERROR, (type, detail, info) => {
                 console.warn(`[mpegts.js] Error: ${type}, ${detail}.`);
-                if (!isFallback) {
-                    handlePlaybackFallback(resolvedStreamUrl);
-                } else if (!state.reconnectTimer) {
-                    state.reconnectTimer = setTimeout(() => {
-                        state.reconnectTimer = null;
-                        attemptReconnection();
-                    }, 2000);
-                }
+                handlePlaybackFallback(resolvedStreamUrl, () => {
+                    if (!state.reconnectTimer) {
+                        state.reconnectTimer = setTimeout(() => {
+                            state.reconnectTimer = null;
+                            attemptReconnection();
+                        }, 2000);
+                    }
+                });
             });
             
             state.mpegtsPlayer.load();
@@ -296,8 +343,19 @@ function startPlayback(resolvedStreamUrl, isFallback = false) {
             video.play().catch(err => {});
         }
     } else if (resolvedStreamUrl.includes('.m3u8')) {
+        let playUrl = resolvedStreamUrl;
+        if (state.isDohEnabled) {
+            try {
+                playUrl = await fetchAndRewritePlaylist(resolvedStreamUrl);
+                state.currentHlsBlobUrl = playUrl;
+            } catch (err) {
+                console.warn("[Player] HLS playlist rewrite failed, falling back to original resolved URL:", err);
+                playUrl = resolvedStreamUrl;
+            }
+        }
+        
         if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-            console.log("[Player] Initializing HLS.js for stream:", resolvedStreamUrl);
+            console.log("[Player] Initializing HLS.js for stream:", playUrl);
             state.hlsPlayer = new Hls({
                 enableWorker: true,
                 lowLatencyMode: false,
@@ -308,7 +366,7 @@ function startPlayback(resolvedStreamUrl, isFallback = false) {
             });
             state.hlsPlayer.attachMedia(video);
             state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
-                state.hlsPlayer.loadSource(resolvedStreamUrl);
+                state.hlsPlayer.loadSource(playUrl);
             });
             state.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
                 video.play().catch(e => {
@@ -320,9 +378,7 @@ function startPlayback(resolvedStreamUrl, isFallback = false) {
             state.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
                 if (data.fatal) {
                     console.warn("Fatal Hls.js error:", data);
-                    if (!isFallback) {
-                        handlePlaybackFallback(resolvedStreamUrl);
-                    } else {
+                    handlePlaybackFallback(resolvedStreamUrl, () => {
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR:
                                 if (state.tryingHlsFallback) {
@@ -344,12 +400,12 @@ function startPlayback(resolvedStreamUrl, isFallback = false) {
                                 });
                                 break;
                         }
-                    }
+                    });
                 }
             });
         } else {
-            console.log("[Player] HLS.js not supported, falling back to native player:", resolvedStreamUrl);
-            video.src = resolvedStreamUrl;
+            console.log("[Player] HLS.js not supported, falling back to native player:", playUrl);
+            video.src = playUrl;
             video.load();
             video.play().catch(e => {
                 console.warn("Native HLS Autoplay failed, trying muted...", e);
@@ -693,12 +749,9 @@ function bindFullscreenVideoHandlers() {
             errDetail = ` (Code ${video.error.code}: ${video.error.message || ''})`;
         }
         
-        if (state.isDohEnabled && state.lastAttemptedStreamUrl === state.currentPlayingStreamUrl) {
-            handlePlaybackFallback(state.currentPlayingStreamUrl);
-            return;
-        }
-        
-        triggerStandardError();
+        handlePlaybackFallback(state.currentPlayingStreamUrl, () => {
+            triggerStandardError();
+        });
         
         function triggerStandardError() {
             // HLS fallback logic if the .m3u8 request failed
@@ -961,6 +1014,13 @@ function clearLoadingTimeout() {
 function destroyMpegtsPlayer() {
     clearLoadingTimeout();
     state.playbackStarted = false;
+    if (state.currentHlsBlobUrl) {
+        console.log("[Player] Revoking previous HLS playlist blob URL:", state.currentHlsBlobUrl);
+        try {
+            URL.revokeObjectURL(state.currentHlsBlobUrl);
+        } catch (e) {}
+        state.currentHlsBlobUrl = null;
+    }
     if (state.mpegtsPlayer) {
         console.log("[Player] Destroying previous mpegts player");
         try {
@@ -1173,7 +1233,7 @@ async function loadLivePreview(item) {
     const previewExt = getLiveStreamExt();
     const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${previewExt}`;
     
-    resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
+    resolveUrlWithDoH(streamUrl, true).then(async resolvedUrl => {
         const isTsStream = (resolvedUrl.includes('.ts') || resolvedUrl.includes('/live/')) && !resolvedUrl.includes('.m3u8');
         
         if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
@@ -1221,8 +1281,19 @@ async function loadLivePreview(item) {
                 });
             }
         } else if (resolvedUrl.includes('.m3u8')) {
+            let playUrl = resolvedUrl;
+            if (state.isDohEnabled) {
+                try {
+                    playUrl = await fetchAndRewritePlaylist(resolvedUrl);
+                    state.currentHlsBlobUrl = playUrl;
+                } catch (err) {
+                    console.warn("[Preview] HLS playlist rewrite failed, falling back to original resolved URL:", err);
+                    playUrl = resolvedUrl;
+                }
+            }
+            
             if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-                console.log("[Preview] Initializing HLS.js for preview:", resolvedUrl);
+                console.log("[Preview] Initializing HLS.js for preview:", playUrl);
                 state.hlsPlayer = new Hls({
                     enableWorker: true,
                     lowLatencyMode: false,
@@ -1233,7 +1304,7 @@ async function loadLivePreview(item) {
                 });
                 state.hlsPlayer.attachMedia(video);
                 state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
-                    state.hlsPlayer.loadSource(resolvedUrl);
+                    state.hlsPlayer.loadSource(playUrl);
                 });
                 state.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
                     video.muted = false;
@@ -1261,8 +1332,8 @@ async function loadLivePreview(item) {
                     }
                 });
             } else {
-                console.log("[Preview] HLS.js not supported, falling back to native player:", resolvedUrl);
-                video.src = resolvedUrl;
+                console.log("[Preview] HLS.js not supported, falling back to native player:", playUrl);
+                video.src = playUrl;
                 video.muted = false;
                 video.load();
                 video.play().catch(e => {
