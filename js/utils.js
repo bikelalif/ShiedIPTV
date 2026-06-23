@@ -181,7 +181,32 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
         // Fall back to original URL if the resolved URL failed (e.g. direct IP access blocked by server host checking)
         if (resolvedUrl !== url) {
             console.warn(`[DoH] Fetch failed for resolved URL (${resolvedUrl}). Retrying with original URL (${url})...`, error);
-            return await tryFetch(url);
+            try {
+                return await tryFetch(url);
+            } catch (fallbackError) {
+                const isWebapp = document.body.classList.contains("is-webapp");
+                if (isWebapp && url.startsWith("http")) {
+                    console.log(`[CORS Proxy] Retrying fetch via proxy for: ${url}`);
+                    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                    try {
+                        return await tryFetch(proxyUrl);
+                    } catch (proxyError) {
+                        throw fallbackError;
+                    }
+                }
+                throw fallbackError;
+            }
+        }
+        
+        const isWebapp = document.body.classList.contains("is-webapp");
+        if (isWebapp && url.startsWith("http")) {
+            console.log(`[CORS Proxy] Retrying fetch via proxy for: ${url}`);
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+            try {
+                return await tryFetch(proxyUrl);
+            } catch (proxyError) {
+                throw error;
+            }
         }
         throw error;
     }
