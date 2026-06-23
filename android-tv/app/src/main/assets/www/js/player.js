@@ -519,7 +519,13 @@ function launchVideoPlayer(url, title, logoUrl) {
                 console.log("[Player] Initializing HLS.js for stream:", resolvedStreamUrl);
                 state.hlsPlayer = new Hls({
                     enableWorker: true,
-                    lowLatencyMode: false
+                    lowLatencyMode: false,
+                    // Treat live streams as infinite so the player follows the live edge
+                    // forever instead of stopping at the end of the initial ~1 min window.
+                    liveDurationInfinity: isLive,
+                    liveSyncDurationCount: 3,
+                    liveMaxLatencyDurationCount: 10,
+                    backBufferLength: isLive ? 30 : undefined
                 });
                 state.hlsPlayer.attachMedia(video);
                 state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
@@ -976,7 +982,11 @@ function attemptReconnection() {
                 console.log("[Player] Initializing HLS.js for stream in reconnection:", resolvedStreamUrl);
                 state.hlsPlayer = new Hls({
                     enableWorker: true,
-                    lowLatencyMode: false
+                    lowLatencyMode: false,
+                    liveDurationInfinity: true,
+                    liveSyncDurationCount: 3,
+                    liveMaxLatencyDurationCount: 10,
+                    backBufferLength: 30
                 });
                 state.hlsPlayer.attachMedia(video);
                 state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
@@ -1113,7 +1123,11 @@ async function loadLivePreview(item) {
                 console.log("[Preview] Initializing HLS.js for preview:", resolvedUrl);
                 state.hlsPlayer = new Hls({
                     enableWorker: true,
-                    lowLatencyMode: false
+                    lowLatencyMode: false,
+                    liveDurationInfinity: true,
+                    liveSyncDurationCount: 3,
+                    liveMaxLatencyDurationCount: 10,
+                    backBufferLength: 30
                 });
                 state.hlsPlayer.attachMedia(video);
                 state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {

@@ -179,6 +179,13 @@ const state = {
         movies: [],
         series: []
     },
+
+    // Tracks if the entire section has been loaded from the API
+    sectionFullyLoaded: {
+        live: false,
+        movies: false,
+        series: false
+    },
     
     // Full items for the active category
     categoryGridItems: [],
