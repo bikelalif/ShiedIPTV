@@ -250,9 +250,19 @@ async function switchSection(section) {
     
     showScreen("home-screen");
     
-    state.activeCategoryId = "all";
+    const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.AndroidApp;
+    const isWebapp = document.body.classList.contains("is-webapp");
+    let defaultCatId = "all";
+    if ((isMobileDevice || isWebapp) && (section === 'movies' || section === 'series')) {
+        const cats = state.categories[section] || [];
+        if (cats.length > 1) {
+            defaultCatId = cats[1].category_id;
+        }
+    }
+    
+    state.activeCategoryId = defaultCatId;
     renderCategories(state.categories[section]);
-    loadCategoryStreamsCached(section, "all");
+    loadCategoryStreamsCached(section, defaultCatId);
 }
 
 function renderCategories(cats) {
