@@ -31,11 +31,6 @@ async function savePlaylistDataToCache(playlistId, categories, streams, userInfo
 }
 
 async function tryConnectPlaylistFromCache(playlist, isAuto) {
-    const isWebapp = document.body.classList.contains("is-webapp");
-    if (isWebapp) {
-        return false; // Web version does not use cache
-    }
-    
     const cachedData = await loadPlaylistDataFromCache(playlist.id);
     if (cachedData) {
         const t = TRANSLATIONS[state.language || 'en'];
@@ -137,10 +132,7 @@ async function reloadActivePlaylist() {
                 state.userInfo = data.user_info;
                 await preloadAllData();
                 
-                const isWebapp = document.body.classList.contains("is-webapp");
-                if (!isWebapp) {
-                    await savePlaylistDataToCache(activePlaylistId, state.categories, state.streams, data.user_info);
-                }
+                await savePlaylistDataToCache(activePlaylistId, state.categories, state.streams, data.user_info);
                 
                 document.getElementById("portal-username").innerText = state.username;
                 document.getElementById("info-status").innerText = data.user_info.status === "Active" ? t.activeText : data.user_info.status;
@@ -198,10 +190,7 @@ async function reloadActivePlaylist() {
                 state.categories.series.push({ category_id: id, category_name: name });
             });
             
-            const isWebapp = document.body.classList.contains("is-webapp");
-            if (!isWebapp) {
-                await savePlaylistDataToCache(activePlaylistId, state.categories, state.streams, { status: "Active", max_connections: "1", exp_date: null });
-            }
+            await savePlaylistDataToCache(activePlaylistId, state.categories, state.streams, { status: "Active", max_connections: "1", exp_date: null });
         }
         
         hideLoader();
@@ -381,10 +370,7 @@ async function connectPlaylist(playlist, isAuto = false) {
             document.getElementById("info-max-connections").innerText = "1";
             document.getElementById("info-exp").innerText = "N/A";
             
-            const isWebapp = document.body.classList.contains("is-webapp");
-            if (!isWebapp) {
-                await savePlaylistDataToCache(playlist.id, state.categories, state.streams, { status: "Active", max_connections: "1", exp_date: null });
-            }
+            await savePlaylistDataToCache(playlist.id, state.categories, state.streams, { status: "Active", max_connections: "1", exp_date: null });
             
             hideLoader();
             showToast(t.toastLoginSuccess, 3000);
@@ -452,8 +438,7 @@ async function performLogin(url, username, password, isAutoLogin = false) {
             await preloadAllData();
             
             const activePlaylistId = safeStorage.local.getItem("shield_active_playlist_id");
-            const isWebapp = document.body.classList.contains("is-webapp");
-            if (activePlaylistId && !isWebapp) {
+            if (activePlaylistId) {
                 await savePlaylistDataToCache(activePlaylistId, state.categories, state.streams, data.user_info);
             }
             
@@ -508,13 +493,7 @@ async function preloadAllData() {
         state.categories.movies = [{ category_id: "all", category_name: "Tout" }, ...movieCats];
         state.categories.series = [{ category_id: "all", category_name: "Tout" }, ...seriesCats];
         
-        const isWebapp = document.body.classList.contains("is-webapp");
-        const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.AndroidApp;
-        if (isWebapp || isMobileDevice) {
-            console.log("[Preload] Webapp/Mobile browser detected. Skipping stream preloads to optimize login speed.");
-            return;
-        }
-        
+
         showLoader(t.toastPreloadLive);
         await new Promise(resolve => setTimeout(resolve, 50));
         const liveStreamsRaw = await makeApiCall('get_live_streams').catch((err) => {
@@ -615,10 +594,7 @@ async function addXtreamCodesPlaylist(name, url, username, password) {
             
             await preloadAllData();
             
-            const isWebapp = document.body.classList.contains("is-webapp");
-            if (!isWebapp) {
-                await savePlaylistDataToCache(id, state.categories, state.streams, data.user_info);
-            }
+            await savePlaylistDataToCache(id, state.categories, state.streams, data.user_info);
             
             hideLoader();
             showToast(t.toastLoginSuccess, 3000);
@@ -715,10 +691,7 @@ async function addM3UPlaylist(name, url) {
         document.getElementById("info-max-connections").innerText = "1";
         document.getElementById("info-exp").innerText = "N/A";
         
-        const isWebapp = document.body.classList.contains("is-webapp");
-        if (!isWebapp) {
-            await savePlaylistDataToCache(id, state.categories, state.streams, { status: "Active", max_connections: "1", exp_date: null });
-        }
+        await savePlaylistDataToCache(id, state.categories, state.streams, { status: "Active", max_connections: "1", exp_date: null });
         
         hideLoader();
         showToast(t.toastLoginSuccess, 3000);
