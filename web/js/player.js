@@ -242,32 +242,47 @@ function handlePlaybackFallback(originalUrl, onFailCallback) {
     }
 }
 
-// Build HLS.js config with CORS proxy xhrSetup when running as a hosted web app.
-// On mobile web, HLS.js cannot fetch from cross-origin IPTV servers because they don't
-// send CORS headers. Routing ALL HLS.js requests (playlists + segments) through the
-// Cloudflare worker proxy adds the required CORS headers.
-function getHlsConfig(isLive) {
-    const config = {
-        enableWorker: true,
-        lowLatencyMode: false,
-        liveDurationInfinity: isLive,
-        liveSyncDurationCount: 3,
-        liveMaxLatencyDurationCount: 10,
-        backBufferLength: isLive ? 30 : undefined
-    };
-    
-    const isWebapp = document.body.classList.contains("is-webapp");
-    if (isWebapp) {
-        config.xhrSetup = function(xhr, url) {
-            // Don't proxy blob: or data: URLs
-            if (url.startsWith('blob:') || url.startsWith('data:')) return;
-            const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
-            console.log('[HLS.js Proxy] Routing request through CORS proxy:', url.substring(0, 80));
-            xhr.open('GET', proxyUrl, true);
-        };
+async function fetchAndRewritePlaylist(playlistUrl) {
+    try {
+        const parsedUrl = new URL(playlistUrl);
+        const originalHostname = parsedUrl.hostname;
+        
+        console.log("[Player] Fetching HLS playlist for rewriting:", playlistUrl);
+        const response = await fetchWithFallback(playlistUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch playlist: HTTP ${response.status}`);
+        }
+        const text = await response.text();
+        
+        const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
+        const resolvedBaseUrl = await resolveUrlWithDoH(playlistUrl, isLive);
+        const resolvedParsed = new URL(resolvedBaseUrl);
+        const ipAddress = resolvedParsed.hostname;
+        
+        const lines = text.split(/\r?\n/);
+        const rewrittenLines = lines.map(line => {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('#')) return line;
+            
+            try {
+                const absoluteWithIp = new URL(trimmed, resolvedBaseUrl);
+                if (absoluteWithIp.hostname === originalHostname) {
+                    absoluteWithIp.hostname = ipAddress;
+                }
+                return absoluteWithIp.toString();
+            } catch (e) {
+                console.warn("[Player] Failed to rewrite line in playlist:", line, e);
+                return line;
+            }
+        });
+        
+        const rewrittenText = rewrittenLines.join('\n');
+        const blob = new Blob([rewrittenText], { type: 'application/x-mpegURL' });
+        return URL.createObjectURL(blob);
+    } catch (err) {
+        console.error("[Player] fetchAndRewritePlaylist failed:", err);
+        throw err;
     }
-    
-    return config;
 }
 
 async function startPlayback(resolvedStreamUrl, isFallback = false) {
@@ -328,12 +343,30 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
             video.play().catch(err => {});
         }
     } else if (resolvedStreamUrl.includes('.m3u8')) {
+        let playUrl = resolvedStreamUrl;
+        if (state.isDohEnabled) {
+            try {
+                playUrl = await fetchAndRewritePlaylist(resolvedStreamUrl);
+                state.currentHlsBlobUrl = playUrl;
+            } catch (err) {
+                console.warn("[Player] HLS playlist rewrite failed, falling back to original resolved URL:", err);
+                playUrl = resolvedStreamUrl;
+            }
+        }
+        
         if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-            console.log("[Player] Initializing HLS.js for stream:", resolvedStreamUrl);
-            state.hlsPlayer = new Hls(getHlsConfig(isLive));
+            console.log("[Player] Initializing HLS.js for stream:", playUrl);
+            state.hlsPlayer = new Hls({
+                enableWorker: true,
+                lowLatencyMode: false,
+                liveDurationInfinity: isLive,
+                liveSyncDurationCount: 3,
+                liveMaxLatencyDurationCount: 10,
+                backBufferLength: isLive ? 30 : undefined
+            });
             state.hlsPlayer.attachMedia(video);
             state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
-                state.hlsPlayer.loadSource(resolvedStreamUrl);
+                state.hlsPlayer.loadSource(playUrl);
             });
             state.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
                 video.play().catch(e => {
@@ -371,15 +404,8 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
                 }
             });
         } else {
-            // Safari without MSE (native HLS) — resolve to IP to bypass ISP DNS block
-            let nativeUrl = resolvedStreamUrl;
-            if (state.isDohEnabled) {
-                try {
-                    nativeUrl = await resolveUrlWithDoH(resolvedStreamUrl, isLive);
-                } catch (e) { console.warn('[Player] DoH resolution for native HLS failed:', e); }
-            }
-            console.log("[Player] HLS.js not supported, native HLS with DoH-resolved URL:", nativeUrl);
-            video.src = nativeUrl;
+            console.log("[Player] HLS.js not supported, falling back to native player:", playUrl);
+            video.src = playUrl;
             video.load();
             video.play().catch(e => {
                 console.warn("Native HLS Autoplay failed, trying muted...", e);
@@ -1116,7 +1142,14 @@ function attemptReconnection() {
         } else if (resolvedStreamUrl.includes('.m3u8')) {
             if (typeof Hls !== 'undefined' && Hls.isSupported()) {
                 console.log("[Player] Initializing HLS.js for stream in reconnection:", resolvedStreamUrl);
-                state.hlsPlayer = new Hls(getHlsConfig(true));
+                state.hlsPlayer = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: false,
+                    liveDurationInfinity: true,
+                    liveSyncDurationCount: 3,
+                    liveMaxLatencyDurationCount: 10,
+                    backBufferLength: 30
+                });
                 state.hlsPlayer.attachMedia(video);
                 state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
                     state.hlsPlayer.loadSource(resolvedStreamUrl);
@@ -1248,12 +1281,30 @@ async function loadLivePreview(item) {
                 });
             }
         } else if (resolvedUrl.includes('.m3u8')) {
+            let playUrl = resolvedUrl;
+            if (state.isDohEnabled) {
+                try {
+                    playUrl = await fetchAndRewritePlaylist(resolvedUrl);
+                    state.currentHlsBlobUrl = playUrl;
+                } catch (err) {
+                    console.warn("[Preview] HLS playlist rewrite failed, falling back to original resolved URL:", err);
+                    playUrl = resolvedUrl;
+                }
+            }
+            
             if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-                console.log("[Preview] Initializing HLS.js for preview:", resolvedUrl);
-                state.hlsPlayer = new Hls(getHlsConfig(true));
+                console.log("[Preview] Initializing HLS.js for preview:", playUrl);
+                state.hlsPlayer = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: false,
+                    liveDurationInfinity: true,
+                    liveSyncDurationCount: 3,
+                    liveMaxLatencyDurationCount: 10,
+                    backBufferLength: 30
+                });
                 state.hlsPlayer.attachMedia(video);
                 state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
-                    state.hlsPlayer.loadSource(resolvedUrl);
+                    state.hlsPlayer.loadSource(playUrl);
                 });
                 state.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
                     video.muted = false;
@@ -1281,9 +1332,8 @@ async function loadLivePreview(item) {
                     }
                 });
             } else {
-                // Safari without MSE — use native HLS with resolved URL
-                console.log("[Preview] HLS.js not supported, native HLS for preview:", resolvedUrl);
-                video.src = resolvedUrl;
+                console.log("[Preview] HLS.js not supported, falling back to native player:", playUrl);
+                video.src = playUrl;
                 video.muted = false;
                 video.load();
                 video.play().catch(e => {
