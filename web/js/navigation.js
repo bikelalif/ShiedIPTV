@@ -250,12 +250,12 @@ async function switchSection(section) {
     
     showScreen("home-screen");
 
-    // On mobile/web, default Movies & Series to the first real category (loaded on demand,
-    // ~1 MB) instead of "all" (which would pull the entire ~11 MB list and freeze mobile).
+    // MOBILE ONLY: default Movies & Series to the first real category (loaded on demand,
+    // ~1 MB) instead of "all" (which would pull the entire ~11 MB list and freeze phones).
+    // Desktop web keeps "all" with the full preloaded list (unchanged behavior).
     const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.AndroidApp;
-    const isWebapp = document.body.classList.contains("is-webapp");
     let defaultCatId = "all";
-    if ((isMobileDevice || isWebapp) && (section === 'movies' || section === 'series')) {
+    if (isMobileDevice && (section === 'movies' || section === 'series')) {
         const cats = state.categories[section] || [];
         if (cats.length > 1) {
             defaultCatId = cats[1].category_id;

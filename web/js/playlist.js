@@ -511,13 +511,12 @@ async function preloadAllData() {
         });
         state.streams.live = ensureArray(liveStreamsRaw);
 
-        // Live is preloaded (it's the landing view). The VOD & Series lists are ~11 MB each
-        // and freeze mobile browsers when parsed at login, so on web/mobile we stop here and
-        // fetch those per-category on demand (see switchSection / loadCategoryStreamsCached).
-        const isWebapp = document.body.classList.contains("is-webapp");
+        // MOBILE ONLY: the VOD & Series lists are ~11 MB each and freeze phones when parsed
+        // at login. On real mobile devices, preload Live only and fetch VOD/Series
+        // per-category on demand. Desktop web keeps the full preload (unchanged behavior).
         const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.AndroidApp;
-        if (isWebapp || isMobileDevice) {
-            console.log("[Preload] Webapp/Mobile: preloaded Live only; VOD & Series load on demand.");
+        if (isMobileDevice) {
+            console.log("[Preload] Mobile device: preloaded Live only; VOD & Series load on demand.");
             return;
         }
 
