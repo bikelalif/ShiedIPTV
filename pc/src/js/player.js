@@ -481,24 +481,7 @@ function launchVideoPlayer(url, title, logoUrl) {
     
     destroyMpegtsPlayer();
     
-    // On mobile web browsers, bypass DoH (IP substitution breaks virtual hosts) and
-    // bypass HLS.js/mpegts.js (XHR-based, blocked by CORS on cross-origin IPTV servers).
-    // Instead, play directly via native <video> element which handles m3u8 natively
-    // on both iOS Safari and Android Chrome without CORS restrictions.
-    const isMobileWebPlayer = checkIsMobileWeb();
-    if (isMobileWebPlayer) {
-        console.log("[Player] Mobile web detected. Playing natively (no DoH, no HLS.js):", url);
-        video.src = url;
-        video.load();
-        video.play().catch(e => {
-            console.warn("[Player] Mobile web autoplay failed, trying muted...", e);
-            video.muted = true;
-            video.play().catch(err => {
-                console.error("[Player] Mobile web muted autoplay also failed:", err);
-            });
-        });
-    } else {
-        resolveUrlWithDoH(url, isLive).then(resolvedStreamUrl => {
+    resolveUrlWithDoH(url, isLive).then(resolvedStreamUrl => {
             const isTsStream = (resolvedStreamUrl.includes('.ts') || resolvedStreamUrl.includes('/live/')) && !resolvedStreamUrl.includes('.m3u8');
             
             if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
@@ -603,7 +586,11 @@ function launchVideoPlayer(url, title, logoUrl) {
                     console.log("[Player] HLS.js not supported, falling back to native player:", resolvedStreamUrl);
                     video.src = resolvedStreamUrl;
                     video.load();
-                    video.play().catch(e => {});
+                    video.play().catch(e => {
+                        console.warn("Native fallback autoplay failed, trying muted...", e);
+                        video.muted = true;
+                        video.play().catch(err => {});
+                    });
                 }
             } else {
                 console.log("[Player] Launching native HTML5 source:", resolvedStreamUrl);
@@ -616,7 +603,6 @@ function launchVideoPlayer(url, title, logoUrl) {
                 });
             }
         });
-    }
     
     bindFullscreenVideoHandlers();
     
