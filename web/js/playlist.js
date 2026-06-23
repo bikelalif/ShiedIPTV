@@ -7,8 +7,17 @@ async function loadPlaylistDataFromCache(playlistId) {
         const categories = await dbHelper.get(`playlist_cache_${playlistId}_categories`);
         const streams = await dbHelper.get(`playlist_cache_${playlistId}_streams`);
         const userInfo = await dbHelper.get(`playlist_cache_${playlistId}_user_info`);
-        
-        if (categories && streams) {
+
+        // Only use the cache if it actually contains streams. Otherwise a previously
+        // cached EMPTY result (e.g. from a transient network failure) would be served
+        // forever, leaving the grids permanently empty. Falling through forces a fresh
+        // network load that then re-caches good data.
+        const hasStreams = streams && (
+            (Array.isArray(streams.live)   && streams.live.length   > 0) ||
+            (Array.isArray(streams.movies) && streams.movies.length > 0) ||
+            (Array.isArray(streams.series) && streams.series.length > 0)
+        );
+        if (categories && hasStreams) {
             return { categories, streams, userInfo };
         }
     } catch (e) {
