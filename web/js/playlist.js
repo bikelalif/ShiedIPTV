@@ -7,17 +7,8 @@ async function loadPlaylistDataFromCache(playlistId) {
         const categories = await dbHelper.get(`playlist_cache_${playlistId}_categories`);
         const streams = await dbHelper.get(`playlist_cache_${playlistId}_streams`);
         const userInfo = await dbHelper.get(`playlist_cache_${playlistId}_user_info`);
-
-        // Only use the cache if it actually contains streams. Otherwise a previously
-        // cached EMPTY result (e.g. from a transient network failure) would be served
-        // forever, leaving the grids permanently empty. Falling through forces a fresh
-        // network load that then re-caches good data.
-        const hasStreams = streams && (
-            (Array.isArray(streams.live)   && streams.live.length   > 0) ||
-            (Array.isArray(streams.movies) && streams.movies.length > 0) ||
-            (Array.isArray(streams.series) && streams.series.length > 0)
-        );
-        if (categories && hasStreams) {
+        
+        if (categories && streams) {
             return { categories, streams, userInfo };
         }
     } catch (e) {
@@ -501,6 +492,7 @@ async function preloadAllData() {
         state.categories.live = [{ category_id: "all", category_name: "Tout" }, ...liveCats];
         state.categories.movies = [{ category_id: "all", category_name: "Tout" }, ...movieCats];
         state.categories.series = [{ category_id: "all", category_name: "Tout" }, ...seriesCats];
+        
 
         showLoader(t.toastPreloadLive);
         await new Promise(resolve => setTimeout(resolve, 50));
@@ -510,16 +502,7 @@ async function preloadAllData() {
             return [];
         });
         state.streams.live = ensureArray(liveStreamsRaw);
-
-        // MOBILE ONLY: the VOD & Series lists are ~11 MB each and freeze phones when parsed
-        // at login. On real mobile devices, preload Live only and fetch VOD/Series
-        // per-category on demand. Desktop web keeps the full preload (unchanged behavior).
-        const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.AndroidApp;
-        if (isMobileDevice) {
-            console.log("[Preload] Mobile device: preloaded Live only; VOD & Series load on demand.");
-            return;
-        }
-
+        
         showLoader(t.toastPreloadMovies);
         await new Promise(resolve => setTimeout(resolve, 50));
         const movieStreamsRaw = await makeApiCall('get_vod_streams').catch((err) => {
