@@ -250,9 +250,44 @@ async function switchSection(section) {
     
     showScreen("home-screen");
     
-    state.activeCategoryId = "all";
+    // On-demand categories load for Xtream Codes
+    if (state.currentPlaylistType === 'xtream') {
+        const catList = state.categories[section] || [];
+        if (catList.length <= 1) { // Empty or only has 'all' placeholder
+            showLoader(t.toastPreloadCats || "Chargement des catégories...");
+            try {
+                let action = '';
+                if (section === 'live') action = 'get_live_categories';
+                else if (section === 'movies') action = 'get_vod_categories';
+                else if (section === 'series') action = 'get_series_categories';
+                
+                const data = await makeApiCall(action);
+                const fetchedCats = ensureArray(data);
+                
+                state.categories[section] = [{ category_id: "all", category_name: t.breadcrumbAll }, ...fetchedCats];
+                
+                // Save updated categories to cache
+                const activePlaylistId = safeStorage.local.getItem("shield_active_playlist_id");
+                if (activePlaylistId) {
+                    savePlaylistDataToCache(activePlaylistId, state.categories, state.streams, state.userInfo);
+                }
+            } catch (e) {
+                console.error(`Failed to load categories for section ${section}:`, e);
+                showToast("Erreur catégories : " + e.message, 5000);
+            } finally {
+                hideLoader();
+            }
+        }
+    }
+    
+    // Select the first real category by default if available, to avoid downloading the massive "all" list
+    const defaultCat = (state.categories[section] && state.categories[section].length > 1) 
+        ? state.categories[section][1].category_id 
+        : "all";
+    
+    state.activeCategoryId = defaultCat;
     renderCategories(state.categories[section]);
-    loadCategoryStreamsCached(section, "all");
+    await loadCategoryStreamsCached(section, defaultCat);
 }
 
 function renderCategories(cats) {
@@ -332,9 +367,20 @@ async function loadCategoryStreamsCached(section, categoryId) {
                     }
                 });
 
+                // Save updated streams to cache
+                const activePlaylistId = safeStorage.local.getItem("shield_active_playlist_id");
+                if (activePlaylistId) {
+                    savePlaylistDataToCache(activePlaylistId, state.categories, state.streams, state.userInfo);
+                }
+
                 categoryCached = fetched;
             } catch (e) {
                 console.error("Failed to load category streams from server:", e);
+                if (e.message && e.message.includes("413")) {
+                    showToast("La liste complète est trop grande pour le navigateur. Veuillez sélectionner une catégorie spécifique.", 6000);
+                } else {
+                    showToast("Erreur de chargement : " + e.message, 4000);
+                }
             } finally {
                 hideLoader();
             }

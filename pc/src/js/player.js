@@ -432,6 +432,12 @@ function launchVideoPlayer(url, title, logoUrl) {
     
     playerLoader.style.display = "flex";
     
+    state.playbackStarted = false;
+    clearLoadingTimeout();
+    if (isLive) {
+        startLoadingTimeout();
+    }
+    
     document.getElementById("player-progress-fill").style.width = "0%";
     document.getElementById("player-time-current").innerText = "0:00";
     document.getElementById("player-time-total").innerText = "0:00";
@@ -479,7 +485,8 @@ function launchVideoPlayer(url, title, logoUrl) {
                     autoCleanupMinBackwardDuration: 60,
                     liveBufferLatencyChasing: false,
                     liveBufferLatencyMaxLatency: 3.0,
-                    liveBufferLatencyMinRemain: 1.0
+                    liveBufferLatencyMinRemain: 1.0,
+                    enableStashBuffer: !isLive // Disable stash buffer for live streams to prevent connection cutoff
                 });
                 
                 state.mpegtsPlayer.attachMediaElement(video);
@@ -589,16 +596,20 @@ function bindFullscreenVideoHandlers() {
     video.onwaiting = () => { 
         playerLoader.style.display = "flex"; 
         video.classList.remove("video-active");
-        if (isLive && !state.reconnectTimer) {
+        if (isLive && state.playbackStarted && !state.reconnectTimer) {
             state.reconnectTimer = setTimeout(() => {
                 state.reconnectTimer = null;
                 attemptReconnection();
-            }, 6000);
+            }, 8000);
         }
     };
     video.onplaying = () => { 
         playerLoader.style.display = "none"; 
         video.classList.add("video-active");
+        
+        state.playbackStarted = true;
+        clearLoadingTimeout();
+        
         if (state.reconnectTimer) {
             clearTimeout(state.reconnectTimer);
             state.reconnectTimer = null;
@@ -825,7 +836,28 @@ function stopWatchdog() {
     }
 }
 
+function startLoadingTimeout() {
+    clearLoadingTimeout();
+    console.log("[Player] Starting loading timeout...");
+    state.loadingTimeout = setTimeout(() => {
+        if (!state.playbackStarted) {
+            console.warn("[Player] Stream loading timed out (15s) without playing. Reconnecting...");
+            attemptReconnection();
+        }
+    }, 15000); // 15 seconds
+}
+
+function clearLoadingTimeout() {
+    if (state.loadingTimeout) {
+        console.log("[Player] Clearing loading timeout");
+        clearTimeout(state.loadingTimeout);
+        state.loadingTimeout = null;
+    }
+}
+
 function destroyMpegtsPlayer() {
+    clearLoadingTimeout();
+    state.playbackStarted = false;
     if (state.mpegtsPlayer) {
         console.log("[Player] Destroying previous mpegts player");
         try {
@@ -862,6 +894,8 @@ function attemptReconnection() {
         return;
     }
     
+    state.playbackStarted = false;
+    startLoadingTimeout();
     state.reconnectAttempts++;
     console.log(`[Player] Attempting reconnection ${state.reconnectAttempts}/${state.maxReconnectAttempts}...`);
     
@@ -910,7 +944,8 @@ function attemptReconnection() {
                     autoCleanupMinBackwardDuration: 60,
                     liveBufferLatencyChasing: false,
                     liveBufferLatencyMaxLatency: 3.0,
-                    liveBufferLatencyMinRemain: 1.0
+                    liveBufferLatencyMinRemain: 1.0,
+                    enableStashBuffer: false // Disable stash buffer for live streams to prevent connection cutoff
                 });
                 
                 state.mpegtsPlayer.attachMediaElement(video);
@@ -1046,7 +1081,8 @@ async function loadLivePreview(item) {
                     autoCleanupMinBackwardDuration: 10,
                     liveBufferLatencyChasing: false,
                     liveBufferLatencyMaxLatency: 3.0,
-                    liveBufferLatencyMinRemain: 1.0
+                    liveBufferLatencyMinRemain: 1.0,
+                    enableStashBuffer: false // Disable stash buffer for live streams to prevent connection cutoff
                 });
                 
                 state.mpegtsPlayer.attachMediaElement(video);

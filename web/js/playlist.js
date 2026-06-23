@@ -130,7 +130,9 @@ async function reloadActivePlaylist() {
             const data = await makeApiCall();
             if (data && data.user_info && data.user_info.auth === 1) {
                 state.userInfo = data.user_info;
-                await preloadAllData();
+                // Reset categories and streams so they reload on-demand
+                state.categories = { live: [], movies: [], series: [] };
+                state.streams = { live: [], movies: [], series: [] };
                 
                 savePlaylistDataToCache(activePlaylistId, state.categories, state.streams, data.user_info);
                 
@@ -435,7 +437,8 @@ async function performLogin(url, username, password, isAutoLogin = false) {
                 document.getElementById("info-exp").innerText = "N/A";
             }
             
-            await preloadAllData();
+            state.categories = { live: [], movies: [], series: [] };
+            state.streams = { live: [], movies: [], series: [] };
             
             const activePlaylistId = safeStorage.local.getItem("shield_active_playlist_id");
             if (activePlaylistId) {
@@ -592,7 +595,8 @@ async function addXtreamCodesPlaylist(name, url, username, password) {
                 document.getElementById("info-exp").innerText = "N/A";
             }
             
-            await preloadAllData();
+            state.categories = { live: [], movies: [], series: [] };
+            state.streams = { live: [], movies: [], series: [] };
             
             savePlaylistDataToCache(id, state.categories, state.streams, data.user_info);
             

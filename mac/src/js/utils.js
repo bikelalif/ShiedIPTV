@@ -150,9 +150,64 @@ function loadImageWithFallback(imgElement, originalUrl, defaultPoster) {
         imgElement.src = resolvedUrl;
     });
 }
+// Proxy retry helper using public corsproxy.io first, then custom Cloudflare Worker as fallback
+async function fetchWithProxy(url, tryFetch, originalError) {
+    const isWebapp = document.body.classList.contains("is-webapp");
+    if (isWebapp && url.startsWith("http")) {
+        console.log(`[CORS Proxy] Retrying fetch via public corsproxy.io for: ${url}`);
+        const publicProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        try {
+            return await tryFetch(publicProxyUrl);
+        } catch (proxyError) {
+            console.warn(`[CORS Proxy] Public proxy failed. Retrying with custom worker...`, proxyError);
+            const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
+            try {
+                return await tryFetch(proxyUrl);
+            } catch (workerError) {
+                throw originalError;
+            }
+        }
+    }
+    throw originalError;
+}
 
 // Generic fetch handler with DNS-over-HTTPS (DoH) resolution and fallback to original URL on failure
 async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
+    const isWebapp = document.body.classList.contains("is-webapp");
+    if (isWebapp && url.startsWith("http")) {
+        const tryFetchProxy = async (proxyUrl) => {
+            const controller = new AbortController();
+            const signal = options.signal || controller.signal;
+            let timeoutId;
+            if (!options.signal) {
+                timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            }
+            try {
+                const fetchOptions = { ...options, signal };
+                const response = await fetch(proxyUrl, fetchOptions);
+                if (timeoutId) clearTimeout(timeoutId);
+                return response;
+            } catch (err) {
+                if (timeoutId) clearTimeout(timeoutId);
+                throw err;
+            }
+        };
+
+        console.log(`[CORS Proxy] Webapp mode: direct proxy fetch via public corsproxy.io for: ${url}`);
+        const publicProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        try {
+            return await tryFetchProxy(publicProxyUrl);
+        } catch (proxyError) {
+            console.warn(`[CORS Proxy] Public proxy failed. Retrying with custom worker...`, proxyError);
+            const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
+            try {
+                return await tryFetchProxy(proxyUrl);
+            } catch (workerError) {
+                throw workerError;
+            }
+        }
+    }
+
     const resolvedUrl = await resolveUrlWithDoH(url);
     
     const tryFetch = async (targetUrl) => {
@@ -184,31 +239,11 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
             try {
                 return await tryFetch(url);
             } catch (fallbackError) {
-                const isWebapp = document.body.classList.contains("is-webapp");
-                if (isWebapp && url.startsWith("http")) {
-                    console.log(`[CORS Proxy] Retrying fetch via proxy for: ${url}`);
-                    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-                    try {
-                        return await tryFetch(proxyUrl);
-                    } catch (proxyError) {
-                        throw fallbackError;
-                    }
-                }
-                throw fallbackError;
+                return await fetchWithProxy(url, tryFetch, fallbackError);
             }
         }
         
-        const isWebapp = document.body.classList.contains("is-webapp");
-        if (isWebapp && url.startsWith("http")) {
-            console.log(`[CORS Proxy] Retrying fetch via proxy for: ${url}`);
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-            try {
-                return await tryFetch(proxyUrl);
-            } catch (proxyError) {
-                throw error;
-            }
-        }
-        throw error;
+        return await fetchWithProxy(url, tryFetch, error);
     }
 }
 

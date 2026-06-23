@@ -378,8 +378,12 @@ async function runStreamTesterTest() {
                     url: finalUrl
                 }, {
                     enableWorker: true,
+                    lazyLoad: false,
                     lazyLoadMaxDuration: 30,
-                    seekType: 'range'
+                    seekType: 'range',
+                    autoCleanupSourceBuffer: true,
+                    liveBufferLatencyChasing: false,
+                    enableStashBuffer: false
                 });
                 state.testerMpegtsPlayer = tsPlayer;
                 tsPlayer.attachMediaElement(video);
