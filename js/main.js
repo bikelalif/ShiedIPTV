@@ -42,7 +42,7 @@ function initApp() {
         if (savedSettings) {
             try {
                 const settings = JSON.parse(savedSettings);
-                state.isDohEnabled = settings.isDohEnabled !== undefined ? settings.isDohEnabled : false;
+                state.isDohEnabled = settings.isDohEnabled !== undefined ? settings.isDohEnabled : true;
                 state.dohResolver = settings.dohResolver || 'https://dns.google/resolve';
                 
                 const toggleEl = document.getElementById("setting-doh-toggle");
