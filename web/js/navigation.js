@@ -249,10 +249,22 @@ async function switchSection(section) {
     state.currentPlayingStream = null;
     
     showScreen("home-screen");
-    
-    state.activeCategoryId = "all";
+
+    // On mobile/web, default Movies & Series to the first real category (loaded on demand,
+    // ~1 MB) instead of "all" (which would pull the entire ~11 MB list and freeze mobile).
+    const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.AndroidApp;
+    const isWebapp = document.body.classList.contains("is-webapp");
+    let defaultCatId = "all";
+    if ((isMobileDevice || isWebapp) && (section === 'movies' || section === 'series')) {
+        const cats = state.categories[section] || [];
+        if (cats.length > 1) {
+            defaultCatId = cats[1].category_id;
+        }
+    }
+
+    state.activeCategoryId = defaultCatId;
     renderCategories(state.categories[section]);
-    loadCategoryStreamsCached(section, "all");
+    loadCategoryStreamsCached(section, defaultCatId);
 }
 
 function renderCategories(cats) {
