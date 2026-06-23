@@ -357,9 +357,10 @@ function launchVideoPlayer(url, title, logoUrl) {
                         window.location.hostname !== 'localhost' && 
                         window.location.hostname !== '127.0.0.1';
     const isMobile = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && !isMobileWeb;
+    const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
     const vlcLoaderBtn = document.getElementById("player-loader-vlc");
     if (vlcLoaderBtn) {
-        if (isMobile || isMobileWeb) {
+        if ((isMobile || isMobileWeb) && !isLive) {
             vlcLoaderBtn.classList.remove("hidden");
         } else {
             vlcLoaderBtn.classList.add("hidden");
@@ -548,11 +549,6 @@ function launchVideoPlayer(url, title, logoUrl) {
                 });
                 state.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
                     if (data.fatal) {
-                        if (checkIsMobileWeb()) {
-                            console.warn("Fatal Hls.js error on mobile web, triggering reconnection/VLC fallback.");
-                            attemptReconnection();
-                            return;
-                        }
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR:
                                 console.warn("Fatal network error in Hls.js, checking for fallback...");
@@ -679,17 +675,17 @@ function bindFullscreenVideoHandlers() {
             const currentSrc = video.src || "";
             const isTsStream = (currentSrc.includes('.ts') || currentSrc.includes('/live/')) && !currentSrc.includes('.m3u8');
             
-            // If it's a completely unsupported format (e.g. TS on iOS or error code 4), show player error with VLC button immediately instead of reconnecting in a loop.
-            if (isCode4 || (isMobileWeb && isTsStream)) {
-                console.warn("[Player] Unsupported format on live stream. Showing VLC option immediately.");
+            // If it's a completely unsupported format (e.g. error code 4), show player error immediately instead of reconnecting.
+            if (isCode4) {
+                console.warn("[Player] Unsupported format on live stream. Showing error immediately.");
                 let ext = isTsStream ? "TS" : "M3U8";
                 let errorMsg;
                 if (state.language === 'fr') {
-                    errorMsg = `Ce format de flux (${ext}) n'est pas supporté par votre navigateur. Vous pouvez tenter de l'ouvrir directement dans l'application VLC.`;
+                    errorMsg = `Ce format de flux (${ext}) n'est pas supporté par votre navigateur.`;
                 } else {
-                    errorMsg = `This stream format (${ext}) is not supported by your browser. You can try to open it directly in the VLC app.`;
+                    errorMsg = `This stream format (${ext}) is not supported by your browser.`;
                 }
-                showPlayerError(errorMsg, true);
+                showPlayerError(errorMsg, false);
                 return;
             }
             
@@ -802,9 +798,10 @@ function showPlayerError(msg, showVlc = true) {
             loaderText.style.textAlign = "center";
         }
         
+        const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
         const vlcLoaderBtn = document.getElementById("player-loader-vlc");
         if (vlcLoaderBtn) {
-            if (showVlc) {
+            if (showVlc && !isLive) {
                 vlcLoaderBtn.classList.remove("hidden");
                 vlcLoaderBtn.classList.add("force-show");
             } else {
@@ -898,14 +895,12 @@ function stopWatchdog() {
 function startLoadingTimeout() {
     clearLoadingTimeout();
     console.log("[Player] Starting loading timeout...");
-    const isMobileWeb = checkIsMobileWeb();
-    const timeoutMs = isMobileWeb ? 8000 : 15000;
     state.loadingTimeout = setTimeout(() => {
         if (!state.playbackStarted) {
-            console.warn(`[Player] Stream loading timed out (${timeoutMs/1000}s) without playing. Reconnecting...`);
+            console.warn("[Player] Stream loading timed out (15s) without playing. Reconnecting...");
             attemptReconnection();
         }
-    }, timeoutMs);
+    }, 15000); // 15 seconds
 }
 
 function clearLoadingTimeout() {
@@ -946,24 +941,6 @@ function destroyMpegtsPlayer() {
 function attemptReconnection() {
     const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
     if (!isLive) return;
-    
-    const isMobileWeb = checkIsMobileWeb();
-    if (isMobileWeb) {
-        console.warn("[Player] Reconnection requested on mobile web. Showing VLC option immediately to prevent loops.");
-        let ext = "M3U8/TS";
-        if (state.currentPlayingStreamUrl) {
-            if (state.currentPlayingStreamUrl.includes('.ts')) ext = "TS";
-            else if (state.currentPlayingStreamUrl.includes('.m3u8')) ext = "M3U8";
-        }
-        let errorMsg;
-        if (state.language === 'fr') {
-            errorMsg = `Ce format de flux (${ext}) n'est pas supporté par votre navigateur mobile ou le chargement a échoué. Vous pouvez tenter de l'ouvrir directement dans l'application VLC.`;
-        } else {
-            errorMsg = `This stream format (${ext}) is not supported by your mobile browser or loading failed. You can try to open it directly in the VLC app.`;
-        }
-        showPlayerError(errorMsg, true);
-        return;
-    }
     
     if (state.reconnectAttempts >= state.maxReconnectAttempts) {
         console.warn("[Player] Max reconnect attempts reached. Stopping.");
@@ -1221,11 +1198,6 @@ async function loadLivePreview(item) {
                 });
                 state.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
                     if (data.fatal) {
-                        if (checkIsMobileWeb()) {
-                            console.warn("Fatal Hls.js error in preview on mobile web, destroying player.");
-                            destroyMpegtsPlayer();
-                            return;
-                        }
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR:
                                 state.hlsPlayer.startLoad();
