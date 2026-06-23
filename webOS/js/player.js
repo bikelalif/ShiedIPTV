@@ -609,6 +609,7 @@ function bindFullscreenVideoHandlers() {
         if (loaderText) {
             loaderText.innerText = t.playerLoaderText || "Chargement du flux...";
         }
+        startWatchdog();
     };
     video.onplay = () => {
         const icon = document.getElementById("player-icon-play");
@@ -618,9 +619,11 @@ function bindFullscreenVideoHandlers() {
         const icon = document.getElementById("player-icon-play");
         if (icon) icon.innerText = "play_arrow";
         video.classList.remove("video-active");
+        stopWatchdog();
     };
     video.onerror = () => {
         video.classList.remove("video-active");
+        stopWatchdog();
         let errDetail = "";
         if (video.error) {
             errDetail = ` (Code ${video.error.code}: ${video.error.message || ''})`;
@@ -767,16 +770,59 @@ function bindPreviewVideoHandlers() {
         if (loader) loader.classList.add("hidden"); 
         if (playerLoader) playerLoader.style.display = "none";
         video.classList.add("video-active");
+        startWatchdog();
     };
     video.onerror = () => {
         if (loader) loader.classList.add("hidden");
         if (playerLoader) playerLoader.style.display = "none";
         video.classList.remove("video-active");
         console.warn("[Preview] Error playing preview stream");
+        stopWatchdog();
     };
     video.onplay = null;
-    video.onpause = null;
+    video.onpause = () => {
+        stopWatchdog();
+    };
     video.ontimeupdate = null;
+}
+
+function startWatchdog() {
+    stopWatchdog();
+    
+    const video = document.getElementById("video-player");
+    if (!video) return;
+    
+    state.lastPlayTime = video.currentTime;
+    state.frozenSeconds = 0;
+    state.watchdogTimer = setInterval(() => {
+        const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
+        if (!isLive) {
+            stopWatchdog();
+            return;
+        }
+        
+        if (!video.paused && !video.ended) {
+            if (video.currentTime === state.lastPlayTime) {
+                state.frozenSeconds = (state.frozenSeconds || 0) + 5;
+                const maxFrozen = video.currentTime > 0 ? 5 : 15;
+                if (state.frozenSeconds >= maxFrozen) {
+                    console.warn("[Watchdog] Playback frozen or stuck loading for", state.frozenSeconds, "seconds at time", video.currentTime, "- initiating reconnect.");
+                    state.frozenSeconds = 0;
+                    attemptReconnection();
+                }
+            } else {
+                state.lastPlayTime = video.currentTime;
+                state.frozenSeconds = 0;
+            }
+        }
+    }, 5000);
+}
+
+function stopWatchdog() {
+    if (state.watchdogTimer) {
+        clearInterval(state.watchdogTimer);
+        state.watchdogTimer = null;
+    }
 }
 
 function destroyMpegtsPlayer() {
@@ -801,6 +847,7 @@ function destroyMpegtsPlayer() {
         }
         state.hlsPlayer = null;
     }
+    stopWatchdog();
 }
 
 function attemptReconnection() {
@@ -1020,6 +1067,52 @@ async function loadLivePreview(item) {
                 console.error("[Preview] mpegts setup failed, fallback to native:", err);
                 video.src = resolvedUrl;
                 video.muted = false;
+                video.play().catch(e => {
+                    video.muted = true;
+                    video.play().catch(err => {});
+                });
+            }
+        } else if (resolvedUrl.includes('.m3u8')) {
+            if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                console.log("[Preview] Initializing HLS.js for preview:", resolvedUrl);
+                state.hlsPlayer = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: false
+                });
+                state.hlsPlayer.attachMedia(video);
+                state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
+                    state.hlsPlayer.loadSource(resolvedUrl);
+                });
+                state.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+                    video.muted = false;
+                    video.play().catch(e => {
+                        console.warn("[Preview] HLS Autoplay failed, trying muted...", e);
+                        video.muted = true;
+                        video.play().catch(err => {});
+                    });
+                });
+                state.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                state.hlsPlayer.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                state.hlsPlayer.recoverMediaError();
+                                break;
+                            default:
+                                destroyMpegtsPlayer();
+                                video.src = resolvedUrl;
+                                video.play().catch(e => {});
+                                break;
+                        }
+                    }
+                });
+            } else {
+                console.log("[Preview] HLS.js not supported, falling back to native player:", resolvedUrl);
+                video.src = resolvedUrl;
+                video.muted = false;
+                video.load();
                 video.play().catch(e => {
                     video.muted = true;
                     video.play().catch(err => {});
