@@ -1,9 +1,26 @@
 function getLiveStreamExt() {
+    const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
+    const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.AndroidApp;
+    
+    // On iOS or when MSE is not supported, we MUST use HLS (m3u8)
+    if (!supportsMse) {
+        return 'm3u8';
+    }
+    
+    // On mobile devices, default to HLS (m3u8) for mobile network stability and native player capability,
+    // unless the user has explicitly changed the setting to 'ts'
+    if (isMobileDevice) {
+        if (state.playerSettings && state.playerSettings.liveFormat === 'ts') {
+            return 'ts';
+        }
+        return 'm3u8';
+    }
+    
+    // For PC/TV/Desktop, use user setting if defined, otherwise default to 'ts'
     if (state.playerSettings && state.playerSettings.liveFormat) {
         return state.playerSettings.liveFormat;
     }
-    const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
-    return supportsMse ? 'ts' : 'm3u8';
+    return 'ts';
 }
 
 async function playMedia(item, section) {
