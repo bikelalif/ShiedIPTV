@@ -7,9 +7,10 @@ async function loadPlaylistDataFromCache(playlistId) {
         const categories = await dbHelper.get(`playlist_cache_${playlistId}_categories`);
         const streams = await dbHelper.get(`playlist_cache_${playlistId}_streams`);
         const userInfo = await dbHelper.get(`playlist_cache_${playlistId}_user_info`);
+        const fullyLoaded = await dbHelper.get(`playlist_cache_${playlistId}_fully_loaded`);
         
         if (categories && streams) {
-            return { categories, streams, userInfo };
+            return { categories, streams, userInfo, fullyLoaded };
         }
     } catch (e) {
         console.error("Error loading playlist data from cache", e);
@@ -24,6 +25,7 @@ async function savePlaylistDataToCache(playlistId, categories, streams, userInfo
         if (userInfo) {
             await dbHelper.set(`playlist_cache_${playlistId}_user_info`, userInfo);
         }
+        await dbHelper.set(`playlist_cache_${playlistId}_fully_loaded`, state.sectionFullyLoaded);
         console.log(`[Cache] Saved playlist data to cache for ${playlistId}`);
     } catch (e) {
         console.error("Error saving playlist data to cache", e);
@@ -39,6 +41,7 @@ async function tryConnectPlaylistFromCache(playlist, isAuto) {
         state.categories = cachedData.categories;
         state.streams = cachedData.streams;
         state.userInfo = cachedData.userInfo;
+        state.sectionFullyLoaded = cachedData.fullyLoaded || { live: false, movies: false, series: false };
         
         state.isLoggedIn = true;
         state.currentPlaylistType = playlist.type;
@@ -133,6 +136,7 @@ async function reloadActivePlaylist() {
                 // Reset categories and streams so they reload on-demand
                 state.categories = { live: [], movies: [], series: [] };
                 state.streams = { live: [], movies: [], series: [] };
+                state.sectionFullyLoaded = { live: false, movies: false, series: false };
                 
                 savePlaylistDataToCache(activePlaylistId, state.categories, state.streams, data.user_info);
                 
@@ -245,6 +249,7 @@ function logout() {
     state.isLoggedIn = false;
     state.streams = { live: [], movies: [], series: [] };
     state.categories = { live: [], movies: [], series: [] };
+    state.sectionFullyLoaded = { live: false, movies: false, series: false };
     
     showScreen("playlist-manager-screen");
     renderPlaylistsGrid();
@@ -294,6 +299,7 @@ async function connectPlaylist(playlist, isAuto = false) {
         
         state.username = "Démo";
         state.isLoggedIn = true;
+        state.sectionFullyLoaded = { live: true, movies: true, series: true };
         
         document.getElementById("portal-username").innerText = "Démo";
         document.getElementById("info-status").innerText = t.activeText;
@@ -365,6 +371,7 @@ async function connectPlaylist(playlist, isAuto = false) {
             
             state.username = playlist.name;
             state.isLoggedIn = true;
+            state.sectionFullyLoaded = { live: true, movies: true, series: true };
             
             document.getElementById("portal-username").innerText = playlist.name;
             document.getElementById("info-status").innerText = t.activeText;
@@ -439,6 +446,7 @@ async function performLogin(url, username, password, isAutoLogin = false) {
             
             state.categories = { live: [], movies: [], series: [] };
             state.streams = { live: [], movies: [], series: [] };
+            state.sectionFullyLoaded = { live: false, movies: false, series: false };
             
             const activePlaylistId = safeStorage.local.getItem("shield_active_playlist_id");
             if (activePlaylistId) {
@@ -597,6 +605,7 @@ async function addXtreamCodesPlaylist(name, url, username, password) {
             
             state.categories = { live: [], movies: [], series: [] };
             state.streams = { live: [], movies: [], series: [] };
+            state.sectionFullyLoaded = { live: false, movies: false, series: false };
             
             savePlaylistDataToCache(id, state.categories, state.streams, data.user_info);
             
