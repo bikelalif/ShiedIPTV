@@ -757,6 +757,21 @@ function bindFullscreenVideoHandlers() {
 function showPlayerError(msg, showVlc = true) {
     state.playerHasError = true;
     
+    // Cleanly halt video playback and clear background reconnect/loading timers
+    destroyMpegtsPlayer();
+    if (state.reconnectTimer) {
+        clearTimeout(state.reconnectTimer);
+        state.reconnectTimer = null;
+    }
+    const video = document.getElementById("video-player");
+    if (video) {
+        try {
+            video.pause();
+            video.removeAttribute("src");
+            video.load();
+        } catch(e) {}
+    }
+    
     const playerLoader = document.getElementById("player-loader");
     if (playerLoader) {
         playerLoader.style.display = "flex";
