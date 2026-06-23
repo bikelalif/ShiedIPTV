@@ -336,36 +336,51 @@ async function loadCategoryStreamsCached(section, categoryId) {
     let filtered = [];
 
     if (state.currentPlaylistType === 'xtream') {
+        const loadAllAtOnce = !isTvWrapper;
+        
         let categoryCached = (state.streams[section] || []).filter(item => {
             const catId = item.category_id;
             return catId !== undefined && String(catId) === String(categoryId);
         });
 
         const totalCached = (state.streams[section] || []).length;
+        
+        const needsLoading = loadAllAtOnce
+            ? !state.sectionFullyLoaded[section]
+            : ((categoryId === 'all' && totalCached === 0) || (categoryId !== 'all' && categoryCached.length === 0));
 
-        if ((categoryId === 'all' && totalCached === 0) || (categoryId !== 'all' && categoryCached.length === 0)) {
-            showLoader(t.toastPreloadLive || "Chargement...");
+        if (needsLoading) {
+            let loaderText = t.toastPreloadLive || "Chargement...";
+            if (section === 'movies') loaderText = t.toastPreloadMovies || "Chargement...";
+            if (section === 'series') loaderText = t.toastPreloadSeries || "Chargement...";
+            
+            showLoader(loaderText);
             try {
                 let action = 'get_live_streams';
                 if (section === 'movies') action = 'get_vod_streams';
                 if (section === 'series') action = 'get_series';
 
-                const params = categoryId !== 'all' ? `&category_id=${categoryId}` : '';
+                const params = (loadAllAtOnce || categoryId === 'all') ? '' : `&category_id=${categoryId}`;
                 const data = await makeApiCall(action, params);
                 
                 let fetched = Array.isArray(data) ? data : [];
                 
-                if (!state.streams[section]) {
-                    state.streams[section] = [];
-                }
-
-                const existing = new Set(state.streams[section].map(item => String(item.stream_id || item.series_id || item.id)));
-                fetched.forEach(item => {
-                    const id = String(item.stream_id || item.series_id || item.id);
-                    if (!existing.has(id)) {
-                        state.streams[section].push(item);
+                if (loadAllAtOnce) {
+                    state.streams[section] = fetched;
+                    state.sectionFullyLoaded[section] = true;
+                } else {
+                    if (!state.streams[section]) {
+                        state.streams[section] = [];
                     }
-                });
+
+                    const existing = new Set(state.streams[section].map(item => String(item.stream_id || item.series_id || item.id)));
+                    fetched.forEach(item => {
+                        const id = String(item.stream_id || item.series_id || item.id);
+                        if (!existing.has(id)) {
+                            state.streams[section].push(item);
+                        }
+                    });
+                }
 
                 // Save updated streams to cache
                 const activePlaylistId = safeStorage.local.getItem("shield_active_playlist_id");
@@ -373,7 +388,14 @@ async function loadCategoryStreamsCached(section, categoryId) {
                     savePlaylistDataToCache(activePlaylistId, state.categories, state.streams, state.userInfo);
                 }
 
-                categoryCached = fetched;
+                if (loadAllAtOnce) {
+                    categoryCached = fetched.filter(item => {
+                        const catId = item.category_id;
+                        return catId !== undefined && String(catId) === String(categoryId);
+                    });
+                } else {
+                    categoryCached = fetched;
+                }
             } catch (e) {
                 console.error("Failed to load category streams from server:", e);
                 if (e.message && e.message.includes("413")) {

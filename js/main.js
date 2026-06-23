@@ -42,7 +42,13 @@ function initApp() {
         if (savedSettings) {
             try {
                 const settings = JSON.parse(savedSettings);
-                state.isDohEnabled = settings.isDohEnabled !== undefined ? settings.isDohEnabled : true;
+                // DoH is required to reach the IPTV server on many networks; a stale saved
+                // "false" was breaking the connection until manually re-enabled. Force it on
+                // by default and correct the stored value.
+                state.isDohEnabled = true;
+                if (settings.isDohEnabled === false && typeof saveSettings === 'function') {
+                    saveSettings();
+                }
                 state.dohResolver = settings.dohResolver || 'https://dns.google/resolve';
                 
                 const toggleEl = document.getElementById("setting-doh-toggle");
