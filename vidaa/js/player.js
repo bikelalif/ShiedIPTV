@@ -416,8 +416,6 @@ function launchVideoPlayer(url, title, logoUrl) {
             channelLogoImg.src = resolvedLogoUrl;
         }
     }
-    
-    const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
     document.getElementById("player-timeline-container").style.display = isLive ? "none" : "flex";
     
     const t = TRANSLATIONS[state.language || 'en'];
