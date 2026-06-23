@@ -502,18 +502,6 @@ async function preloadAllData() {
         state.categories.movies = [{ category_id: "all", category_name: "Tout" }, ...movieCats];
         state.categories.series = [{ category_id: "all", category_name: "Tout" }, ...seriesCats];
 
-        // On mobile/web browsers the full stream lists are huge (≈11 MB each for VOD &
-        // Series) and freeze the device when parsed at login. Load only the lightweight
-        // categories here; the actual streams are fetched per-category on demand when a
-        // section is opened (see switchSection / loadCategoryStreamsCached).
-        const isWebapp = document.body.classList.contains("is-webapp");
-        const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.AndroidApp;
-        if (isWebapp || isMobileDevice) {
-            console.log("[Preload] Webapp/Mobile browser detected. Skipping heavy stream preloads; loading on demand.");
-            return;
-        }
-        
-
         showLoader(t.toastPreloadLive);
         await new Promise(resolve => setTimeout(resolve, 50));
         const liveStreamsRaw = await makeApiCall('get_live_streams').catch((err) => {
@@ -522,7 +510,17 @@ async function preloadAllData() {
             return [];
         });
         state.streams.live = ensureArray(liveStreamsRaw);
-        
+
+        // Live is preloaded (it's the landing view). The VOD & Series lists are ~11 MB each
+        // and freeze mobile browsers when parsed at login, so on web/mobile we stop here and
+        // fetch those per-category on demand (see switchSection / loadCategoryStreamsCached).
+        const isWebapp = document.body.classList.contains("is-webapp");
+        const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.AndroidApp;
+        if (isWebapp || isMobileDevice) {
+            console.log("[Preload] Webapp/Mobile: preloaded Live only; VOD & Series load on demand.");
+            return;
+        }
+
         showLoader(t.toastPreloadMovies);
         await new Promise(resolve => setTimeout(resolve, 50));
         const movieStreamsRaw = await makeApiCall('get_vod_streams').catch((err) => {
