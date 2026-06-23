@@ -150,19 +150,23 @@ function loadImageWithFallback(imgElement, originalUrl, defaultPoster) {
         imgElement.src = resolvedUrl;
     });
 }
-// Proxy retry helper using public corsproxy.io first, then custom Cloudflare Worker as fallback
+// Proxy retry helper using custom Cloudflare Worker first, then public corsproxy.io as fallback
 async function fetchWithProxy(url, tryFetch, originalError) {
     const isWebapp = document.body.classList.contains("is-webapp");
     if (isWebapp && url.startsWith("http")) {
-        console.log(`[CORS Proxy] Retrying fetch via public corsproxy.io for: ${url}`);
-        const publicProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        console.log(`[CORS Proxy] Retrying fetch via custom worker for: ${url}`);
+        const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
         try {
-            return await tryFetch(publicProxyUrl);
+            const res = await tryFetch(proxyUrl);
+            if (res.ok) return res;
+            throw new Error(`Custom worker returned non-ok status: ${res.status}`);
         } catch (proxyError) {
-            console.warn(`[CORS Proxy] Public proxy failed. Retrying with custom worker...`, proxyError);
-            const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
+            console.warn(`[CORS Proxy] Custom worker failed. Retrying with public corsproxy.io...`, proxyError);
+            const publicProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
             try {
-                return await tryFetch(proxyUrl);
+                const res = await tryFetch(publicProxyUrl);
+                if (res.ok) return res;
+                throw new Error(`Public proxy returned non-ok status: ${res.status}`);
             } catch (workerError) {
                 throw originalError;
             }
@@ -193,15 +197,19 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
             }
         };
 
-        console.log(`[CORS Proxy] Webapp mode: direct proxy fetch via public corsproxy.io for: ${url}`);
-        const publicProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        console.log(`[CORS Proxy] Webapp mode: direct proxy fetch via custom worker for: ${url}`);
+        const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
         try {
-            return await tryFetchProxy(publicProxyUrl);
+            const response = await tryFetchProxy(proxyUrl);
+            if (response.ok || response.status === 401 || response.status === 403) {
+                return response;
+            }
+            throw new Error(`Custom worker returned non-ok status: ${response.status}`);
         } catch (proxyError) {
-            console.warn(`[CORS Proxy] Public proxy failed. Retrying with custom worker...`, proxyError);
-            const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
+            console.warn(`[CORS Proxy] Custom worker failed. Retrying with public corsproxy.io...`, proxyError);
+            const publicProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
             try {
-                return await tryFetchProxy(proxyUrl);
+                return await tryFetchProxy(publicProxyUrl);
             } catch (workerError) {
                 throw workerError;
             }
