@@ -1,3 +1,10 @@
+function checkIsMobileWeb() {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && 
+           !window.cordova && 
+           !window.AndroidApp &&
+           !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent);
+}
+
 function getLiveStreamExt() {
     const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
     const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.AndroidApp;
@@ -541,6 +548,11 @@ function launchVideoPlayer(url, title, logoUrl) {
                 });
                 state.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
                     if (data.fatal) {
+                        if (checkIsMobileWeb()) {
+                            console.warn("Fatal Hls.js error on mobile web, triggering reconnection/VLC fallback.");
+                            attemptReconnection();
+                            return;
+                        }
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR:
                                 console.warn("Fatal network error in Hls.js, checking for fallback...");
@@ -886,12 +898,14 @@ function stopWatchdog() {
 function startLoadingTimeout() {
     clearLoadingTimeout();
     console.log("[Player] Starting loading timeout...");
+    const isMobileWeb = checkIsMobileWeb();
+    const timeoutMs = isMobileWeb ? 8000 : 15000;
     state.loadingTimeout = setTimeout(() => {
         if (!state.playbackStarted) {
-            console.warn("[Player] Stream loading timed out (15s) without playing. Reconnecting...");
+            console.warn(`[Player] Stream loading timed out (${timeoutMs/1000}s) without playing. Reconnecting...`);
             attemptReconnection();
         }
-    }, 15000); // 15 seconds
+    }, timeoutMs);
 }
 
 function clearLoadingTimeout() {
@@ -932,6 +946,24 @@ function destroyMpegtsPlayer() {
 function attemptReconnection() {
     const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
     if (!isLive) return;
+    
+    const isMobileWeb = checkIsMobileWeb();
+    if (isMobileWeb) {
+        console.warn("[Player] Reconnection requested on mobile web. Showing VLC option immediately to prevent loops.");
+        let ext = "M3U8/TS";
+        if (state.currentPlayingStreamUrl) {
+            if (state.currentPlayingStreamUrl.includes('.ts')) ext = "TS";
+            else if (state.currentPlayingStreamUrl.includes('.m3u8')) ext = "M3U8";
+        }
+        let errorMsg;
+        if (state.language === 'fr') {
+            errorMsg = `Ce format de flux (${ext}) n'est pas supporté par votre navigateur mobile ou le chargement a échoué. Vous pouvez tenter de l'ouvrir directement dans l'application VLC.`;
+        } else {
+            errorMsg = `This stream format (${ext}) is not supported by your mobile browser or loading failed. You can try to open it directly in the VLC app.`;
+        }
+        showPlayerError(errorMsg, true);
+        return;
+    }
     
     if (state.reconnectAttempts >= state.maxReconnectAttempts) {
         console.warn("[Player] Max reconnect attempts reached. Stopping.");
@@ -1189,6 +1221,11 @@ async function loadLivePreview(item) {
                 });
                 state.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
                     if (data.fatal) {
+                        if (checkIsMobileWeb()) {
+                            console.warn("Fatal Hls.js error in preview on mobile web, destroying player.");
+                            destroyMpegtsPlayer();
+                            return;
+                        }
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR:
                                 state.hlsPlayer.startLoad();
