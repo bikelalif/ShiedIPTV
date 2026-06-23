@@ -395,13 +395,31 @@ function ensureArray(data) {
     return [];
 }
 
+function withTimeout(promise, timeoutMs = 2000) {
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+            reject(new Error("IndexedDB operation timed out"));
+        }, timeoutMs);
+        promise.then(
+            (res) => {
+                clearTimeout(timer);
+                resolve(res);
+            },
+            (err) => {
+                clearTimeout(timer);
+                reject(err);
+            }
+        );
+    });
+}
+
 // IndexedDB Storage Helper for caching playlist categories and streams
 const DB_NAME = 'ShieldIPTVCache';
 const STORE_NAME = 'playlist_cache';
 
 const dbHelper = {
     open() {
-        return new Promise((resolve, reject) => {
+        const p = new Promise((resolve, reject) => {
             const request = indexedDB.open(DB_NAME, 1);
             request.onupgradeneeded = (e) => {
                 const db = e.target.result;
@@ -412,17 +430,19 @@ const dbHelper = {
             request.onsuccess = (e) => resolve(e.target.result);
             request.onerror = (e) => reject(e.target.error);
         });
+        return withTimeout(p, 2000);
     },
     async set(key, value) {
         try {
             const db = await this.open();
-            return new Promise((resolve, reject) => {
+            const p = new Promise((resolve, reject) => {
                 const transaction = db.transaction(STORE_NAME, 'readwrite');
                 const store = transaction.objectStore(STORE_NAME);
                 const request = store.put(value, key);
                 request.onsuccess = () => resolve();
                 request.onerror = (e) => reject(e.target.error);
             });
+            return await withTimeout(p, 2000);
         } catch (e) {
             console.error("IndexedDB set failed", e);
         }
@@ -430,13 +450,14 @@ const dbHelper = {
     async get(key) {
         try {
             const db = await this.open();
-            return new Promise((resolve, reject) => {
+            const p = new Promise((resolve, reject) => {
                 const transaction = db.transaction(STORE_NAME, 'readonly');
                 const store = transaction.objectStore(STORE_NAME);
                 const request = store.get(key);
                 request.onsuccess = (e) => resolve(e.target.result);
                 request.onerror = (e) => reject(e.target.error);
             });
+            return await withTimeout(p, 2000);
         } catch (e) {
             console.error("IndexedDB get failed", e);
             return null;
@@ -445,16 +466,16 @@ const dbHelper = {
     async delete(key) {
         try {
             const db = await this.open();
-            return new Promise((resolve, reject) => {
+            const p = new Promise((resolve, reject) => {
                 const transaction = db.transaction(STORE_NAME, 'readwrite');
                 const store = transaction.objectStore(STORE_NAME);
                 const request = store.delete(key);
                 request.onsuccess = () => resolve();
                 request.onerror = (e) => reject(e.target.error);
             });
+            return await withTimeout(p, 2000);
         } catch (e) {
             console.error("IndexedDB delete failed", e);
         }
     }
 };
-
