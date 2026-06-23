@@ -455,7 +455,7 @@ async function performLogin(url, username, password, isAutoLogin = false) {
     } catch (error) {
         hideLoader();
         console.error("Login Error:", error);
-        showToast(isAutoLogin ? t.toastLoginAutoFail : t.toastLoginError + error.message, 5000);
+        showToast(isAutoLogin ? `${t.toastLoginAutoFail} (${error.message})` : t.toastLoginError + error.message, 6000);
         showScreen("playlist-manager-screen");
         renderPlaylistsGrid();
     }
