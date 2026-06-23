@@ -15,8 +15,17 @@ function getLiveStreamExt() {
         return 'm3u8';
     }
     
-    // On mobile devices supporting MSE (like Android Chrome), default to 'ts' for compatibility with standard IPTV TS streams,
-    // unless the user has explicitly changed the setting to 'm3u8'
+    // On mobile web browsers (not native apps), use HLS (m3u8) by default because
+    // mpegts.js + MSE is unreliable on mobile browsers and causes infinite loading loops.
+    // HLS works natively on iOS Safari and via HLS.js on Android Chrome.
+    if (isMobileDevice && checkIsMobileWeb()) {
+        if (state.playerSettings && state.playerSettings.liveFormat) {
+            return state.playerSettings.liveFormat;
+        }
+        return 'm3u8';
+    }
+    
+    // On mobile native apps (Android TV, Cordova) supporting MSE, default to 'ts'
     if (isMobileDevice) {
         if (state.playerSettings && state.playerSettings.liveFormat) {
             return state.playerSettings.liveFormat;
