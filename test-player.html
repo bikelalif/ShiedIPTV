@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShieldIPTV - Test Lecteur Mobile</title>
+    <title>ShieldIPTV - Test Lecteur Mobile v2</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -15,24 +15,22 @@
         h1 { font-size: 18px; color: #7c9cff; margin-bottom: 8px; text-align: center; }
         .info {
             background: #1a1a2e; border: 1px solid #333; border-radius: 8px;
-            padding: 10px; margin-bottom: 12px; font-size: 12px; word-break: break-all;
+            padding: 10px; margin-bottom: 12px; font-size: 11px; word-break: break-all;
         }
         .info strong { color: #7c9cff; }
         .test-block {
             background: #111128; border: 1px solid #2a2a4a; border-radius: 10px;
             padding: 12px; margin-bottom: 16px;
         }
-        .test-block h2 {
-            font-size: 14px; color: #ffd166; margin-bottom: 6px;
-        }
+        .test-block h2 { font-size: 14px; color: #ffd166; margin-bottom: 6px; }
         .test-block p { font-size: 11px; color: #999; margin-bottom: 8px; }
         video {
-            width: 100%; max-height: 200px; background: #000;
+            width: 100%; max-height: 220px; background: #000;
             border-radius: 6px; margin-bottom: 8px;
         }
         .btn {
-            display: inline-block; padding: 8px 16px; border: none; border-radius: 6px;
-            font-size: 13px; font-weight: 600; cursor: pointer; margin: 4px 4px 4px 0;
+            display: inline-block; padding: 10px 20px; border: none; border-radius: 6px;
+            font-size: 14px; font-weight: 600; cursor: pointer; margin: 4px 4px 4px 0;
             transition: transform 0.1s;
         }
         .btn:active { transform: scale(0.95); }
@@ -40,95 +38,79 @@
         .btn-stop { background: #dc3545; color: #fff; }
         .log {
             background: #0d0d1a; border: 1px solid #222; border-radius: 6px;
-            padding: 8px; margin-top: 8px; max-height: 120px; overflow-y: auto;
+            padding: 8px; margin-top: 8px; max-height: 150px; overflow-y: auto;
             font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.4;
         }
         .log .ok { color: #28a745; }
         .log .err { color: #dc3545; }
         .log .warn { color: #ffc107; }
-        .log .info { color: #7c9cff; border: none; padding: 0; margin: 0; background: none; }
-        .status { font-size: 12px; font-weight: bold; margin: 4px 0; }
+        .log-info { color: #7c9cff; }
+        .status { font-size: 13px; font-weight: bold; margin: 6px 0; min-height: 20px; }
         .status.playing { color: #28a745; }
         .status.error { color: #dc3545; }
         .status.waiting { color: #ffc107; }
+        .result { background: #0f3d0f; border: 2px solid #28a745; border-radius: 8px; padding: 12px; margin-bottom: 16px; display: none; }
+        .result h3 { color: #28a745; margin-bottom: 6px; }
     </style>
 </head>
 <body>
-    <h1>🛡️ Test Lecteur Mobile</h1>
+    <h1>🛡️ Test Lecteur Mobile v2</h1>
+    <p style="text-align:center; color: #888; font-size: 11px; margin-bottom: 12px;">Le serveur IPTV renvoie CORS: * — PAS de proxy nécessaire !</p>
 
     <div class="info">
-        <strong>URL TS :</strong> <span id="ts-url">http://103.176.90.109/live/bilal000/mpbK2326/832068.ts</span><br>
-        <strong>URL M3U8 :</strong> <span id="m3u8-url">http://103.176.90.109/live/bilal000/mpbK2326/832068.m3u8</span><br>
-        <strong>User Agent :</strong> <span id="ua"></span><br>
+        <strong>URL M3U8 :</strong> http://103.176.90.109/live/bilal000/mpbK2326/832068.m3u8<br>
+        <strong>URL TS :</strong> http://103.176.90.109/live/bilal000/mpbK2326/832068.ts<br>
+        <strong>Protocole page :</strong> <span id="proto"></span> |
         <strong>HLS.js :</strong> <span id="hls-support"></span> |
         <strong>MSE :</strong> <span id="mse-support"></span> |
-        <strong>Native HLS :</strong> <span id="native-hls"></span>
+        <strong>Natif HLS :</strong> <span id="native-hls"></span>
     </div>
 
-    <!-- TEST 1: Native video.src with .m3u8 (Safari) -->
-    <div class="test-block" id="block-1">
-        <h2>1️⃣ Native &lt;video src&gt; — M3U8 direct</h2>
-        <p>Lecture native sans JS. Marche sur Safari iOS (HLS natif). Ne marche PAS sur Firefox/Chrome Android.</p>
-        <video id="v1" playsinline controls muted></video>
-        <button class="btn btn-play" onclick="test1Play()">▶ Lancer</button>
-        <button class="btn btn-stop" onclick="test1Stop()">⏹ Stop</button>
-        <div class="status" id="s1">—</div>
-        <div class="log" id="log1"></div>
+    <div class="result" id="result-box">
+        <h3>✅ Résultat</h3>
+        <p id="result-text"></p>
     </div>
 
-    <!-- TEST 2: Native video.src with .ts -->
-    <div class="test-block" id="block-2">
-        <h2>2️⃣ Native &lt;video src&gt; — TS direct</h2>
-        <p>Lecture native du flux .ts brut. Ne marche sur quasi aucun navigateur mobile.</p>
-        <video id="v2" playsinline controls muted></video>
-        <button class="btn btn-play" onclick="test2Play()">▶ Lancer</button>
-        <button class="btn btn-stop" onclick="test2Stop()">⏹ Stop</button>
-        <div class="status" id="s2">—</div>
-        <div class="log" id="log2"></div>
+    <!-- TEST A: HLS.js DIRECT (no proxy) -->
+    <div class="test-block">
+        <h2>🅰️ HLS.js — M3U8 DIRECT (sans proxy) ⭐</h2>
+        <p>Le serveur renvoie <code>Access-Control-Allow-Origin: *</code>, donc HLS.js devrait pouvoir charger directement. C'est l'approche à utiliser !</p>
+        <video id="vA" playsinline controls muted></video>
+        <button class="btn btn-play" onclick="testAPlay()">▶ Lancer</button>
+        <button class="btn btn-stop" onclick="testAStop()">⏹ Stop</button>
+        <div class="status" id="sA">—</div>
+        <div class="log" id="logA"></div>
     </div>
 
-    <!-- TEST 3: HLS.js with .m3u8 (no proxy) -->
-    <div class="test-block" id="block-3">
-        <h2>3️⃣ HLS.js — M3U8 sans proxy</h2>
-        <p>HLS.js charge le m3u8 via XHR. Devrait échouer si le serveur ne renvoie pas de headers CORS.</p>
-        <video id="v3" playsinline controls muted></video>
-        <button class="btn btn-play" onclick="test3Play()">▶ Lancer</button>
-        <button class="btn btn-stop" onclick="test3Stop()">⏹ Stop</button>
-        <div class="status" id="s3">—</div>
-        <div class="log" id="log3"></div>
+    <!-- TEST B: Native video.src M3U8 -->
+    <div class="test-block">
+        <h2>🅱️ Native &lt;video src&gt; — M3U8 direct</h2>
+        <p>Lecture native. Marche sur Safari iOS (HLS natif). Page HTTP → pas de mixed content.</p>
+        <video id="vB" playsinline controls muted></video>
+        <button class="btn btn-play" onclick="testBPlay()">▶ Lancer</button>
+        <button class="btn btn-stop" onclick="testBStop()">⏹ Stop</button>
+        <div class="status" id="sB">—</div>
+        <div class="log" id="logB"></div>
     </div>
 
-    <!-- TEST 4: HLS.js with .m3u8 + CORS proxy -->
-    <div class="test-block" id="block-4">
-        <h2>4️⃣ HLS.js — M3U8 + CORS Proxy ✨</h2>
-        <p>HLS.js avec xhrSetup qui route TOUT via le Cloudflare Worker proxy. C'est l'approche implémentée.</p>
-        <video id="v4" playsinline controls muted></video>
-        <button class="btn btn-play" onclick="test4Play()">▶ Lancer</button>
-        <button class="btn btn-stop" onclick="test4Stop()">⏹ Stop</button>
-        <div class="status" id="s4">—</div>
-        <div class="log" id="log4"></div>
+    <!-- TEST C: mpegts.js TS DIRECT -->
+    <div class="test-block">
+        <h2>🅲 mpegts.js — TS DIRECT (sans proxy)</h2>
+        <p>mpegts.js charge le .ts directement. Le serveur a CORS, donc ça devrait marcher.</p>
+        <video id="vC" playsinline controls muted></video>
+        <button class="btn btn-play" onclick="testCPlay()">▶ Lancer</button>
+        <button class="btn btn-stop" onclick="testCStop()">⏹ Stop</button>
+        <div class="status" id="sC">—</div>
+        <div class="log" id="logC"></div>
     </div>
 
-    <!-- TEST 5: mpegts.js with .ts -->
-    <div class="test-block" id="block-5">
-        <h2>5️⃣ mpegts.js — TS direct</h2>
-        <p>mpegts.js décode le flux MPEG-TS via MSE. Même problème CORS potentiel.</p>
-        <video id="v5" playsinline controls muted></video>
-        <button class="btn btn-play" onclick="test5Play()">▶ Lancer</button>
-        <button class="btn btn-stop" onclick="test5Stop()">⏹ Stop</button>
-        <div class="status" id="s5">—</div>
-        <div class="log" id="log5"></div>
-    </div>
-
-    <!-- TEST 6: mpegts.js with .ts + CORS proxy -->
-    <div class="test-block" id="block-6">
-        <h2>6️⃣ mpegts.js — TS via CORS Proxy</h2>
-        <p>mpegts.js avec l'URL .ts routée via le Cloudflare Worker proxy.</p>
-        <video id="v6" playsinline controls muted></video>
-        <button class="btn btn-play" onclick="test6Play()">▶ Lancer</button>
-        <button class="btn btn-stop" onclick="test6Stop()">⏹ Stop</button>
-        <div class="status" id="s6">—</div>
-        <div class="log" id="log6"></div>
+    <!-- TEST D: fetch() CORS test -->
+    <div class="test-block">
+        <h2>🅳 Test fetch() CORS brut</h2>
+        <p>Teste si fetch() peut accéder au m3u8 directement depuis le navigateur (pas de video, juste le réseau).</p>
+        <button class="btn btn-play" onclick="testDPlay()">▶ Tester fetch()</button>
+        <div class="status" id="sD">—</div>
+        <div class="log" id="logD"></div>
     </div>
 
     <!-- Libs -->
@@ -136,171 +118,132 @@
     <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1/dist/mpegts.js"></script>
 
     <script>
-        const TS_URL = 'http://103.176.90.109/live/bilal000/mpbK2326/832068.ts';
+        const TS_URL  = 'http://103.176.90.109/live/bilal000/mpbK2326/832068.ts';
         const M3U8_URL = 'http://103.176.90.109/live/bilal000/mpbK2326/832068.m3u8';
-        const PROXY = 'https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=';
 
-        let hls3 = null, hls4 = null, mpegts5 = null, mpegts6 = null;
+        let hlsA = null, mpegtsC = null;
 
-        // Detect features
-        document.getElementById('ua').textContent = navigator.userAgent.substring(0, 100);
-        document.getElementById('hls-support').textContent = (typeof Hls !== 'undefined' && Hls.isSupported()) ? '✅ OUI' : '❌ NON';
-        document.getElementById('mse-support').textContent = ('MediaSource' in window) ? '✅ OUI' : '❌ NON';
-        const testVid = document.createElement('video');
-        const canPlayHls = testVid.canPlayType('application/vnd.apple.mpegurl') || testVid.canPlayType('application/x-mpegURL');
-        document.getElementById('native-hls').textContent = canPlayHls ? '✅ OUI' : '❌ NON';
+        // Feature detect
+        document.getElementById('proto').textContent = location.protocol;
+        document.getElementById('hls-support').textContent = (typeof Hls !== 'undefined' && Hls.isSupported()) ? '✅' : '❌';
+        document.getElementById('mse-support').textContent = ('MediaSource' in window) ? '✅' : '❌';
+        const tv = document.createElement('video');
+        document.getElementById('native-hls').textContent = (tv.canPlayType('application/vnd.apple.mpegurl') || tv.canPlayType('application/x-mpegURL')) ? '✅' : '❌';
 
-        function log(id, msg, type = 'info') {
+        function log(id, msg, type = 'log-info') {
             const el = document.getElementById('log' + id);
-            const line = document.createElement('div');
-            line.className = type;
-            const now = new Date().toLocaleTimeString();
-            line.textContent = `[${now}] ${msg}`;
-            el.appendChild(line);
+            const d = document.createElement('div');
+            d.className = type;
+            d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            el.appendChild(d);
             el.scrollTop = el.scrollHeight;
         }
-
         function setStatus(id, text, cls) {
             const el = document.getElementById('s' + id);
             el.textContent = text;
             el.className = 'status ' + cls;
         }
+        function showResult(text) {
+            document.getElementById('result-box').style.display = 'block';
+            document.getElementById('result-text').textContent = text;
+        }
 
-        function bindVideoEvents(video, id) {
-            video.addEventListener('loadstart', () => log(id, 'loadstart'));
-            video.addEventListener('loadedmetadata', () => { log(id, 'loadedmetadata ✓', 'ok'); setStatus(id, '⏳ Metadata chargé', 'waiting'); });
-            video.addEventListener('canplay', () => { log(id, 'canplay ✓', 'ok'); setStatus(id, '▶ Prêt à jouer', 'playing'); });
-            video.addEventListener('playing', () => { log(id, '🎬 PLAYING ✓✓✓', 'ok'); setStatus(id, '🎬 EN LECTURE !', 'playing'); });
-            video.addEventListener('waiting', () => { log(id, 'waiting (buffering)...', 'warn'); setStatus(id, '⏳ Buffering...', 'waiting'); });
-            video.addEventListener('stalled', () => log(id, 'stalled — données bloquées', 'warn'));
-            video.addEventListener('suspend', () => log(id, 'suspend'));
-            video.addEventListener('error', () => {
-                const err = video.error;
-                const msg = err ? `ERROR code=${err.code} msg=${err.message}` : 'ERROR (unknown)';
-                log(id, msg, 'err');
-                setStatus(id, '❌ Erreur: ' + msg, 'error');
+        function bindEvents(v, id) {
+            v.addEventListener('loadstart', () => log(id, 'loadstart'));
+            v.addEventListener('loadedmetadata', () => { log(id, '✓ loadedmetadata', 'ok'); setStatus(id, '⏳ Metadata chargé', 'waiting'); });
+            v.addEventListener('canplay', () => { log(id, '✓ canplay', 'ok'); setStatus(id, '▶ Prêt', 'playing'); });
+            v.addEventListener('playing', () => { log(id, '🎬 PLAYING !!!', 'ok'); setStatus(id, '🎬 EN LECTURE !', 'playing'); showResult('Test ' + id + ' fonctionne !'); });
+            v.addEventListener('waiting', () => { log(id, 'buffering...', 'warn'); });
+            v.addEventListener('stalled', () => log(id, 'stalled', 'warn'));
+            v.addEventListener('error', () => {
+                const e = v.error;
+                log(id, 'ERROR code=' + (e ? e.code : '?') + ' msg=' + (e ? e.message : '?'), 'err');
+                setStatus(id, '❌ Erreur vidéo', 'error');
             });
-            video.addEventListener('abort', () => log(id, 'abort', 'warn'));
         }
+        bindEvents(document.getElementById('vA'), 'A');
+        bindEvents(document.getElementById('vB'), 'B');
+        bindEvents(document.getElementById('vC'), 'C');
 
-        // Bind events on all videos
-        for (let i = 1; i <= 6; i++) {
-            bindVideoEvents(document.getElementById('v' + i), i);
-        }
-
-        // ===== TEST 1: Native video.src M3U8 =====
-        function test1Play() {
-            const v = document.getElementById('v1');
-            log(1, 'Setting video.src = ' + M3U8_URL);
-            setStatus(1, '⏳ Chargement...', 'waiting');
-            v.src = M3U8_URL;
-            v.load();
-            v.play().then(() => log(1, 'play() resolved', 'ok')).catch(e => log(1, 'play() rejected: ' + e.message, 'err'));
-        }
-        function test1Stop() { const v = document.getElementById('v1'); v.pause(); v.removeAttribute('src'); v.load(); setStatus(1, '—', ''); }
-
-        // ===== TEST 2: Native video.src TS =====
-        function test2Play() {
-            const v = document.getElementById('v2');
-            log(2, 'Setting video.src = ' + TS_URL);
-            setStatus(2, '⏳ Chargement...', 'waiting');
-            v.src = TS_URL;
-            v.load();
-            v.play().then(() => log(2, 'play() resolved', 'ok')).catch(e => log(2, 'play() rejected: ' + e.message, 'err'));
-        }
-        function test2Stop() { const v = document.getElementById('v2'); v.pause(); v.removeAttribute('src'); v.load(); setStatus(2, '—', ''); }
-
-        // ===== TEST 3: HLS.js M3U8 sans proxy =====
-        function test3Play() {
-            if (typeof Hls === 'undefined' || !Hls.isSupported()) { log(3, 'HLS.js NOT supported on this browser!', 'err'); setStatus(3, '❌ HLS.js non supporté', 'error'); return; }
-            const v = document.getElementById('v3');
-            log(3, 'HLS.js loadSource(' + M3U8_URL + ') — NO proxy');
-            setStatus(3, '⏳ Chargement HLS.js...', 'waiting');
-            hls3 = new Hls({ enableWorker: true, lowLatencyMode: false });
-            hls3.attachMedia(v);
-            hls3.on(Hls.Events.MEDIA_ATTACHED, () => { log(3, 'MEDIA_ATTACHED', 'ok'); hls3.loadSource(M3U8_URL); });
-            hls3.on(Hls.Events.MANIFEST_PARSED, (e, d) => { log(3, 'MANIFEST_PARSED levels=' + d.levels.length, 'ok'); v.play().catch(e => log(3, 'play() err: ' + e.message, 'err')); });
-            hls3.on(Hls.Events.ERROR, (e, d) => {
-                log(3, `HLS ERROR: type=${d.type} details=${d.details} fatal=${d.fatal}`, d.fatal ? 'err' : 'warn');
-                if (d.fatal) setStatus(3, '❌ HLS.js Fatal: ' + d.details, 'error');
-            });
-            hls3.on(Hls.Events.FRAG_LOADED, (e, d) => log(3, `Fragment loaded: sn=${d.frag.sn}`, 'ok'));
-        }
-        function test3Stop() { if (hls3) { hls3.destroy(); hls3 = null; } const v = document.getElementById('v3'); v.pause(); v.removeAttribute('src'); v.load(); setStatus(3, '—', ''); }
-
-        // ===== TEST 4: HLS.js M3U8 + CORS proxy =====
-        function test4Play() {
+        // ===== TEST A: HLS.js DIRECT =====
+        function testAPlay() {
             if (typeof Hls === 'undefined' || !Hls.isSupported()) {
-                // Fallback: try native with proxied URL
-                log(4, 'HLS.js NOT supported — trying native with proxy URL', 'warn');
-                const v = document.getElementById('v4');
-                const proxiedM3u8 = PROXY + encodeURIComponent(M3U8_URL);
-                log(4, 'Native src = ' + proxiedM3u8.substring(0, 80) + '...');
-                v.src = proxiedM3u8;
+                log('A', 'HLS.js non supporté — essai natif', 'warn');
+                const v = document.getElementById('vA');
+                v.src = M3U8_URL;
                 v.load();
-                v.play().catch(e => log(4, 'play() err: ' + e.message, 'err'));
+                v.play().catch(e => log('A', 'play err: ' + e.message, 'err'));
                 return;
             }
-            const v = document.getElementById('v4');
-            log(4, 'HLS.js loadSource(' + M3U8_URL + ') + xhrSetup CORS proxy');
-            setStatus(4, '⏳ Chargement HLS.js + Proxy...', 'waiting');
-            hls4 = new Hls({
+            const v = document.getElementById('vA');
+            log('A', 'HLS.js loadSource DIRECT (pas de proxy): ' + M3U8_URL);
+            setStatus('A', '⏳ Chargement...', 'waiting');
+            hlsA = new Hls({
                 enableWorker: true,
                 lowLatencyMode: false,
-                xhrSetup: function(xhr, url) {
-                    if (url.startsWith('blob:') || url.startsWith('data:')) return;
-                    const proxyUrl = PROXY + encodeURIComponent(url);
-                    log(4, 'PROXY XHR: ' + url.substring(0, 60) + '...');
-                    xhr.open('GET', proxyUrl, true);
-                }
+                debug: false
             });
-            hls4.attachMedia(v);
-            hls4.on(Hls.Events.MEDIA_ATTACHED, () => { log(4, 'MEDIA_ATTACHED', 'ok'); hls4.loadSource(M3U8_URL); });
-            hls4.on(Hls.Events.MANIFEST_PARSED, (e, d) => { log(4, 'MANIFEST_PARSED levels=' + d.levels.length, 'ok'); v.play().catch(e => log(4, 'play() err: ' + e.message, 'err')); });
-            hls4.on(Hls.Events.ERROR, (e, d) => {
-                log(4, `HLS ERROR: type=${d.type} details=${d.details} fatal=${d.fatal} response=${d.response ? d.response.code : '?'}`, d.fatal ? 'err' : 'warn');
-                if (d.fatal) setStatus(4, '❌ HLS.js Fatal: ' + d.details, 'error');
+            hlsA.attachMedia(v);
+            hlsA.on(Hls.Events.MEDIA_ATTACHED, () => { log('A', 'MEDIA_ATTACHED ✓', 'ok'); hlsA.loadSource(M3U8_URL); });
+            hlsA.on(Hls.Events.MANIFEST_PARSED, (e, d) => {
+                log('A', 'MANIFEST_PARSED ✓ levels=' + d.levels.length, 'ok');
+                v.play().catch(e => { log('A', 'play err (trying muted): ' + e.message, 'warn'); v.muted = true; v.play().catch(e2 => log('A', 'play muted err: ' + e2.message, 'err')); });
             });
-            hls4.on(Hls.Events.FRAG_LOADED, (e, d) => log(4, `Fragment loaded: sn=${d.frag.sn} ✓`, 'ok'));
-            hls4.on(Hls.Events.LEVEL_LOADED, (e, d) => log(4, `Level loaded: duration=${d.details.totalduration}s`, 'ok'));
+            hlsA.on(Hls.Events.FRAG_LOADED, (e, d) => log('A', '✓ Fragment sn=' + d.frag.sn + ' loaded', 'ok'));
+            hlsA.on(Hls.Events.LEVEL_LOADED, (e, d) => log('A', '✓ Level loaded dur=' + Math.round(d.details.totalduration) + 's', 'ok'));
+            hlsA.on(Hls.Events.ERROR, (e, d) => {
+                const detail = `type=${d.type} details=${d.details} fatal=${d.fatal}`;
+                if (d.response) log('A', `HTTP response: ${d.response.code}`, d.fatal ? 'err' : 'warn');
+                if (d.fatal) { log('A', 'FATAL: ' + detail, 'err'); setStatus('A', '❌ ' + d.details, 'error'); }
+                else log('A', 'WARN: ' + detail, 'warn');
+            });
         }
-        function test4Stop() { if (hls4) { hls4.destroy(); hls4 = null; } const v = document.getElementById('v4'); v.pause(); v.removeAttribute('src'); v.load(); setStatus(4, '—', ''); }
+        function testAStop() { if (hlsA) { hlsA.destroy(); hlsA = null; } const v = document.getElementById('vA'); v.pause(); v.removeAttribute('src'); v.load(); setStatus('A', '—', ''); }
 
-        // ===== TEST 5: mpegts.js TS direct =====
-        function test5Play() {
-            if (typeof mpegts === 'undefined' || !mpegts.getFeatureList().mseLivePlayback) { log(5, 'mpegts.js NOT supported!', 'err'); setStatus(5, '❌ mpegts.js non supporté', 'error'); return; }
-            const v = document.getElementById('v5');
-            log(5, 'mpegts.js createPlayer(' + TS_URL + ') — NO proxy');
-            setStatus(5, '⏳ Chargement mpegts.js...', 'waiting');
-            mpegts5 = mpegts.createPlayer({
-                type: 'mpegts', isLive: true, url: TS_URL
-            }, { enableWorker: true, liveBufferLatencyChasing: false });
-            mpegts5.attachMediaElement(v);
-            mpegts5.on(mpegts.Events.ERROR, (type, detail) => { log(5, `mpegts ERROR: ${type} — ${detail}`, 'err'); setStatus(5, '❌ Erreur: ' + detail, 'error'); });
-            mpegts5.on(mpegts.Events.LOADING_COMPLETE, () => log(5, 'Loading complete', 'ok'));
-            mpegts5.load();
-            mpegts5.play().then(() => log(5, 'play() resolved', 'ok')).catch(e => log(5, 'play() err: ' + e.message, 'err'));
+        // ===== TEST B: Native video.src M3U8 =====
+        function testBPlay() {
+            const v = document.getElementById('vB');
+            log('B', 'video.src = ' + M3U8_URL);
+            setStatus('B', '⏳ Chargement natif...', 'waiting');
+            v.src = M3U8_URL;
+            v.load();
+            v.play().then(() => log('B', 'play() ✓', 'ok')).catch(e => { log('B', 'play err (trying muted): ' + e.message, 'warn'); v.muted = true; v.play().catch(e2 => log('B', 'play muted err: ' + e2.message, 'err')); });
         }
-        function test5Stop() { if (mpegts5) { mpegts5.pause(); mpegts5.unload(); mpegts5.detachMediaElement(); mpegts5.destroy(); mpegts5 = null; } setStatus(5, '—', ''); }
+        function testBStop() { const v = document.getElementById('vB'); v.pause(); v.removeAttribute('src'); v.load(); setStatus('B', '—', ''); }
 
-        // ===== TEST 6: mpegts.js TS + CORS proxy =====
-        function test6Play() {
-            if (typeof mpegts === 'undefined' || !mpegts.getFeatureList().mseLivePlayback) { log(6, 'mpegts.js NOT supported!', 'err'); setStatus(6, '❌ mpegts.js non supporté', 'error'); return; }
-            const v = document.getElementById('v6');
-            const proxiedTs = PROXY + encodeURIComponent(TS_URL);
-            log(6, 'mpegts.js createPlayer via CORS proxy');
-            log(6, 'Proxied URL: ' + proxiedTs.substring(0, 80) + '...');
-            setStatus(6, '⏳ Chargement mpegts.js + Proxy...', 'waiting');
-            mpegts6 = mpegts.createPlayer({
-                type: 'mpegts', isLive: true, url: proxiedTs
-            }, { enableWorker: true, liveBufferLatencyChasing: false });
-            mpegts6.attachMediaElement(v);
-            mpegts6.on(mpegts.Events.ERROR, (type, detail) => { log(6, `mpegts ERROR: ${type} — ${detail}`, 'err'); setStatus(6, '❌ Erreur: ' + detail, 'error'); });
-            mpegts6.on(mpegts.Events.LOADING_COMPLETE, () => log(6, 'Loading complete', 'ok'));
-            mpegts6.load();
-            mpegts6.play().then(() => log(6, 'play() resolved', 'ok')).catch(e => log(6, 'play() err: ' + e.message, 'err'));
+        // ===== TEST C: mpegts.js TS DIRECT =====
+        function testCPlay() {
+            if (typeof mpegts === 'undefined' || !mpegts.getFeatureList().mseLivePlayback) { log('C', 'mpegts.js non supporté !', 'err'); return; }
+            const v = document.getElementById('vC');
+            log('C', 'mpegts.js DIRECT: ' + TS_URL);
+            setStatus('C', '⏳ Chargement...', 'waiting');
+            mpegtsC = mpegts.createPlayer({ type: 'mpegts', isLive: true, url: TS_URL }, { enableWorker: true });
+            mpegtsC.attachMediaElement(v);
+            mpegtsC.on(mpegts.Events.ERROR, (t, d) => { log('C', `ERROR: ${t} — ${d}`, 'err'); setStatus('C', '❌ ' + d, 'error'); });
+            mpegtsC.load();
+            mpegtsC.play().then(() => log('C', 'play() ✓', 'ok')).catch(e => { log('C', 'play err (trying muted): ' + e.message, 'warn'); v.muted = true; mpegtsC.play().catch(e2 => log('C', 'play muted err: ' + e2.message, 'err')); });
         }
-        function test6Stop() { if (mpegts6) { mpegts6.pause(); mpegts6.unload(); mpegts6.detachMediaElement(); mpegts6.destroy(); mpegts6 = null; } setStatus(6, '—', ''); }
+        function testCStop() { if (mpegtsC) { mpegtsC.pause(); mpegtsC.unload(); mpegtsC.detachMediaElement(); mpegtsC.destroy(); mpegtsC = null; } setStatus('C', '—', ''); }
+
+        // ===== TEST D: Raw fetch() CORS test =====
+        async function testDPlay() {
+            log('D', 'fetch(' + M3U8_URL + ') — test CORS brut');
+            setStatus('D', '⏳ Test en cours...', 'waiting');
+            try {
+                const t0 = performance.now();
+                const resp = await fetch(M3U8_URL);
+                const dt = Math.round(performance.now() - t0);
+                log('D', `✓ HTTP ${resp.status} en ${dt}ms`, 'ok');
+                log('D', `CORS: ${resp.headers.get('access-control-allow-origin') || 'absent'}`, resp.headers.get('access-control-allow-origin') ? 'ok' : 'err');
+                log('D', `Content-Type: ${resp.headers.get('content-type')}`, 'ok');
+                const text = await resp.text();
+                log('D', `Body (${text.length} chars): ${text.substring(0, 120)}...`, 'ok');
+                setStatus('D', '✅ fetch() OK — CORS fonctionne !', 'playing');
+            } catch (err) {
+                log('D', 'ECHEC fetch(): ' + err.message, 'err');
+                setStatus('D', '❌ fetch() bloqué: ' + err.message, 'error');
+            }
+        }
     </script>
 </body>
 </html>
