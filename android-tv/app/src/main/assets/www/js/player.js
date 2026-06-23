@@ -218,6 +218,157 @@ function triggerDirectStreamFallback() {
     }
 }
 
+function handlePlaybackFallback(originalUrl) {
+    if (state.isDohEnabled && state.lastAttemptedStreamUrl === originalUrl) {
+        console.warn("[Player] Stream failed using original URL. Retrying with DNS-over-HTTPS fallback...");
+        state.lastAttemptedStreamUrl = ""; // prevent loop
+        
+        const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
+        resolveUrlWithDoH(originalUrl, isLive).then(resolvedUrl => {
+            if (resolvedUrl && resolvedUrl !== originalUrl) {
+                console.log("[Player] DoH resolved fallback URL:", resolvedUrl);
+                state.lastAttemptedStreamUrl = resolvedUrl;
+                startPlayback(resolvedUrl, true);
+            } else {
+                console.log("[Player] DoH resolution did not yield a different URL.");
+            }
+        }).catch(err => {
+            console.error("[Player] DoH resolution failed during fallback:", err);
+        });
+    }
+}
+
+function startPlayback(resolvedStreamUrl, isFallback = false) {
+    destroyMpegtsPlayer();
+    
+    const video = document.getElementById("video-player");
+    if (!video) return;
+    
+    const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
+    const isTsStream = (resolvedStreamUrl.includes('.ts') || resolvedStreamUrl.includes('/live/')) && !resolvedStreamUrl.includes('.m3u8');
+    
+    if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
+        console.log("[Player] Initializing mpegts.js decoder for stream:", resolvedStreamUrl);
+        try {
+            state.mpegtsPlayer = mpegts.createPlayer({
+                type: 'mpegts',
+                isLive: isLive,
+                url: resolvedStreamUrl
+            }, {
+                enableWorker: true,
+                lazyLoad: !isLive,
+                lazyLoadMaxDuration: 3 * 60,
+                seekType: 'range',
+                autoCleanupSourceBuffer: true,
+                autoCleanupMaxBackwardDuration: 2 * 60,
+                autoCleanupMinBackwardDuration: 60,
+                liveBufferLatencyChasing: false,
+                liveBufferLatencyMaxLatency: 3.0,
+                liveBufferLatencyMinRemain: 1.0,
+                enableStashBuffer: !isLive
+            });
+            
+            state.mpegtsPlayer.attachMediaElement(video);
+            
+            state.mpegtsPlayer.on(mpegts.Events.ERROR, (type, detail, info) => {
+                console.warn(`[mpegts.js] Error: ${type}, ${detail}.`);
+                if (!isFallback) {
+                    handlePlaybackFallback(resolvedStreamUrl);
+                } else if (!state.reconnectTimer) {
+                    state.reconnectTimer = setTimeout(() => {
+                        state.reconnectTimer = null;
+                        attemptReconnection();
+                    }, 2000);
+                }
+            });
+            
+            state.mpegtsPlayer.load();
+            state.mpegtsPlayer.play().catch(e => {
+                console.warn("Autoplay failed, trying muted...", e);
+                video.muted = true;
+                if (state.mpegtsPlayer) {
+                    state.mpegtsPlayer.play().catch(err => console.error(err));
+                }
+            });
+        } catch (err) {
+            console.error("mpegts.js setup crashed, falling back to native player:", err);
+            video.src = resolvedStreamUrl;
+            video.play().catch(err => {});
+        }
+    } else if (resolvedStreamUrl.includes('.m3u8')) {
+        if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+            console.log("[Player] Initializing HLS.js for stream:", resolvedStreamUrl);
+            state.hlsPlayer = new Hls({
+                enableWorker: true,
+                lowLatencyMode: false,
+                liveDurationInfinity: isLive,
+                liveSyncDurationCount: 3,
+                liveMaxLatencyDurationCount: 10,
+                backBufferLength: isLive ? 30 : undefined
+            });
+            state.hlsPlayer.attachMedia(video);
+            state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
+                state.hlsPlayer.loadSource(resolvedStreamUrl);
+            });
+            state.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+                video.play().catch(e => {
+                    console.warn("HLS Autoplay failed, trying muted...", e);
+                    video.muted = true;
+                    video.play().catch(err => {});
+                });
+            });
+            state.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) {
+                    console.warn("Fatal Hls.js error:", data);
+                    if (!isFallback) {
+                        handlePlaybackFallback(resolvedStreamUrl);
+                    } else {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                if (state.tryingHlsFallback) {
+                                    state.tryingHlsFallback = false;
+                                    triggerDirectStreamFallback();
+                                } else {
+                                    state.hlsPlayer.startLoad();
+                                }
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                state.hlsPlayer.recoverMediaError();
+                                break;
+                            default:
+                                destroyMpegtsPlayer();
+                                video.src = resolvedStreamUrl;
+                                video.play().catch(e => {
+                                    video.muted = true;
+                                    video.play().catch(err => {});
+                                });
+                                break;
+                        }
+                    }
+                }
+            });
+        } else {
+            console.log("[Player] HLS.js not supported, falling back to native player:", resolvedStreamUrl);
+            video.src = resolvedStreamUrl;
+            video.load();
+            video.play().catch(e => {
+                console.warn("Native HLS Autoplay failed, trying muted...", e);
+                video.muted = true;
+                video.play().catch(err => {});
+            });
+        }
+    } else {
+        console.log("[Player] Launching native HTML5 source:", resolvedStreamUrl);
+        video.src = resolvedStreamUrl;
+        video.load();
+        video.play().catch(e => {
+            console.warn("Native Autoplay failed, trying muted...", e);
+            video.muted = true;
+            video.play().catch(err => {});
+        });
+    }
+}
+
 function launchVideoPlayer(url, title, logoUrl) {
     const preservedStream = state.currentPlayingStream;
     state.currentPlayingStreamUrl = url;
@@ -479,130 +630,8 @@ function launchVideoPlayer(url, title, logoUrl) {
     document.getElementById("player-btn-channels").title = t.zapListTitle;
     document.getElementById("player-btn-play").title = t.playPause;
     
-    destroyMpegtsPlayer();
-    
-    resolveUrlWithDoH(url, isLive).then(resolvedStreamUrl => {
-            const isTsStream = (resolvedStreamUrl.includes('.ts') || resolvedStreamUrl.includes('/live/')) && !resolvedStreamUrl.includes('.m3u8');
-            
-            if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
-                console.log("[Player] Initializing mpegts.js decoder for stream:", resolvedStreamUrl);
-                try {
-                    state.mpegtsPlayer = mpegts.createPlayer({
-                        type: 'mpegts',
-                        isLive: isLive,
-                        url: resolvedStreamUrl
-                    }, {
-                        enableWorker: true,
-                        lazyLoad: !isLive,
-                        lazyLoadMaxDuration: 3 * 60,
-                        seekType: 'range',
-                        autoCleanupSourceBuffer: true,
-                        autoCleanupMaxBackwardDuration: 2 * 60,
-                        autoCleanupMinBackwardDuration: 60,
-                        liveBufferLatencyChasing: false,
-                        liveBufferLatencyMaxLatency: 3.0,
-                        liveBufferLatencyMinRemain: 1.0,
-                        enableStashBuffer: !isLive
-                    });
-                    
-                    state.mpegtsPlayer.attachMediaElement(video);
-                    
-                    state.mpegtsPlayer.on(mpegts.Events.ERROR, (type, detail, info) => {
-                        console.warn(`[mpegts.js] Error: ${type}, ${detail}. Reconnecting.`);
-                        if (!state.reconnectTimer) {
-                            state.reconnectTimer = setTimeout(() => {
-                                state.reconnectTimer = null;
-                                attemptReconnection();
-                            }, 2000);
-                        }
-                    });
-                    
-                    state.mpegtsPlayer.load();
-                    state.mpegtsPlayer.play().catch(e => {
-                        console.warn("Autoplay failed, trying muted...", e);
-                        video.muted = true;
-                        if (state.mpegtsPlayer) {
-                            state.mpegtsPlayer.play().catch(err => console.error(err));
-                        }
-                    });
-                } catch (err) {
-                    console.error("mpegts.js setup crashed, falling back to native player:", err);
-                    video.src = resolvedStreamUrl;
-                    video.play().catch(err => {});
-                }
-            } else if (resolvedStreamUrl.includes('.m3u8')) {
-                if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-                    console.log("[Player] Initializing HLS.js for stream:", resolvedStreamUrl);
-                    state.hlsPlayer = new Hls({
-                        enableWorker: true,
-                        lowLatencyMode: false,
-                        liveDurationInfinity: isLive,
-                        liveSyncDurationCount: 3,
-                        liveMaxLatencyDurationCount: 10,
-                        backBufferLength: isLive ? 30 : undefined
-                    });
-                    state.hlsPlayer.attachMedia(video);
-                    state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
-                        state.hlsPlayer.loadSource(resolvedStreamUrl);
-                    });
-                    state.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
-                        video.play().catch(e => {
-                            console.warn("HLS Autoplay failed, trying muted...", e);
-                            video.muted = true;
-                            video.play().catch(err => {});
-                        });
-                    });
-                    state.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
-                        if (data.fatal) {
-                            switch (data.type) {
-                                case Hls.ErrorTypes.NETWORK_ERROR:
-                                    console.warn("Fatal network error in Hls.js, checking for fallback...");
-                                    if (state.tryingHlsFallback) {
-                                        state.tryingHlsFallback = false;
-                                        triggerDirectStreamFallback();
-                                    } else {
-                                        state.hlsPlayer.startLoad();
-                                    }
-                                    break;
-                                case Hls.ErrorTypes.MEDIA_ERROR:
-                                    console.warn("Fatal media error in Hls.js, trying to recover...");
-                                    state.hlsPlayer.recoverMediaError();
-                                    break;
-                                default:
-                                    console.error("Fatal Hls.js error:", data);
-                                    if (state.tryingHlsFallback) {
-                                        state.tryingHlsFallback = false;
-                                        triggerDirectStreamFallback();
-                                    } else {
-                                        destroyMpegtsPlayer();
-                                        video.src = resolvedStreamUrl;
-                                        video.play().catch(e => {});
-                                    }
-                                    break;
-                            }
-                        }
-                    });
-                } else {
-                    console.log("[Player] HLS.js not supported, falling back to native player:", resolvedStreamUrl);
-                    video.src = resolvedStreamUrl;
-                    video.load();
-                    video.play().catch(e => {
-                        console.warn("Native fallback autoplay failed, trying muted...", e);
-                        video.muted = true;
-                        video.play().catch(err => {});
-                    });
-                }
-            } else {
-                console.log("[Player] Launching native HTML5 source:", resolvedStreamUrl);
-                video.src = resolvedStreamUrl;
-                video.load();
-                video.play().catch(e => {
-                    console.warn("Native Autoplay failed, trying muted...", e);
-                    video.muted = true;
-                    video.play().catch(err => {});
-                });
-            }
-        });
+    state.lastAttemptedStreamUrl = url;
+    startPlayback(url, false);
     
     bindFullscreenVideoHandlers();
     
@@ -664,94 +693,103 @@ function bindFullscreenVideoHandlers() {
             errDetail = ` (Code ${video.error.code}: ${video.error.message || ''})`;
         }
         
-        // HLS fallback logic if the .m3u8 request failed
-        if (state.tryingHlsFallback) {
-            state.tryingHlsFallback = false;
-            console.log("[Player] HLS playback failed natively/network. Falling back to direct stream...");
-            triggerDirectStreamFallback();
+        if (state.isDohEnabled && state.lastAttemptedStreamUrl === state.currentPlayingStreamUrl) {
+            handlePlaybackFallback(state.currentPlayingStreamUrl);
             return;
         }
         
-        if (isLive) {
-            const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
-                                window.location.protocol !== 'file:' && 
-                                !window.cordova && 
-                                !window.AndroidApp &&
-                                !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
-                                window.location.hostname !== 'localhost' && 
-                                window.location.hostname !== '127.0.0.1';
-            const isCode4 = video.error && video.error.code === 4;
-            const currentSrc = video.src || "";
-            const isTsStream = (currentSrc.includes('.ts') || currentSrc.includes('/live/')) && !currentSrc.includes('.m3u8');
-            
-            // If it's a completely unsupported format (e.g. error code 4), show player error immediately instead of reconnecting.
-            if (isCode4) {
-                console.warn("[Player] Unsupported format on live stream. Showing error immediately.");
-                let ext = isTsStream ? "TS" : "M3U8";
-                let errorMsg;
-                if (state.language === 'fr') {
-                    errorMsg = `Ce format de flux (${ext}) n'est pas supporté par votre navigateur.`;
-                } else {
-                    errorMsg = `This stream format (${ext}) is not supported by your browser.`;
-                }
-                showPlayerError(errorMsg, false);
+        triggerStandardError();
+        
+        function triggerStandardError() {
+            // HLS fallback logic if the .m3u8 request failed
+            if (state.tryingHlsFallback) {
+                state.tryingHlsFallback = false;
+                console.log("[Player] HLS playback failed natively/network. Falling back to direct stream...");
+                triggerDirectStreamFallback();
                 return;
             }
             
-            console.warn("[Player] Video error event fired. Attempting recovery." + errDetail);
-            if (!state.reconnectTimer) {
-                state.reconnectTimer = setTimeout(() => {
-                    state.reconnectTimer = null;
-                    attemptReconnection();
-                }, 2000);
-            }
-        } else {
-            const currentSrc = video.src || "";
-            console.error("[Player] Video playback error:" + errDetail, "URL:", currentSrc);
-            
-            const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
-                                window.location.protocol !== 'file:' && 
-                                !window.cordova && 
-                                !window.AndroidApp &&
-                                !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
-                                window.location.hostname !== 'localhost' && 
-                                window.location.hostname !== '127.0.0.1';
-            
-            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-            const isCode4 = video.error && video.error.code === 4;
-            const isMobile = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && !isMobileWeb;
-            
-            if (isMobile || isMobileWeb || isSafari || isCode4) {
-                let ext = "";
-                try {
-                    const cleanUrl = currentSrc.split('?')[0].split('#')[0];
-                    const parts = cleanUrl.split('.');
-                    if (parts.length > 1) {
-                        ext = parts.pop().toLowerCase();
-                    }
-                } catch (e) {}
-                if (!ext || ext.length > 4) ext = "MKV/TS";
+            if (isLive) {
+                const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
+                                    window.location.protocol !== 'file:' && 
+                                    !window.cordova && 
+                                    !window.AndroidApp &&
+                                    !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
+                                    window.location.hostname !== 'localhost' && 
+                                    window.location.hostname !== '127.0.0.1';
+                const isCode4 = video.error && video.error.code === 4;
+                const currentSrc = video.src || "";
+                const isTsStream = (currentSrc.includes('.ts') || currentSrc.includes('/live/')) && !currentSrc.includes('.m3u8');
                 
-                let errorMsg;
-                if (isMobileWeb) {
+                // If it's a completely unsupported format (e.g. error code 4), show player error immediately instead of reconnecting.
+                if (isCode4) {
+                    console.warn("[Player] Unsupported format on live stream. Showing error immediately.");
+                    let ext = isTsStream ? "TS" : "M3U8";
+                    let errorMsg;
                     if (state.language === 'fr') {
-                        errorMsg = `Ce format de flux (${ext.toUpperCase()}) n'est pas supporté par votre navigateur mobile. Vous pouvez tenter de l'ouvrir directement dans l'application VLC.`;
+                        errorMsg = `Ce format de flux (${ext}) n'est pas supporté par votre navigateur.`;
                     } else {
-                        errorMsg = `This stream format (${ext.toUpperCase()}) is not supported by your mobile browser. You can try to open it directly in the VLC app.`;
+                        errorMsg = `This stream format (${ext}) is not supported by your browser.`;
                     }
-                    showPlayerError(errorMsg, true);
-                } else {
-                    if (state.language === 'fr') {
-                        errorMsg = `Ce format de flux (${ext.toUpperCase()}) n'est pas supporté par votre navigateur. Vous pouvez l'ouvrir directement dans l'application VLC.`;
-                    } else {
-                        errorMsg = `This stream format (${ext.toUpperCase()}) is not supported by your browser. You can open it directly in the VLC app.`;
-                    }
-                    showPlayerError(errorMsg, true);
+                    showPlayerError(errorMsg, false);
+                    return;
+                }
+                
+                console.warn("[Player] Video error event fired. Attempting recovery." + errDetail);
+                if (!state.reconnectTimer) {
+                    state.reconnectTimer = setTimeout(() => {
+                        state.reconnectTimer = null;
+                        attemptReconnection();
+                    }, 2000);
                 }
             } else {
-                playerLoader.style.display = "none";
-                showToast(`${t.playerStreamError || "Erreur de lecture du flux"}${errDetail}\nURL: ${currentSrc.substring(0, 100)}`, 10000);
-                closeVideoPlayer();
+                const currentSrc = video.src || "";
+                console.error("[Player] Video playback error:" + errDetail, "URL:", currentSrc);
+                
+                const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
+                                    window.location.protocol !== 'file:' && 
+                                    !window.cordova && 
+                                    !window.AndroidApp &&
+                                    !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
+                                    window.location.hostname !== 'localhost' && 
+                                    window.location.hostname !== '127.0.0.1';
+                
+                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                const isCode4 = video.error && video.error.code === 4;
+                const isMobile = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && !isMobileWeb;
+                
+                if (isMobile || isMobileWeb || isSafari || isCode4) {
+                    let ext = "";
+                    try {
+                        const cleanUrl = currentSrc.split('?')[0].split('#')[0];
+                        const parts = cleanUrl.split('.');
+                        if (parts.length > 1) {
+                            ext = parts.pop().toLowerCase();
+                        }
+                    } catch (e) {}
+                    if (!ext || ext.length > 4) ext = "MKV/TS";
+                    
+                    let errorMsg;
+                    if (isMobileWeb) {
+                        if (state.language === 'fr') {
+                            errorMsg = `Ce format de flux (${ext.toUpperCase()}) n'est pas supporté par votre navigateur mobile. Vous pouvez tenter de l'ouvrir directement dans l'application VLC.`;
+                        } else {
+                            errorMsg = `This stream format (${ext.toUpperCase()}) is not supported by your mobile browser. You can try to open it directly in the VLC app.`;
+                        }
+                        showPlayerError(errorMsg, true);
+                    } else {
+                        if (state.language === 'fr') {
+                            errorMsg = `Ce format de flux (${ext.toUpperCase()}) n'est pas supporté par votre navigateur. Vous pouvez l'ouvrir directement dans l'application VLC.`;
+                        } else {
+                            errorMsg = `This stream format (${ext.toUpperCase()}) is not supported by your browser. You can open it directly in the VLC app.`;
+                        }
+                        showPlayerError(errorMsg, true);
+                    }
+                } else {
+                    playerLoader.style.display = "none";
+                    showToast(`${t.playerStreamError || "Erreur de lecture du flux"}${errDetail}\nURL: ${currentSrc.substring(0, 100)}`, 10000);
+                    closeVideoPlayer();
+                }
             }
         }
     };
