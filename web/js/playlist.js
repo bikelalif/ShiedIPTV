@@ -508,6 +508,13 @@ async function preloadAllData() {
         state.categories.movies = [{ category_id: "all", category_name: "Tout" }, ...movieCats];
         state.categories.series = [{ category_id: "all", category_name: "Tout" }, ...seriesCats];
         
+        const isWebapp = document.body.classList.contains("is-webapp");
+        const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.AndroidApp;
+        if (isWebapp || isMobileDevice) {
+            console.log("[Preload] Webapp/Mobile browser detected. Skipping stream preloads to optimize login speed.");
+            return;
+        }
+        
         showLoader(t.toastPreloadLive);
         await new Promise(resolve => setTimeout(resolve, 50));
         const liveStreamsRaw = await makeApiCall('get_live_streams').catch((err) => {
