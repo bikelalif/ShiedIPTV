@@ -458,7 +458,24 @@ function ensureArray(data) {
     if (!data) return [];
     if (Array.isArray(data)) return data;
     if (typeof data === 'object') {
-        return Object.values(data);
+        return Object.entries(data).map(([key, val]) => {
+            if (val && typeof val === 'object') {
+                const idNum = parseInt(key) || key;
+                // If stream_id/series_id/id is missing in the object, inject it from the dictionary key
+                if (val.stream_id === undefined && val.series_id === undefined && val.id === undefined) {
+                    val.stream_id = idNum;
+                    val.series_id = idNum;
+                    val.id = idNum;
+                } else {
+                    // Populate other ID fields if at least one is present
+                    const existingId = val.stream_id || val.series_id || val.id || idNum;
+                    if (val.stream_id === undefined) val.stream_id = existingId;
+                    if (val.series_id === undefined) val.series_id = existingId;
+                    if (val.id === undefined) val.id = existingId;
+                }
+            }
+            return val;
+        });
     }
     return [];
 }

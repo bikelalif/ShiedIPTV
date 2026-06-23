@@ -415,6 +415,8 @@ async function performLogin(url, username, password, isAutoLogin = false) {
         
         if (data && data.user_info && data.user_info.auth === 1) {
             state.isLoggedIn = true;
+            state.currentPlaylistType = 'xtream';
+            state.userInfo = data.user_info;
             
             safeStorage.local.setItem("shield_iptv_session", JSON.stringify({
                 serverUrl: state.serverUrl,
@@ -559,6 +561,8 @@ async function addXtreamCodesPlaylist(name, url, username, password) {
         
         if (data && data.user_info && data.user_info.auth === 1) {
             state.isLoggedIn = true;
+            state.currentPlaylistType = 'xtream';
+            state.userInfo = data.user_info;
             
             const playlists = loadSavedPlaylists();
             const id = "playlist_" + Date.now();

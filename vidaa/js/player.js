@@ -1,19 +1,20 @@
 function getLiveStreamExt() {
     const supportsMse = typeof mpegts !== 'undefined' && mpegts.getFeatureList && mpegts.getFeatureList().mseLivePlayback;
     const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.AndroidApp;
+    const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent);
     
-    // On iOS or when MSE is not supported, we MUST use HLS (m3u8)
-    if (!supportsMse) {
+    // On iOS, we MUST use HLS (m3u8) because MSE is not supported at all
+    if (isIos || !supportsMse) {
         return 'm3u8';
     }
     
-    // On mobile devices, default to HLS (m3u8) for mobile network stability and native player capability,
-    // unless the user has explicitly changed the setting to 'ts'
+    // On mobile devices supporting MSE (like Android Chrome), default to 'ts' for compatibility with standard IPTV TS streams,
+    // unless the user has explicitly changed the setting to 'm3u8'
     if (isMobileDevice) {
-        if (state.playerSettings && state.playerSettings.liveFormat === 'ts') {
-            return 'ts';
+        if (state.playerSettings && state.playerSettings.liveFormat) {
+            return state.playerSettings.liveFormat;
         }
-        return 'm3u8';
+        return 'ts';
     }
     
     // For PC/TV/Desktop, use user setting if defined, otherwise default to 'ts'
@@ -351,7 +352,7 @@ function launchVideoPlayer(url, title, logoUrl) {
     const isMobile = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && !isMobileWeb;
     const vlcLoaderBtn = document.getElementById("player-loader-vlc");
     if (vlcLoaderBtn) {
-        if (isMobile) {
+        if (isMobile || isMobileWeb) {
             vlcLoaderBtn.classList.remove("hidden");
         } else {
             vlcLoaderBtn.classList.add("hidden");
@@ -655,6 +656,31 @@ function bindFullscreenVideoHandlers() {
         }
         
         if (isLive) {
+            const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
+                                window.location.protocol !== 'file:' && 
+                                !window.cordova && 
+                                !window.AndroidApp &&
+                                !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent) && 
+                                window.location.hostname !== 'localhost' && 
+                                window.location.hostname !== '127.0.0.1';
+            const isCode4 = video.error && video.error.code === 4;
+            const currentSrc = video.src || "";
+            const isTsStream = (currentSrc.includes('.ts') || currentSrc.includes('/live/')) && !currentSrc.includes('.m3u8');
+            
+            // If it's a completely unsupported format (e.g. TS on iOS or error code 4), show player error with VLC button immediately instead of reconnecting in a loop.
+            if (isCode4 || (isMobileWeb && isTsStream)) {
+                console.warn("[Player] Unsupported format on live stream. Showing VLC option immediately.");
+                let ext = isTsStream ? "TS" : "M3U8";
+                let errorMsg;
+                if (state.language === 'fr') {
+                    errorMsg = `Ce format de flux (${ext}) n'est pas supporté par votre navigateur. Vous pouvez tenter de l'ouvrir directement dans l'application VLC.`;
+                } else {
+                    errorMsg = `This stream format (${ext}) is not supported by your browser. You can try to open it directly in the VLC app.`;
+                }
+                showPlayerError(errorMsg, true);
+                return;
+            }
+            
             console.warn("[Player] Video error event fired. Attempting recovery." + errDetail);
             if (!state.reconnectTimer) {
                 state.reconnectTimer = setTimeout(() => {
@@ -692,11 +718,11 @@ function bindFullscreenVideoHandlers() {
                 let errorMsg;
                 if (isMobileWeb) {
                     if (state.language === 'fr') {
-                        errorMsg = `Ce format de flux (${ext.toUpperCase()}) n'est pas supporté par votre navigateur mobile. Veuillez utiliser l'application ShieldIPTV pour lire ce contenu.`;
+                        errorMsg = `Ce format de flux (${ext.toUpperCase()}) n'est pas supporté par votre navigateur mobile. Vous pouvez tenter de l'ouvrir directement dans l'application VLC.`;
                     } else {
-                        errorMsg = `This stream format (${ext.toUpperCase()}) is not supported by your mobile browser. Please use the ShieldIPTV application to watch this content.`;
+                        errorMsg = `This stream format (${ext.toUpperCase()}) is not supported by your mobile browser. You can try to open it directly in the VLC app.`;
                     }
-                    showPlayerError(errorMsg, false);
+                    showPlayerError(errorMsg, true);
                 } else {
                     if (state.language === 'fr') {
                         errorMsg = `Ce format de flux (${ext.toUpperCase()}) n'est pas supporté par votre navigateur. Vous pouvez l'ouvrir directement dans l'application VLC.`;
@@ -916,12 +942,17 @@ function attemptReconnection() {
     
     let url = state.currentPlayingStreamUrl;
     
-    // Auto-fallback: if we are trying to reconnect a .ts stream for 2 or more times,
-    // swap the URL format to .m3u8 (HLS) which is segmented and much more stable.
-    if (state.reconnectAttempts >= 2 && url && url.includes('.ts')) {
-        console.log("[Player] Reconnection failing with TS stream, attempting HLS (.m3u8) fallback...");
-        url = url.replace('.ts', '.m3u8');
-        state.currentPlayingStreamUrl = url;
+    // Auto-fallback: swap between .ts and .m3u8 after 2 failed attempts to bypass format support limitations on some streams
+    if (state.reconnectAttempts >= 2 && url) {
+        if (url.includes('.ts')) {
+            console.log("[Player] Reconnection failing with TS stream, attempting HLS (.m3u8) fallback...");
+            url = url.replace('.ts', '.m3u8');
+            state.currentPlayingStreamUrl = url;
+        } else if (url.includes('.m3u8')) {
+            console.log("[Player] Reconnection failing with HLS stream, attempting TS (.ts) fallback...");
+            url = url.replace('.m3u8', '.ts');
+            state.currentPlayingStreamUrl = url;
+        }
     }
     
     const video = document.getElementById("video-player");

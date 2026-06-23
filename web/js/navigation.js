@@ -366,7 +366,7 @@ async function loadCategoryStreamsCached(section, categoryId) {
                 console.log(`[Stream Loader] Fetching from API: action=${action}, params=${params}`);
                 const data = await makeApiCall(action, params);
                 
-                let fetched = Array.isArray(data) ? data : [];
+                let fetched = ensureArray(data);
                 console.log(`[Stream Loader] Received ${fetched.length} streams from server`);
                 
                 if (loadAllAtOnce) {
