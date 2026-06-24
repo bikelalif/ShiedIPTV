@@ -84,10 +84,6 @@ class MainActivity : ComponentActivity() {
                 super.onPageFinished(view, url)
                 webView.evaluateJavascript("document.body.style.overflow = 'hidden';", null)
             }
-
-            override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
-                handler?.proceed()
-            }
         }
 
         webView.loadUrl("file:///android_asset/www/index.html")
