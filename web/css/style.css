@@ -1773,36 +1773,28 @@ body.tv-mode #player-btn-play:focus-visible, body.tv-mode #player-btn-play.focus
 }
 
 .player-volume-slider-wrapper {
-    width: 0;
+    width: 100px;
     overflow: hidden;
-    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-    opacity: 0;
+    opacity: 1;
     display: flex;
     align-items: center;
-}
-
-.player-volume-container:hover .player-volume-slider-wrapper,
-.player-volume-container:focus-within .player-volume-slider-wrapper {
-    width: 100px;
-    opacity: 1;
 }
 
 #player-volume-slider {
     width: 90px;
     height: 6px;
-    background: rgba(255, 255, 255, 0.2);
+    background: transparent;
     border-radius: 3px;
     outline: none;
     -webkit-appearance: none;
     cursor: pointer;
-    transition: background 0.15s ease;
 }
 
 #player-volume-slider::-webkit-slider-runnable-track {
     width: 100%;
     height: 6px;
     cursor: pointer;
-    background: rgba(255, 255, 255, 0.15);
+    background: linear-gradient(to right, var(--primary) 0%, var(--primary) var(--volume-percent, 100%), rgba(255, 255, 255, 0.15) var(--volume-percent, 100%), rgba(255, 255, 255, 0.15) 100%);
     border-radius: 3px;
 }
 

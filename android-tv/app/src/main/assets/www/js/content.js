@@ -187,13 +187,23 @@ function renderEpisodes(epList, seasonNum) {
             
             state.currentPlayingStream = { item: ep, section: 'series', seasonNum: seasonNum };
             
-            // On Android TV, use native ExoPlayer for all series episodes (full codec support)
+            // On Android TV, use native player (ExoPlayer or VLC) based on settings
+            const targetPlayer = getPlayerForSection('series');
             if (window.AndroidApp) {
-                resolveUrlWithDoH(playUrl, false).then(resolvedUrl => {
-                    console.log("[Android TV] Playing series via ExoPlayer:", resolvedUrl);
-                    window.AndroidApp.playStream(resolvedUrl, displayTitle, state.currentSeriesDetails.info.cover || "");
-                });
-                return;
+                if (targetPlayer === 'exoplayer') {
+                    resolveUrlWithDoH(playUrl, false).then(resolvedUrl => {
+                        console.log("[Android TV] Playing series via ExoPlayer:", resolvedUrl);
+                        window.AndroidApp.playStream(resolvedUrl, displayTitle, state.currentSeriesDetails.info.cover || "");
+                    });
+                    return;
+                } else if (targetPlayer === 'vlc') {
+                    state.externalPlayerLaunched = true;
+                    resolveUrlWithDoH(playUrl, false).then(resolvedUrl => {
+                        console.log("[Android TV] Playing series via VLC Android App:", resolvedUrl);
+                        window.AndroidApp.openVlcPlayer(resolvedUrl);
+                    });
+                    return;
+                }
             }
             
             // On Web, PC and Mobile Web, attempt to play HLS (.m3u8) format first to leverage

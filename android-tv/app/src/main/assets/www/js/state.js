@@ -228,10 +228,10 @@ const state = {
     
     // Video player selection settings (ExoPlayer vs HTML5 default)
     playerSettings: {
-        live: 'html5',
+        live: (window.AndroidApp || (typeof navigator !== 'undefined' && /Android|GoogleTV|AndroidTV|FireTV/i.test(navigator.userAgent))) ? 'exoplayer_preview' : 'html5',
         liveFormat: 'ts',
-        movies: 'exoplayer',
-        series: 'exoplayer'
+        movies: (window.AndroidApp || (typeof navigator !== 'undefined' && /Android|GoogleTV|AndroidTV|FireTV/i.test(navigator.userAgent))) ? 'exoplayer' : ((window.electronAPI && window.electronAPI.isElectron) ? 'mpv' : 'html5'),
+        series: (window.AndroidApp || (typeof navigator !== 'undefined' && /Android|GoogleTV|AndroidTV|FireTV/i.test(navigator.userAgent))) ? 'exoplayer' : ((window.electronAPI && window.electronAPI.isElectron) ? 'mpv' : 'html5')
     },
     exoplayerLaunchedForLive: false
 };
@@ -318,6 +318,8 @@ const TRANSLATIONS = {
         playerOptionDefault: "Lecteur par défaut (HTML5)",
         playerOptionExo: "ExoPlayer (Pur / Plein Écran)",
         playerOptionExoPreview: "ExoPlayer (Avec Prévisualisation)",
+        playerOptionVlc: "Lecteur VLC",
+        playerOptionMpv: "Lecteur MPV",
         subInfo: "Informations de l'abonnement",
         subStatus: "Statut du compte :",
         subExpiry: "Date d'expiration :",
@@ -451,6 +453,8 @@ const TRANSLATIONS = {
         playerOptionDefault: "Default Player (HTML5)",
         playerOptionExo: "ExoPlayer (Pure / Fullscreen)",
         playerOptionExoPreview: "ExoPlayer (With Preview)",
+        playerOptionVlc: "VLC Player",
+        playerOptionMpv: "MPV Player",
         subInfo: "Subscription Information",
         subStatus: "Account Status:",
         subExpiry: "Expiration Date:",
@@ -584,6 +588,8 @@ const TRANSLATIONS = {
         playerOptionDefault: "Reproductor predeterminado (HTML5)",
         playerOptionExo: "ExoPlayer (Puro / Pantalla completa)",
         playerOptionExoPreview: "ExoPlayer (Con vista previa)",
+        playerOptionVlc: "Reproductor VLC",
+        playerOptionMpv: "Reproductor MPV",
         subInfo: "Información de la Suscripción",
         subStatus: "Estado de la cuenta:",
         subExpiry: "Fecha de expiración:",
@@ -716,6 +722,8 @@ const TRANSLATIONS = {
         playerOptionDefault: "Lettore predefinito (HTML5)",
         playerOptionExo: "ExoPlayer (Puro / Schermo intero)",
         playerOptionExoPreview: "ExoPlayer (Con anteprima)",
+        playerOptionVlc: "Lettore VLC",
+        playerOptionMpv: "Lettore MPV",
         subInfo: "Informazioni sull'abbonamento",
         subStatus: "Stato dell'account:",
         subExpiry: "Data di scadenza:",
@@ -1158,17 +1166,9 @@ function applyLanguage(lang) {
     const settingsPlayerSeriesLabel = document.getElementById("settings-player-series-label");
     if (settingsPlayerSeriesLabel) settingsPlayerSeriesLabel.innerText = t.settingsPlayerSeriesLabel || "Séries (Series)";
 
-    const optionLiveDefault = document.querySelector("#setting-player-live option[value='html5']");
-    if (optionLiveDefault) optionLiveDefault.innerText = t.playerOptionDefault || "Lecteur par défaut (HTML5)";
-    const optionLiveExo = document.querySelector("#setting-player-live option[value='exoplayer']");
-    if (optionLiveExo) optionLiveExo.innerText = t.playerOptionExo || "ExoPlayer (Pur / Plein Écran)";
-    const optionLiveExoPreview = document.querySelector("#setting-player-live option[value='exoplayer_preview']");
-    if (optionLiveExoPreview) optionLiveExoPreview.innerText = t.playerOptionExoPreview || "ExoPlayer (Avec Prévisualisation)";
-    
-    const optionMoviesExo = document.querySelector("#setting-player-movies option[value='exoplayer']");
-    if (optionMoviesExo) optionMoviesExo.innerText = t.playerOptionExo || "ExoPlayer (Pur / Plein Écran)";
-    const optionSeriesExo = document.querySelector("#setting-player-series option[value='exoplayer']");
-    if (optionSeriesExo) optionSeriesExo.innerText = t.playerOptionExo || "ExoPlayer (Pur / Plein Écran)";
+    if (typeof initPlayerSettingsDropdowns === 'function') {
+        initPlayerSettingsDropdowns(lang);
+    }
     
     updateBreadcrumbs();
     
@@ -1201,4 +1201,101 @@ function updateBreadcrumbs() {
             breadcrumbCategory.innerText = t.breadcrumbAll;
         }
     }
+}
+
+function initPlayerSettingsDropdowns(lang) {
+    const newLang = lang || state.language || 'en';
+    const t = TRANSLATIONS[newLang];
+    
+    const isElectron = !!(window.electronAPI && window.electronAPI.isElectron);
+    const isAndroid = !!window.AndroidApp;
+    const isWeb = !isElectron && !isAndroid && !isTvWrapper;
+    
+    const vlcLabel = t.playerOptionVlc || "Lecteur VLC";
+    const mpvLabel = t.playerOptionMpv || "Lecteur MPV";
+    const html5Label = t.playerOptionDefault || "Lecteur par défaut (HTML5)";
+    const exoLabel = t.playerOptionExo || "ExoPlayer (Pur / Plein Écran)";
+    const exoPreviewLabel = t.playerOptionExoPreview || "ExoPlayer (Avec Prévisualisation)";
+
+    // 1. Live player options
+    const liveSelect = document.getElementById("setting-player-live");
+    if (liveSelect) {
+        const currentVal = liveSelect.value || state.playerSettings.live || 'html5';
+        liveSelect.innerHTML = "";
+        
+        addOption(liveSelect, "html5", html5Label);
+        if (isAndroid) {
+            addOption(liveSelect, "exoplayer", exoLabel);
+            addOption(liveSelect, "exoplayer_preview", exoPreviewLabel);
+        }
+        if (isElectron) {
+            addOption(liveSelect, "mpv", mpvLabel);
+        }
+        if (!isWeb) {
+            addOption(liveSelect, "vlc", vlcLabel);
+        }
+        
+        liveSelect.value = currentVal;
+        if (!liveSelect.value) {
+            liveSelect.value = isAndroid ? "exoplayer_preview" : "html5";
+        }
+        state.playerSettings.live = liveSelect.value;
+    }
+
+    // 2. Movies player options
+    const moviesSelect = document.getElementById("setting-player-movies");
+    if (moviesSelect) {
+        const currentVal = moviesSelect.value || state.playerSettings.movies || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'));
+        moviesSelect.innerHTML = "";
+        
+        if (isElectron) {
+            addOption(moviesSelect, "mpv", mpvLabel);
+        }
+        if (!isAndroid) {
+            addOption(moviesSelect, "html5", html5Label);
+        } else {
+            addOption(moviesSelect, "exoplayer", exoLabel);
+        }
+        if (!isWeb) {
+            addOption(moviesSelect, "vlc", vlcLabel);
+        }
+        
+        moviesSelect.value = currentVal;
+        if (!moviesSelect.value) {
+            moviesSelect.value = isElectron ? "mpv" : (isAndroid ? "exoplayer" : "html5");
+        }
+        state.playerSettings.movies = moviesSelect.value;
+    }
+
+    // 3. Series player options
+    const seriesSelect = document.getElementById("setting-player-series");
+    if (seriesSelect) {
+        const currentVal = seriesSelect.value || state.playerSettings.series || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'));
+        seriesSelect.innerHTML = "";
+        
+        if (isElectron) {
+            addOption(seriesSelect, "mpv", mpvLabel);
+        }
+        if (!isAndroid) {
+            addOption(seriesSelect, "html5", html5Label);
+        } else {
+            addOption(seriesSelect, "exoplayer", exoLabel);
+        }
+        if (!isWeb) {
+            addOption(seriesSelect, "vlc", vlcLabel);
+        }
+        
+        seriesSelect.value = currentVal;
+        if (!seriesSelect.value) {
+            seriesSelect.value = isElectron ? "mpv" : (isAndroid ? "exoplayer" : "html5");
+        }
+        state.playerSettings.series = seriesSelect.value;
+    }
+}
+
+function addOption(select, value, text) {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.innerText = text;
+    select.appendChild(opt);
 }

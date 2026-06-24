@@ -122,6 +122,17 @@ function resumeLivePreviewIfNeeded() {
 window.onAndroidResume = function() {
     console.log("[Android Native] onAndroidResume event received");
     resumeLivePreviewIfNeeded();
+    
+    if (state.externalPlayerLaunched) {
+        state.externalPlayerLaunched = false;
+        console.log("[Android Native] Returned from external player, restoring focus...");
+        if (state.lastFocusedElement && document.body.contains(state.lastFocusedElement) && state.lastFocusedElement.offsetWidth > 0) {
+            setTimeout(() => {
+                state.lastFocusedElement.focus();
+                state.lastFocusedElement.scrollIntoView({ block: 'nearest' });
+            }, 100);
+        }
+    }
 };
 
 window.onAndroidAppResumeFromBackground = function() {

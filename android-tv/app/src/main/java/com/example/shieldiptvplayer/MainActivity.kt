@@ -433,6 +433,31 @@ class WebAppInterface(private val activity: MainActivity) {
     }
 
     @android.webkit.JavascriptInterface
+    fun openVlcPlayer(url: String) {
+        activity.runOnUiThread {
+            try {
+                MainActivity.isLaunchingPlayerActivity = true
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                    setDataAndType(android.net.Uri.parse(url), "video/*")
+                    setPackage("org.videolan.vlc")
+                    component = android.content.ComponentName("org.videolan.vlc", "org.videolan.vlc.gui.video.VideoPlayerActivity")
+                }
+                activity.startActivity(intent)
+            } catch (e: Exception) {
+                android.widget.Toast.makeText(activity, "VLC Player non installé. Lancement du lecteur par défaut...", android.widget.Toast.LENGTH_LONG).show()
+                try {
+                    val fallbackIntent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                        setDataAndType(android.net.Uri.parse(url), "video/*")
+                    }
+                    activity.startActivity(fallbackIntent)
+                } catch (ex: Exception) {
+                    android.widget.Toast.makeText(activity, "Aucun lecteur vidéo trouvé.", android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    @android.webkit.JavascriptInterface
     fun startPreview(url: String, x: Double, y: Double, width: Double, height: Double) {
         activity.startPreview(url, x.toFloat(), y.toFloat(), width.toFloat(), height.toFloat())
     }

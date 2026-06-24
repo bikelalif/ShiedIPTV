@@ -264,22 +264,17 @@ function buildMpvArgs(url) {
     return [
         url,
         '--no-config',
-        '--no-border',
         '--force-window=yes',
         '--idle=no',
         '--osc=yes',                              // native on-screen controller (play/pause/seek bar)
-        '--script-opts=osc-visibility=always',    // keep the control bar always visible
         '--input-default-bindings=yes',           // keyboard shortcuts (space, arrows, f...)
         '--input-vo-keyboard=yes',
-        '--cursor-autohide=no',                   // keep the cursor visible to click the buttons
-        '--auto-window-resize=no',                // don't let mpv shrink its window to the video size
-        '--no-window-dragging',                   // we own the window placement
         '--hwdec=auto-safe',
         '--keep-open=no',
         '--cache=yes',
         '--network-timeout=20',
         '--user-agent=ShieldIPTV',
-        `--input-ipc-server=${mpvIpcPipe()}`
+        '--title=Shield IPTV - Lecteur Externe'
     ];
 }
 
@@ -510,7 +505,6 @@ ipcMain.handle('play-native', async (event, engine, url, rect) => {
     console.log(`[Native] play-native (${engine}):`, url);
     stopNativePlayer();
     nativeEngine = engine;
-    if (rect) nativeRect = rect;
 
     if (engine === 'mpv') {
         nativeProc = spawnMpv(url);
@@ -525,7 +519,6 @@ ipcMain.handle('play-native', async (event, engine, url, rect) => {
     nativeProc.on('close', () => {
         if (nativeProc && nativeProc.pid === pid) {
             nativeProc = null;
-            nativeEmbedded = false;
             nativeEngine = null;
             if (mainWindow && !mainWindow.isDestroyed()) {
                 mainWindow.webContents.send('native-exited');
@@ -533,18 +526,7 @@ ipcMain.handle('play-native', async (event, engine, url, rect) => {
         }
     });
 
-    embedNativeWindow(pid);
     registerNativeShortcuts();
-
-    if (nativeReassertTimer) clearInterval(nativeReassertTimer);
-    nativeReassertTimer = setInterval(() => {
-        if (nativeProc && nativeEmbedded) {
-            positionNativeWindow();
-        } else {
-            clearInterval(nativeReassertTimer);
-            nativeReassertTimer = null;
-        }
-    }, 700);
     return true;
 });
 

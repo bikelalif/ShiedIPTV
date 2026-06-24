@@ -64,9 +64,9 @@ async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
             // Only substitute IP if:
             // 1. It is a live stream (which we always want to bypass DNS for)
             // 2. OR it is an image hosted on our IPTV server (to bypass ISP block on server domain)
-            if (isLiveStream || (isImage && isIptvServer)) {
+            if (isLiveStream || isIptvServer) {
                 parsedUrl.hostname = ip;
-                console.log(`[DoH] Resolved & Substituted IP (${isLiveStream ? 'Live Stream' : 'IPTV Image'}): ${hostname} -> ${ip}`);
+                console.log(`[DoH] Resolved & Substituted IP: ${hostname} -> ${ip}`);
                 return parsedUrl.toString();
             }
         }
