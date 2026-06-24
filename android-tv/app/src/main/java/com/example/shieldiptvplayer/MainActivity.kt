@@ -3,13 +3,19 @@ package com.example.shieldiptvplayer
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.net.http.SslError
 import android.webkit.SslErrorHandler
+import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
+import androidx.media3.ui.AspectRatioFrameLayout
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -18,6 +24,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private lateinit var webView: WebView
+    private lateinit var playerView: PlayerView
+    private var previewPlayer: ExoPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,8 +43,30 @@ class MainActivity : ComponentActivity() {
             or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         )
 
-        webView = WebView(this)
-        setContentView(webView)
+        val rootLayout = FrameLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+
+        webView = WebView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+        rootLayout.addView(webView)
+
+        playerView = PlayerView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(0, 0)
+            useController = false
+            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+            visibility = View.GONE
+        }
+        rootLayout.addView(playerView)
+
+        setContentView(rootLayout)
 
         val settings = webView.settings
         settings.javaScriptEnabled = true
@@ -123,6 +153,72 @@ class MainActivity : ComponentActivity() {
         }
         return super.onKeyDown(keyCode, event)
     }
+
+    fun startPreview(url: String, x: Float, y: Float, width: Float, height: Float) {
+        runOnUiThread {
+            try {
+                releasePreviewPlayer()
+
+                val newPlayer = ExoPlayer.Builder(this).build().apply {
+                    setMediaItem(MediaItem.fromUri(url))
+                    prepare()
+                    playWhenReady = true
+                }
+                previewPlayer = newPlayer
+
+                val density = resources.displayMetrics.density
+                val params = FrameLayout.LayoutParams(
+                    Math.round(width * density),
+                    Math.round(height * density)
+                ).apply {
+                    leftMargin = Math.round(x * density)
+                    topMargin = Math.round(y * density)
+                }
+
+                playerView.layoutParams = params
+                playerView.player = newPlayer
+                playerView.visibility = View.VISIBLE
+                
+                android.util.Log.d("MainActivity", "Native preview started at x=$x, y=$y, w=$width, h=$height with URL: $url")
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Failed to start native preview: ${e.message}", e)
+            }
+        }
+    }
+
+    fun stopPreview() {
+        runOnUiThread {
+            try {
+                playerView.visibility = View.GONE
+                playerView.player = null
+                releasePreviewPlayer()
+                android.util.Log.d("MainActivity", "Native preview stopped")
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Failed to stop native preview: ${e.message}", e)
+            }
+        }
+    }
+
+    private fun releasePreviewPlayer() {
+        previewPlayer?.let {
+            it.release()
+            previewPlayer = null
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        runOnUiThread {
+            playerView.visibility = View.GONE
+            playerView.player = null
+        }
+        releasePreviewPlayer()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        releasePreviewPlayer()
+    }
 }
 
 class WebAppInterface(private val activity: MainActivity) {
@@ -150,5 +246,15 @@ class WebAppInterface(private val activity: MainActivity) {
                 android.widget.Toast.makeText(activity, "No video player (like VLC) found.", android.widget.Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    @android.webkit.JavascriptInterface
+    fun startPreview(url: String, x: Float, y: Float, width: Float, height: Float) {
+        activity.startPreview(url, x, y, width, height)
+    }
+
+    @android.webkit.JavascriptInterface
+    fun stopPreview() {
+        activity.stopPreview()
     }
 }

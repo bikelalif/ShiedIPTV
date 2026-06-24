@@ -1035,6 +1035,9 @@ function clearLoadingTimeout() {
 function destroyMpegtsPlayer() {
     clearLoadingTimeout();
     state.playbackStarted = false;
+    if (window.AndroidApp && typeof window.AndroidApp.stopPreview === 'function') {
+        window.AndroidApp.stopPreview();
+    }
     if (state.currentHlsBlobUrl) {
         console.log("[Player] Revoking previous HLS playlist blob URL:", state.currentHlsBlobUrl);
         try {
@@ -1255,6 +1258,15 @@ async function loadLivePreview(item) {
     const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${previewExt}`;
     
     resolveUrlWithDoH(streamUrl, true).then(async resolvedUrl => {
+        if (window.AndroidApp && typeof window.AndroidApp.startPreview === 'function') {
+            const container = document.getElementById("preview-video-container") || video;
+            const rect = container.getBoundingClientRect();
+            if (loader) loader.classList.add("hidden");
+            if (playerLoader) playerLoader.style.display = "none";
+            console.log("[Preview] Starting native ExoPlayer preview:", resolvedUrl, rect);
+            window.AndroidApp.startPreview(resolvedUrl, rect.left, rect.top, rect.width, rect.height);
+            return;
+        }
         const isTsStream = (resolvedUrl.includes('.ts') || resolvedUrl.includes('/live/')) && !resolvedUrl.includes('.m3u8');
         
         if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
