@@ -40,6 +40,14 @@ function getLiveStreamExt() {
     return 'ts';
 }
 
+function getPlayerForSection(section) {
+    if (!state.playerSettings) return 'html5';
+    if (section === 'live') return state.playerSettings.live || 'html5';
+    if (section === 'movies') return state.playerSettings.movies || (window.AndroidApp ? 'exoplayer' : 'html5');
+    if (section === 'series') return state.playerSettings.series || (window.AndroidApp ? 'exoplayer' : 'html5');
+    return 'html5';
+}
+
 async function playMedia(item, section) {
     const isMobileWeb = (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) && 
                         window.location.protocol !== 'file:' && 
@@ -60,13 +68,26 @@ async function playMedia(item, section) {
     }
     
     if (section === 'live') {
-        if (window.AndroidApp && state.playerSettings && state.playerSettings.live === 'exoplayer') {
+        const targetPlayer = getPlayerForSection(section);
+        if (window.AndroidApp && targetPlayer === 'exoplayer') {
             state.currentPlayingStream = { item, section };
             const ext = getLiveStreamExt();
             const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
             resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
                 console.log("[Android TV] Playing Live TV via ExoPlayer:", resolvedUrl);
                 window.AndroidApp.playStream(resolvedUrl, item.name, item.stream_icon || item.cover || "");
+            });
+            return;
+        }
+
+        if (window.AndroidApp && targetPlayer === 'vlc') {
+            state.currentPlayingStream = { item, section };
+            state.externalPlayerLaunched = true;
+            const ext = getLiveStreamExt();
+            const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
+            resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
+                console.log("[Android TV] Playing Live TV via VLC Android App:", resolvedUrl);
+                window.AndroidApp.openVlcPlayer(resolvedUrl);
             });
             return;
         }
@@ -89,7 +110,7 @@ async function playMedia(item, section) {
         }
         
         if (isMobile || isPlayerOpen || (state.currentPlayingStream && state.currentPlayingStream.section === 'live' && state.currentPlayingStream.item.stream_id === item.stream_id)) {
-            if (window.AndroidApp && state.playerSettings && state.playerSettings.live === 'exoplayer_preview') {
+            if (window.AndroidApp && targetPlayer === 'exoplayer_preview') {
                 state.currentPlayingStream = { item, section };
                 
                 // Stop HTML5 preview playback
@@ -151,16 +172,27 @@ async function playMedia(item, section) {
     // VOD (movies)
     state.currentPlayingStream = { item, section };
     
-    // On Android TV, use native ExoPlayer for all VOD movies (full codec support)
-    // Resolve URL with DoH first to bypass ISP DNS blocking
+    // On Android TV, use native player (ExoPlayer or VLC) based on VOD settings
+    const targetPlayer = getPlayerForSection(section);
     if (window.AndroidApp) {
-        const ext = (item.container_extension || "mp4").toLowerCase();
-        const streamUrl = item.url || `${state.serverUrl}/movie/${state.username}/${state.password}/${item.stream_id}.${ext}`;
-        resolveUrlWithDoH(streamUrl, false).then(resolvedUrl => {
-            console.log("[Android TV] Playing VOD via ExoPlayer:", resolvedUrl);
-            window.AndroidApp.playStream(resolvedUrl, item.name, item.stream_icon || item.cover || "");
-        });
-        return;
+        if (targetPlayer === 'exoplayer') {
+            const ext = (item.container_extension || "mp4").toLowerCase();
+            const streamUrl = item.url || `${state.serverUrl}/movie/${state.username}/${state.password}/${item.stream_id}.${ext}`;
+            resolveUrlWithDoH(streamUrl, false).then(resolvedUrl => {
+                console.log("[Android TV] Playing VOD via ExoPlayer:", resolvedUrl);
+                window.AndroidApp.playStream(resolvedUrl, item.name, item.stream_icon || item.cover || "");
+            });
+            return;
+        } else if (targetPlayer === 'vlc') {
+            state.externalPlayerLaunched = true;
+            const ext = (item.container_extension || "mp4").toLowerCase();
+            const streamUrl = item.url || `${state.serverUrl}/movie/${state.username}/${state.password}/${item.stream_id}.${ext}`;
+            resolveUrlWithDoH(streamUrl, false).then(resolvedUrl => {
+                console.log("[Android TV] Playing VOD via VLC Android App:", resolvedUrl);
+                window.AndroidApp.openVlcPlayer(resolvedUrl);
+            });
+            return;
+        }
     }
     
     // On Web, PC and Mobile Web, attempt to play HLS (.m3u8) format first to leverage
@@ -452,14 +484,10 @@ function launchVideoPlayer(url, title, logoUrl) {
     destroyPreviewMpegtsPlayer();
     state.currentPlayingStream = preservedStream;
     
-    const isVodOrSeries = state.currentPlayingStream && (state.currentPlayingStream.section === 'movies' || state.currentPlayingStream.section === 'series');
-    if (isVodOrSeries && !window.AndroidApp && !isTvWrapper) {
-        destroyMpegtsPlayer();
-        
-        // Show player screen
-        showScreen("player-screen");
-        
-        // If Electron is running, dock VLC in the UI
+    const section = state.currentPlayingStream ? state.currentPlayingStream.section : 'movies';
+    const targetPlayer = getPlayerForSection(section);
+    
+    if ((targetPlayer === 'vlc' || targetPlayer === 'mpv') && !window.AndroidApp && !isTvWrapper) {
         if (window.electronAPI && window.electronAPI.isElectron) {
             // Show embedded container
             const vlcContainer = document.getElementById("vlc-embedded-container");
@@ -495,37 +523,50 @@ function launchVideoPlayer(url, title, logoUrl) {
                 subtitleEl.innerText = "";
             }
             
+            // Translate the help title based on active engine
+            const helpTitleEl = document.querySelector("#vlc-embedded-container .vlc-help h3");
+            if (helpTitleEl) {
+                helpTitleEl.innerText = targetPlayer === 'vlc' ? "Contrôles VLC" : "Contrôles MPV";
+            }
+
             // Display notice inside the dock element
+            const engineLabel = targetPlayer === 'vlc' ? "VLC" : "MPV";
+            const iconColor = targetPlayer === 'vlc' ? "#ff8800" : "#10b981"; // orange for VLC, green for MPV
             const playbackMsg = state.language === 'fr' 
-                ? "Lecture en cours dans VLC (Fenêtre Externe)" 
-                : "Playback in progress in VLC (External Window)";
+                ? `Lecture en cours dans ${engineLabel} (Fenêtre Externe)` 
+                : `Playback in progress in ${engineLabel} (External Window)`;
             const returnMsg = state.language === 'fr'
-                ? "Le flux vidéo a été ouvert dans une fenêtre VLC séparée.<br>Fermez VLC ou cliquez ci-dessous pour retourner à l'application."
-                : "The video stream was opened in a separate VLC window.<br>Close VLC or click below to return to the application.";
+                ? `Le flux vidéo a été ouvert dans une fenêtre ${engineLabel} séparée.<br>Fermez ${engineLabel} ou cliquez ci-dessous pour retourner à l'application.`
+                : `The video stream was opened in a separate ${engineLabel} window.<br>Close ${engineLabel} or click below to return to the application.`;
             const btnMsg = state.language === 'fr'
                 ? "Retourner à l'application"
                 : "Return to the application";
 
             const dockEl = document.getElementById("vlc-video-dock");
-            dockEl.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #fff; text-align: center; gap: 1.5rem; padding: 2rem; background: #050811; border-radius: 12px; box-shadow: inset 0 0 50px rgba(0,0,0,0.8);">
-                    <span class="material-icons" style="font-size: 80px; color: #ff8800; animation: pulse 2s infinite;">play_circle_outline</span>
-                    <h2 style="margin: 0; font-size: 1.8rem; font-weight: 600; color: #ff8800;">${playbackMsg}</h2>
-                    <p style="margin: 0; color: #8a99ad; font-size: 1.1rem; max-width: 500px; line-height: 1.6;">
-                        ${returnMsg}
-                    </p>
-                    <button class="focusable" id="vlc-external-btn-close" style="padding: 0.8rem 2rem; font-size: 1.1rem; border-radius: 10px; border: none; background: #ef4444; color: white; cursor: pointer; font-weight: 600; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; transition: background 0.2s; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);">
-                        <span class="material-icons">arrow_back</span>
-                        <span>${btnMsg}</span>
-                    </button>
-                </div>
-            `;
+            if (dockEl) {
+                dockEl.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #fff; text-align: center; gap: 1.5rem; padding: 2rem; background: #050811; border-radius: 12px; box-shadow: inset 0 0 50px rgba(0,0,0,0.8);">
+                        <span class="material-icons" style="font-size: 80px; color: ${iconColor}; animation: pulse 2s infinite;">play_circle_outline</span>
+                        <h2 style="margin: 0; font-size: 1.8rem; font-weight: 600; color: ${iconColor};">${playbackMsg}</h2>
+                        <p style="margin: 0; color: #8a99ad; font-size: 1.1rem; max-width: 500px; line-height: 1.6;">
+                            ${returnMsg}
+                        </p>
+                        <button class="focusable" id="vlc-external-btn-close" style="padding: 0.8rem 2rem; font-size: 1.1rem; border-radius: 10px; border: none; background: #ef4444; color: white; cursor: pointer; font-weight: 600; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; transition: background 0.2s; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);">
+                            <span class="material-icons">arrow_back</span>
+                            <span>${btnMsg}</span>
+                        </button>
+                    </div>
+                `;
+            }
             
-            document.getElementById("vlc-external-btn-close").addEventListener("click", () => {
-                closeVideoPlayer();
-            });
+            const extBtnClose = document.getElementById("vlc-external-btn-close");
+            if (extBtnClose) {
+                extBtnClose.addEventListener("click", () => {
+                    closeVideoPlayer();
+                });
+            }
 
-            // Use the original container extension (MKV/MP4) for VLC instead of M3U8, since VLC has native codec support
+            // Use the original container extension for external player instead of M3U8, since they have native codec support
             let targetUrl = url;
             if (state.currentPlayingStream && state.currentPlayingStream.item) {
                 const originalExt = (state.currentPlayingStream.item.container_extension || "mp4").toLowerCase();
@@ -534,10 +575,14 @@ function launchVideoPlayer(url, title, logoUrl) {
                 targetUrl = `${state.serverUrl}/${section === 'series' ? 'series' : 'movie'}/${state.username}/${state.password}/${streamId}.${originalExt}`;
             }
 
-            // Resolve the URL using DoH (forcing IP substitution to bypass ISP DNS block)
+            // Resolve the URL using DoH
             resolveUrlWithDoH(targetUrl, true).then(resolvedUrl => {
-                console.log("[VLC] Launching with DoH resolved URL:", resolvedUrl);
-                window.electronAPI.dockVlc(resolvedUrl, { x: 0, y: 0, width: 0, height: 0 });
+                console.log(`[${engineLabel}] Launching with DoH resolved URL:`, resolvedUrl);
+                if (targetPlayer === 'vlc') {
+                    window.electronAPI.dockVlc(resolvedUrl, { x: 0, y: 0, width: 0, height: 0 });
+                } else {
+                    window.electronAPI.playNative('mpv', resolvedUrl);
+                }
             });
             return;
         }
@@ -1684,6 +1729,9 @@ function closeVideoPlayer() {
     // Undock VLC and stop process if Electron
     if (window.electronAPI && window.electronAPI.isElectron) {
         window.electronAPI.undockVlc();
+        if (typeof window.electronAPI.stopNative === 'function') {
+            window.electronAPI.stopNative();
+        }
         if (window.vlcResizeHandler) {
             window.removeEventListener("resize", window.vlcResizeHandler);
             window.vlcResizeHandler = null;
@@ -1928,13 +1976,23 @@ function showZapDrawer() {
                 
                 state.currentPlayingStream = { item: ep, section: 'series', seasonNum: seasonNum };
                 
-                // On Android TV, use native ExoPlayer with DoH resolution
+                // On Android TV, use native player (ExoPlayer or VLC) based on settings
+                const targetPlayer = getPlayerForSection('series');
                 if (window.AndroidApp) {
-                    resolveUrlWithDoH(playUrl, false).then(resolvedUrl => {
-                        console.log("[Android TV] Playing series (zap) via ExoPlayer:", resolvedUrl);
-                        window.AndroidApp.playStream(resolvedUrl, displayTitle, state.currentSeriesDetails.info.cover || "");
-                    });
-                    return;
+                    if (targetPlayer === 'exoplayer') {
+                        resolveUrlWithDoH(playUrl, false).then(resolvedUrl => {
+                            console.log("[Android TV] Playing series (zap) via ExoPlayer:", resolvedUrl);
+                            window.AndroidApp.playStream(resolvedUrl, displayTitle, state.currentSeriesDetails.info.cover || "");
+                        });
+                        return;
+                    } else if (targetPlayer === 'vlc') {
+                        state.externalPlayerLaunched = true;
+                        resolveUrlWithDoH(playUrl, false).then(resolvedUrl => {
+                            console.log("[Android TV] Playing series (zap) via VLC Android App:", resolvedUrl);
+                            window.AndroidApp.openVlcPlayer(resolvedUrl);
+                        });
+                        return;
+                    }
                 }
                 
                 launchVideoPlayer(playUrl, displayTitle, state.currentSeriesDetails.info.cover);

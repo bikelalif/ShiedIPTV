@@ -56,12 +56,34 @@ function initApp() {
                 const urlEl = document.getElementById("setting-doh-url");
                 if (urlEl) urlEl.value = state.dohResolver;
 
+                const isAndroid = !!(window.AndroidApp || (typeof navigator !== 'undefined' && /Android|GoogleTV|AndroidTV|FireTV/i.test(navigator.userAgent)));
+                const isElectron = !!(window.electronAPI && window.electronAPI.isElectron);
                 if (settings.playerSettings) {
                     state.playerSettings = {
-                        live: settings.playerSettings.live || 'html5',
+                        live: settings.playerSettings.live || (isAndroid ? 'exoplayer_preview' : 'html5'),
                         liveFormat: settings.playerSettings.liveFormat || 'ts',
-                        movies: settings.playerSettings.movies || 'exoplayer',
-                        series: settings.playerSettings.series || 'exoplayer'
+                        movies: settings.playerSettings.movies || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5')),
+                        series: settings.playerSettings.series || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'))
+                    };
+                    
+                    // Force Android TV defaults if they are set to incompatible 'html5' or if they are missing
+                    if (isAndroid) {
+                        if (!state.playerSettings.live || state.playerSettings.live === 'html5') {
+                            state.playerSettings.live = 'exoplayer_preview';
+                        }
+                        if (!state.playerSettings.movies || state.playerSettings.movies === 'html5') {
+                            state.playerSettings.movies = 'exoplayer';
+                        }
+                        if (!state.playerSettings.series || state.playerSettings.series === 'html5') {
+                            state.playerSettings.series = 'exoplayer';
+                        }
+                    }
+                } else {
+                    state.playerSettings = {
+                        live: isAndroid ? 'exoplayer_preview' : 'html5',
+                        liveFormat: 'ts',
+                        movies: isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'),
+                        series: isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5')
                     };
                 }
                 
@@ -670,6 +692,14 @@ function setupEventListeners() {
         }
     });
     
+    const zapDrawerClose = document.getElementById("zap-drawer-close");
+    if (zapDrawerClose) {
+        zapDrawerClose.addEventListener("click", (e) => {
+            e.stopPropagation();
+            closeZapDrawer();
+        });
+    }
+    
     document.getElementById("player-btn-fullscreen").addEventListener("click", () => {
         toggleFullscreen();
     });
@@ -681,6 +711,12 @@ function setupEventListeners() {
     const video = document.getElementById("video-player");
 
     if (volumeSlider && volumeBtn && volumeIcon && video) {
+        const updateVolumeSliderTrack = () => {
+            const val = parseFloat(volumeSlider.value);
+            const percent = isNaN(val) ? 100 : Math.min(100, Math.max(0, val * 100));
+            volumeSlider.style.setProperty('--volume-percent', percent + '%');
+        };
+
         // Set initial volume from local storage if available
         try {
             const savedVolume = safeStorage.local.getItem("player_volume");
@@ -693,6 +729,7 @@ function setupEventListeners() {
                 video.volume = 1.0;
                 volumeSlider.value = 1.0;
             }
+            updateVolumeSliderTrack();
         } catch (e) {
             console.warn("Failed to load initial volume:", e);
         }
@@ -705,6 +742,18 @@ function setupEventListeners() {
                 safeStorage.local.setItem("player_volume", vol.toString());
             } catch(ex){}
             updateVolumeIcon(vol);
+            updateVolumeSliderTrack();
+            resetPlayerActivity();
+        });
+
+        volumeSlider.addEventListener("click", (e) => {
+            e.stopPropagation();
+            resetPlayerActivity();
+        });
+
+        volumeSlider.addEventListener("mousedown", (e) => {
+            e.stopPropagation();
+            resetPlayerActivity();
         });
 
         volumeBtn.addEventListener("click", (e) => {
@@ -718,6 +767,8 @@ function setupEventListeners() {
                 volumeSlider.value = currentVol;
                 updateVolumeIcon(currentVol);
             }
+            updateVolumeSliderTrack();
+            resetPlayerActivity();
         });
 
         video.addEventListener("volumechange", () => {
@@ -728,6 +779,8 @@ function setupEventListeners() {
                 volumeSlider.value = video.volume;
                 updateVolumeIcon(video.volume);
             }
+            updateVolumeSliderTrack();
+            resetPlayerActivity();
         });
     }
 
@@ -810,6 +863,13 @@ function setupEventListeners() {
         });
     }
     
+    if (window.electronAPI && window.electronAPI.isElectron && window.electronAPI.onNativeExited) {
+        window.electronAPI.onNativeExited(() => {
+            console.log("[Native] Received native-exited event from main process, closing player...");
+            closeVideoPlayer();
+        });
+    }
+    
     // Timeline Scrubbing: Mouse Seek + Tooltip
     const progressBar = document.getElementById("player-progress-bar");
     const tooltip = document.getElementById("player-progress-tooltip");
@@ -871,7 +931,7 @@ function setupEventListeners() {
         if (overlay.classList.contains("hidden")) {
             resetPlayerActivity();
         } else {
-            if (!e.target.closest(".player-btn") && !e.target.closest("#player-progress-bar")) {
+            if (!e.target.closest(".player-btn") && !e.target.closest("#player-progress-bar") && !e.target.closest(".player-volume-container")) {
                 overlay.classList.add("hidden");
                 playerScreen.style.cursor = "none";
             }
