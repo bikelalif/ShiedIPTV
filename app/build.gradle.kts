@@ -19,8 +19,8 @@ android {
         applicationId = "com.shieldiptv.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 13
-        versionName = "1.1.8"
+        versionCode = 15
+        versionName = "1.2.0"
     }
 
     buildTypes {
