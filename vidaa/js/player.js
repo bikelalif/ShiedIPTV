@@ -250,6 +250,9 @@ async function fetchAndRewritePlaylist(playlistUrl) {
         console.log("[Player] Fetching HLS playlist for rewriting:", playlistUrl);
         const response = await fetchWithFallback(playlistUrl);
         if (!response.ok) {
+            if (response.status === 458) {
+                throw new Error("HTTP 458 Limit Exceeded");
+            }
             throw new Error(`Failed to fetch playlist: HTTP ${response.status}`);
         }
         const text = await response.text();
@@ -319,6 +322,12 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
             
             state.mpegtsPlayer.on(mpegts.Events.ERROR, (type, detail, info) => {
                 console.warn(`[mpegts.js] Error: ${type}, ${detail}.`);
+                if (info && info.code === 458) {
+                    const t = TRANSLATIONS[state.language || 'en'];
+                    const limitMsg = t.limitExceededError || "Trop de connexions simultanées sur votre compte. Veuillez fermer vos autres écrans.";
+                    showPlayerError(limitMsg, false);
+                    return;
+                }
                 handlePlaybackFallback(resolvedStreamUrl, () => {
                     if (!state.reconnectTimer) {
                         state.reconnectTimer = setTimeout(() => {
@@ -349,6 +358,12 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
                 playUrl = await fetchAndRewritePlaylist(resolvedStreamUrl);
                 state.currentHlsBlobUrl = playUrl;
             } catch (err) {
+                if (err.message && err.message.includes("HTTP 458 Limit Exceeded")) {
+                    const t = TRANSLATIONS[state.language || 'en'];
+                    const limitMsg = t.limitExceededError || "Trop de connexions simultanées sur votre compte. Veuillez fermer vos autres écrans.";
+                    showPlayerError(limitMsg, false);
+                    return;
+                }
                 console.warn("[Player] HLS playlist rewrite failed, falling back to original resolved URL:", err);
                 playUrl = resolvedStreamUrl;
             }
@@ -376,6 +391,12 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
                 });
             });
             state.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                if (data.response && data.response.code === 458) {
+                    const t = TRANSLATIONS[state.language || 'en'];
+                    const limitMsg = t.limitExceededError || "Trop de connexions simultanées sur votre compte. Veuillez fermer vos autres écrans.";
+                    showPlayerError(limitMsg, false);
+                    return;
+                }
                 if (data.fatal) {
                     console.warn("Fatal Hls.js error:", data);
                     handlePlaybackFallback(resolvedStreamUrl, () => {
@@ -1270,6 +1291,16 @@ async function loadLivePreview(item) {
                 
                 state.mpegtsPlayer.on(mpegts.Events.ERROR, (type, detail, info) => {
                     console.warn(`[mpegts.js] Preview player error: ${type}, ${detail}.`);
+                    if (info && info.code === 458) {
+                        const t = TRANSLATIONS[state.language || 'en'];
+                        showToast(t.limitExceededError || "Trop de connexions simultanées sur votre compte.", 5000);
+                        destroyMpegtsPlayer();
+                        const previewPanel = document.getElementById("live-preview-panel");
+                        if (previewPanel) previewPanel.classList.add("hidden");
+                        const homeScreen = document.getElementById("home-screen");
+                        if (homeScreen) homeScreen.classList.remove("preview-open");
+                        playerScreen.classList.add("hidden");
+                    }
                 });
             } catch (err) {
                 console.error("[Preview] mpegts setup failed, fallback to native:", err);
@@ -1287,6 +1318,17 @@ async function loadLivePreview(item) {
                     playUrl = await fetchAndRewritePlaylist(resolvedUrl);
                     state.currentHlsBlobUrl = playUrl;
                 } catch (err) {
+                    if (err.message && err.message.includes("HTTP 458 Limit Exceeded")) {
+                        const t = TRANSLATIONS[state.language || 'en'];
+                        showToast(t.limitExceededError || "Trop de connexions simultanées sur votre compte.", 5000);
+                        destroyMpegtsPlayer();
+                        const previewPanel = document.getElementById("live-preview-panel");
+                        if (previewPanel) previewPanel.classList.add("hidden");
+                        const homeScreen = document.getElementById("home-screen");
+                        if (homeScreen) homeScreen.classList.remove("preview-open");
+                        playerScreen.classList.add("hidden");
+                        return;
+                    }
                     console.warn("[Preview] HLS playlist rewrite failed, falling back to original resolved URL:", err);
                     playUrl = resolvedUrl;
                 }
@@ -1315,6 +1357,17 @@ async function loadLivePreview(item) {
                     });
                 });
                 state.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.response && data.response.code === 458) {
+                        const t = TRANSLATIONS[state.language || 'en'];
+                        showToast(t.limitExceededError || "Trop de connexions simultanées sur votre compte.", 5000);
+                        destroyMpegtsPlayer();
+                        const previewPanel = document.getElementById("live-preview-panel");
+                        if (previewPanel) previewPanel.classList.add("hidden");
+                        const homeScreen = document.getElementById("home-screen");
+                        if (homeScreen) homeScreen.classList.remove("preview-open");
+                        playerScreen.classList.add("hidden");
+                        return;
+                    }
                     if (data.fatal) {
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR:
