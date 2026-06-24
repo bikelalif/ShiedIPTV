@@ -714,7 +714,12 @@
 
             <!-- Quick Channels List Drawer (Zap Drawer) -->
             <div id="zap-drawer" class="zap-drawer glass hidden">
-                <h3>Zapping rapide</h3>
+                <div class="zap-drawer-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 1rem;">
+                    <h3 style="margin: 0; font-size: 1.25rem;">Zapping rapide</h3>
+                    <button class="focusable" id="zap-drawer-close" style="background: transparent; border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0.25rem; border-radius: 50%; transition: background 0.2s;" title="Fermer">
+                        <span class="material-icons" style="font-size: 24px;">arrow_forward</span>
+                    </button>
+                </div>
                 <div class="zap-list" id="zap-list">
                     <!-- Dynamic channels list -->
                 </div>
