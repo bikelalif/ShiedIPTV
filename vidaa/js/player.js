@@ -762,6 +762,12 @@ function bindFullscreenVideoHandlers() {
         video.classList.remove("video-active");
         stopWatchdog();
     };
+    video.onended = () => {
+        if (isLive) {
+            console.warn("[Player] Live stream ended unexpectedly. Reconnecting...");
+            attemptReconnection();
+        }
+    };
     video.onerror = () => {
         video.classList.remove("video-active");
         stopWatchdog();
@@ -958,7 +964,15 @@ function bindPreviewVideoHandlers() {
         if (loader) loader.classList.add("hidden"); 
         if (playerLoader) playerLoader.style.display = "none";
         video.classList.add("video-active");
+        state.reconnectAttempts = 0; // reset reconnect attempts upon successful play
         startWatchdog();
+    };
+    video.onended = () => {
+        const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
+        if (isLive) {
+            console.warn("[Preview] Live preview stream ended unexpectedly. Reconnecting...");
+            attemptReconnection();
+        }
     };
     video.onerror = () => {
         if (loader) loader.classList.add("hidden");
@@ -1035,6 +1049,10 @@ function clearLoadingTimeout() {
 function destroyMpegtsPlayer() {
     clearLoadingTimeout();
     state.playbackStarted = false;
+    if (state.reconnectDelayTimer) {
+        clearTimeout(state.reconnectDelayTimer);
+        state.reconnectDelayTimer = null;
+    }
     if (window.AndroidApp && typeof window.AndroidApp.stopPreview === 'function') {
         window.AndroidApp.stopPreview();
     }
@@ -1117,109 +1135,120 @@ function attemptReconnection() {
     video.classList.remove("video-active");
     try { video.load(); } catch(e){}
     
-    resolveUrlWithDoH(url, true).then(resolvedStreamUrl => {
-        const isTsStream = (resolvedStreamUrl.includes('.ts') || resolvedStreamUrl.includes('/live/')) && !resolvedStreamUrl.includes('.m3u8');
-        
-        if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
-            try {
-                state.mpegtsPlayer = mpegts.createPlayer({
-                    type: 'mpegts',
-                    isLive: true,
-                    url: resolvedStreamUrl
-                }, {
-                    enableWorker: true,
-                    lazyLoad: false, // Disable lazy loading for live streams to prevent connection cutoff
-                    lazyLoadMaxDuration: 3 * 60,
-                    seekType: 'range',
-                    autoCleanupSourceBuffer: true,
-                    autoCleanupMaxBackwardDuration: 2 * 60,
-                    autoCleanupMinBackwardDuration: 60,
-                    liveBufferLatencyChasing: false,
-                    liveBufferLatencyMaxLatency: 3.0,
-                    liveBufferLatencyMinRemain: 1.0,
-                    enableStashBuffer: false // Disable stash buffer for live streams to prevent connection cutoff
-                });
-                
-                state.mpegtsPlayer.attachMediaElement(video);
-                
-                state.mpegtsPlayer.on(mpegts.Events.ERROR, (type, detail, info) => {
-                    console.warn(`[mpegts.js] Error inside player: ${type}, ${detail}. Reconnecting.`);
-                    if (!state.reconnectTimer) {
-                        state.reconnectTimer = setTimeout(() => {
-                            state.reconnectTimer = null;
-                            attemptReconnection();
-                        }, 2000);
-                    }
-                });
-                
-                state.mpegtsPlayer.load();
-                state.mpegtsPlayer.play().catch(e => {
-                    video.muted = true;
-                    if (state.mpegtsPlayer) {
-                        state.mpegtsPlayer.play().catch(err => console.error(err));
-                    }
-                });
-            } catch (err) {
-                video.src = resolvedStreamUrl;
-                video.play().catch(err => console.error(err));
-            }
-        } else if (resolvedStreamUrl.includes('.m3u8')) {
-            if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-                console.log("[Player] Initializing HLS.js for stream in reconnection:", resolvedStreamUrl);
-                state.hlsPlayer = new Hls({
-                    enableWorker: true,
-                    lowLatencyMode: false,
-                    liveDurationInfinity: true,
-                    liveSyncDurationCount: 3,
-                    liveMaxLatencyDurationCount: 10,
-                    backBufferLength: 30
-                });
-                state.hlsPlayer.attachMedia(video);
-                state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
-                    state.hlsPlayer.loadSource(resolvedStreamUrl);
-                });
-                state.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
-                    video.play().catch(e => {
-                        console.warn("HLS Autoplay failed in reconnect, trying muted...", e);
-                        video.muted = true;
-                        video.play().catch(err => {});
+    if (state.reconnectDelayTimer) {
+        clearTimeout(state.reconnectDelayTimer);
+        state.reconnectDelayTimer = null;
+    }
+
+    const reconnectDelay = Math.min(1000 * state.reconnectAttempts, 8000);
+    console.log(`[Player] Reconnection scheduled in ${reconnectDelay}ms (attempt ${state.reconnectAttempts})`);
+    
+    state.reconnectDelayTimer = setTimeout(() => {
+        state.reconnectDelayTimer = null;
+        resolveUrlWithDoH(url, true).then(resolvedStreamUrl => {
+            const isTsStream = (resolvedStreamUrl.includes('.ts') || resolvedStreamUrl.includes('/live/')) && !resolvedStreamUrl.includes('.m3u8');
+            
+            if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
+                try {
+                    state.mpegtsPlayer = mpegts.createPlayer({
+                        type: 'mpegts',
+                        isLive: true,
+                        url: resolvedStreamUrl
+                    }, {
+                        enableWorker: true,
+                        lazyLoad: false, // Disable lazy loading for live streams to prevent connection cutoff
+                        lazyLoadMaxDuration: 3 * 60,
+                        seekType: 'range',
+                        autoCleanupSourceBuffer: true,
+                        autoCleanupMaxBackwardDuration: 2 * 60,
+                        autoCleanupMinBackwardDuration: 60,
+                        liveBufferLatencyChasing: false,
+                        liveBufferLatencyMaxLatency: 3.0,
+                        liveBufferLatencyMinRemain: 1.0,
+                        enableStashBuffer: false // Disable stash buffer for live streams to prevent connection cutoff
                     });
-                });
-                state.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
-                    if (data.fatal) {
-                        switch (data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                                console.warn("Fatal network error in Hls.js on reconnect, retrying...");
-                                state.hlsPlayer.startLoad();
-                                break;
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                                console.warn("Fatal media error in Hls.js on reconnect, recovering...");
-                                state.hlsPlayer.recoverMediaError();
-                                break;
-                            default:
-                                console.error("Fatal Hls.js error on reconnect:", data);
-                                destroyMpegtsPlayer();
-                                video.src = resolvedStreamUrl;
-                                video.play().catch(e => {});
-                                break;
+                    
+                    state.mpegtsPlayer.attachMediaElement(video);
+                    
+                    state.mpegtsPlayer.on(mpegts.Events.ERROR, (type, detail, info) => {
+                        console.warn(`[mpegts.js] Error inside player: ${type}, ${detail}. Reconnecting.`);
+                        if (!state.reconnectTimer) {
+                            state.reconnectTimer = setTimeout(() => {
+                                state.reconnectTimer = null;
+                                attemptReconnection();
+                            }, 2000);
                         }
-                    }
-                });
+                    });
+                    
+                    state.mpegtsPlayer.load();
+                    state.mpegtsPlayer.play().catch(e => {
+                        video.muted = true;
+                        if (state.mpegtsPlayer) {
+                            state.mpegtsPlayer.play().catch(err => console.error(err));
+                        }
+                    });
+                } catch (err) {
+                    video.src = resolvedStreamUrl;
+                    video.play().catch(err => console.error(err));
+                }
+            } else if (resolvedStreamUrl.includes('.m3u8')) {
+                if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                    console.log("[Player] Initializing HLS.js for stream in reconnection:", resolvedStreamUrl);
+                    state.hlsPlayer = new Hls({
+                        enableWorker: true,
+                        lowLatencyMode: false,
+                        liveDurationInfinity: true,
+                        liveSyncDurationCount: 3,
+                        liveMaxLatencyDurationCount: 10,
+                        backBufferLength: 30
+                    });
+                    state.hlsPlayer.attachMedia(video);
+                    state.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
+                        state.hlsPlayer.loadSource(resolvedStreamUrl);
+                    });
+                    state.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+                        video.play().catch(e => {
+                            console.warn("HLS Autoplay failed in reconnect, trying muted...", e);
+                            video.muted = true;
+                            video.play().catch(err => {});
+                        });
+                    });
+                    state.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                        if (data.fatal) {
+                            switch (data.type) {
+                                case Hls.ErrorTypes.NETWORK_ERROR:
+                                    console.warn("Fatal network error in Hls.js on reconnect, retrying...");
+                                    state.hlsPlayer.startLoad();
+                                    break;
+                                case Hls.ErrorTypes.MEDIA_ERROR:
+                                    console.warn("Fatal media error in Hls.js on reconnect, recovering...");
+                                    state.hlsPlayer.recoverMediaError();
+                                    break;
+                                default:
+                                    console.error("Fatal Hls.js error on reconnect:", data);
+                                    destroyMpegtsPlayer();
+                                    video.src = resolvedStreamUrl;
+                                    video.play().catch(e => {});
+                                    break;
+                            }
+                        }
+                    });
+                } else {
+                    console.log("[Player] HLS.js not supported on reconnect, falling back to native player:", resolvedStreamUrl);
+                    video.src = resolvedStreamUrl;
+                    video.load();
+                    video.play().catch(e => {});
+                }
             } else {
-                console.log("[Player] HLS.js not supported on reconnect, falling back to native player:", resolvedStreamUrl);
                 video.src = resolvedStreamUrl;
                 video.load();
-                video.play().catch(e => {});
+                video.play().catch(e => {
+                    video.muted = true;
+                    video.play().catch(err => console.error(err));
+                });
             }
-        } else {
-            video.src = resolvedStreamUrl;
-            video.load();
-            video.play().catch(e => {
-                video.muted = true;
-                video.play().catch(err => console.error(err));
-            });
-        }
-    });
+        });
+    }, reconnectDelay);
 }
 
 async function loadLivePreview(item) {
@@ -1444,6 +1473,11 @@ function updatePreviewVideoPosition() {
         playerScreen.style.borderRadius = "14px";
         playerScreen.style.overflow = "hidden";
         playerScreen.style.border = "1px solid var(--border-color)";
+
+        // Sync native preview layout coordinates
+        if (window.AndroidApp && typeof window.AndroidApp.updatePreviewPosition === 'function') {
+            window.AndroidApp.updatePreviewPosition(rect.left, rect.top, rect.width, rect.height);
+        }
     } else {
         playerScreen.style.position = "";
         playerScreen.style.top = "";
@@ -1462,37 +1496,8 @@ function goFullscreenFromPreview() {
     if (!playerScreen || !state.currentPlayingStream) return;
     
     if (window.AndroidApp && state.playerSettings && state.playerSettings.live === 'exoplayer_preview') {
-        const item = state.currentPlayingStream.item;
-        
-        // 1. Stop HTML5 preview playback
-        destroyMpegtsPlayer();
-        const video = document.getElementById("video-player");
-        if (video) {
-            video.pause();
-            video.src = "";
-            try { video.load(); } catch(e){}
-        }
-        
-        // 2. Hide preview mode layout elements
-        playerScreen.classList.remove("preview-mode");
-        playerScreen.classList.add("hidden");
-        const homeScreen = document.getElementById("home-screen");
-        if (homeScreen) {
-            homeScreen.classList.remove("preview-open");
-        }
-        const previewPanel = document.getElementById("live-preview-panel");
-        if (previewPanel) {
-            previewPanel.classList.add("hidden");
-        }
-        
-        // 3. Play stream via native ExoPlayer
-        const ext = getLiveStreamExt();
-        const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
-        resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
-            console.log("[Android TV] Playing Live TV via ExoPlayer (from preview click):", resolvedUrl);
-            state.exoplayerLaunchedForLive = true;
-            window.AndroidApp.playStream(resolvedUrl, item.name, item.stream_icon || item.cover || "");
-        });
+        console.log("[Android TV] Going fullscreen with native ExoPlayer");
+        window.AndroidApp.goFullscreen();
         return;
     }
     
@@ -1553,6 +1558,15 @@ function goFullscreenFromPreview() {
     
     resetPlayerActivity();
 }
+
+window.onAndroidExitFullscreen = function() {
+    console.log("[Android TV] Native ExoPlayer exited fullscreen. Syncing layout...");
+    const playerScreen = document.getElementById("player-screen");
+    if (playerScreen) {
+        playerScreen.classList.add("preview-mode");
+        updatePreviewVideoPosition();
+    }
+};
 
 function exitFullscreenToPreview() {
     const playerScreen = document.getElementById("player-screen");

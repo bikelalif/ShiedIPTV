@@ -13,7 +13,14 @@ import android.webkit.SslErrorHandler
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.AspectRatioFrameLayout
 
@@ -26,6 +33,21 @@ class MainActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private lateinit var playerView: PlayerView
     private var previewPlayer: ExoPlayer? = null
+
+    private var isFullscreen = false
+    private var isControllerVisible = false
+    private var previewX = 0f
+    private var previewY = 0f
+    private var previewWidth = 0f
+    private var previewHeight = 0f
+    private var currentUrl = ""
+    private var retryCount = 0
+
+    private val reconnectRunnable = Runnable {
+        if (!isDestroyed && !isFinishing) {
+            startPreviewPlayer(currentUrl)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,8 +83,12 @@ class MainActivity : ComponentActivity() {
         playerView = PlayerView(this).apply {
             layoutParams = FrameLayout.LayoutParams(0, 0)
             useController = false
+            controllerAutoShow = false
             resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
             visibility = View.GONE
+            setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
+                isControllerVisible = (visibility == View.VISIBLE)
+            })
         }
         rootLayout.addView(playerView)
 
@@ -148,6 +174,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (isFullscreen) {
+                if (isControllerVisible) {
+                    playerView.hideController()
+                } else {
+                    exitFullscreen()
+                }
+                return true
+            }
             webView.evaluateJavascript("handleBackButton();", null)
             return true
         }
@@ -157,14 +191,13 @@ class MainActivity : ComponentActivity() {
     fun startPreview(url: String, x: Float, y: Float, width: Float, height: Float) {
         runOnUiThread {
             try {
-                releasePreviewPlayer()
-
-                val newPlayer = ExoPlayer.Builder(this).build().apply {
-                    setMediaItem(MediaItem.fromUri(url))
-                    prepare()
-                    playWhenReady = true
-                }
-                previewPlayer = newPlayer
+                window.decorView.removeCallbacks(reconnectRunnable)
+                isFullscreen = false
+                
+                previewX = x
+                previewY = y
+                previewWidth = width
+                previewHeight = height
 
                 val density = resources.displayMetrics.density
                 val params = FrameLayout.LayoutParams(
@@ -176,8 +209,11 @@ class MainActivity : ComponentActivity() {
                 }
 
                 playerView.layoutParams = params
-                playerView.player = newPlayer
+                playerView.useController = false
                 playerView.visibility = View.VISIBLE
+                
+                retryCount = 0
+                startPreviewPlayer(url)
                 
                 android.util.Log.d("MainActivity", "Native preview started at x=$x, y=$y, w=$width, h=$height with URL: $url")
             } catch (e: Exception) {
@@ -186,15 +222,161 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun startPreviewPlayer(url: String) {
+        releasePreviewPlayer()
+        currentUrl = url
+
+        val renderersFactory = DefaultRenderersFactory(this).apply {
+            setEnableDecoderFallback(true)
+        }
+        
+        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+            .setConnectTimeoutMs(15000)
+            .setReadTimeoutMs(20000)
+            .setAllowCrossProtocolRedirects(true)
+            .setKeepPostFor302Redirects(true)
+
+        val loadErrorHandlingPolicy = DefaultLoadErrorHandlingPolicy(6)
+
+        val mediaSourceFactory = DefaultMediaSourceFactory(httpDataSourceFactory)
+            .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
+
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                15000, // Min buffer (15s)
+                60000, // Max buffer (60s)
+                2000,  // Buffer for playback (2s)
+                4000   // Buffer for resume (4s)
+            )
+            .setBackBuffer(30000, true)
+            .build()
+
+        val newPlayer = ExoPlayer.Builder(this, renderersFactory)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .setLoadControl(loadControl)
+            .build().apply {
+                setMediaItem(MediaItem.fromUri(url))
+                prepare()
+                playWhenReady = true
+            }
+        previewPlayer = newPlayer
+        playerView.player = newPlayer
+
+        newPlayer.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_READY) {
+                    retryCount = 0
+                } else if (playbackState == Player.STATE_ENDED) {
+                    android.util.Log.e("MainActivity", "Stream ended unexpectedly. Reconnecting...")
+                    retryCount++
+                    val delay = (2000L * retryCount).coerceIn(2000L, 10000L)
+                    window.decorView.postDelayed(reconnectRunnable, delay)
+                }
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                val msg = error.message ?: "Unknown error"
+                android.util.Log.e("MainActivity", "Playback error: $msg", error)
+                retryCount++
+                val delay = (2000L * retryCount).coerceIn(2000L, 10000L)
+                window.decorView.postDelayed(reconnectRunnable, delay)
+            }
+        })
+    }
+
     fun stopPreview() {
         runOnUiThread {
             try {
+                window.decorView.removeCallbacks(reconnectRunnable)
                 playerView.visibility = View.GONE
                 playerView.player = null
                 releasePreviewPlayer()
+                isFullscreen = false
                 android.util.Log.d("MainActivity", "Native preview stopped")
             } catch (e: Exception) {
                 android.util.Log.e("MainActivity", "Failed to stop native preview: ${e.message}", e)
+            }
+        }
+    }
+
+    fun updatePreviewPosition(x: Float, y: Float, width: Float, height: Float) {
+        runOnUiThread {
+            try {
+                if (isFullscreen) {
+                    return@runOnUiThread
+                }
+                
+                previewX = x
+                previewY = y
+                previewWidth = width
+                previewHeight = height
+                
+                val density = resources.displayMetrics.density
+                val params = FrameLayout.LayoutParams(
+                    Math.round(width * density),
+                    Math.round(height * density)
+                ).apply {
+                    leftMargin = Math.round(x * density)
+                    topMargin = Math.round(y * density)
+                }
+                playerView.layoutParams = params
+                android.util.Log.d("MainActivity", "Native preview position updated to x=$x, y=$y, w=$width, h=$height")
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Failed to update native preview position: ${e.message}", e)
+            }
+        }
+    }
+
+    fun goFullscreen() {
+        runOnUiThread {
+            try {
+                isFullscreen = true
+                
+                val params = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                playerView.layoutParams = params
+                playerView.useController = true
+                playerView.showController()
+                
+                playerView.isFocusable = true
+                playerView.isFocusableInTouchMode = true
+                playerView.requestFocus()
+                
+                android.util.Log.d("MainActivity", "Native player resized to fullscreen")
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Failed to go fullscreen: ${e.message}", e)
+            }
+        }
+    }
+
+    fun exitFullscreen() {
+        runOnUiThread {
+            try {
+                isFullscreen = false
+                
+                playerView.useController = false
+                playerView.hideController()
+                
+                val density = resources.displayMetrics.density
+                val params = FrameLayout.LayoutParams(
+                    Math.round(previewWidth * density),
+                    Math.round(previewHeight * density)
+                ).apply {
+                    leftMargin = Math.round(previewX * density)
+                    topMargin = Math.round(previewY * density)
+                }
+                playerView.layoutParams = params
+                
+                playerView.isFocusable = false
+                webView.requestFocus()
+                
+                webView.evaluateJavascript("if (typeof onAndroidExitFullscreen === 'function') { onAndroidExitFullscreen(); }", null)
+                
+                android.util.Log.d("MainActivity", "Native player resized back to preview coordinates")
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Failed to exit fullscreen: ${e.message}", e)
             }
         }
     }
@@ -208,6 +390,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        window.decorView.removeCallbacks(reconnectRunnable)
         runOnUiThread {
             playerView.visibility = View.GONE
             playerView.player = null
@@ -217,6 +400,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        window.decorView.removeCallbacks(reconnectRunnable)
         releasePreviewPlayer()
     }
 }
@@ -249,12 +433,27 @@ class WebAppInterface(private val activity: MainActivity) {
     }
 
     @android.webkit.JavascriptInterface
-    fun startPreview(url: String, x: Float, y: Float, width: Float, height: Float) {
-        activity.startPreview(url, x, y, width, height)
+    fun startPreview(url: String, x: Double, y: Double, width: Double, height: Double) {
+        activity.startPreview(url, x.toFloat(), y.toFloat(), width.toFloat(), height.toFloat())
     }
 
     @android.webkit.JavascriptInterface
     fun stopPreview() {
         activity.stopPreview()
+    }
+
+    @android.webkit.JavascriptInterface
+    fun updatePreviewPosition(x: Double, y: Double, width: Double, height: Double) {
+        activity.updatePreviewPosition(x.toFloat(), y.toFloat(), width.toFloat(), height.toFloat())
+    }
+
+    @android.webkit.JavascriptInterface
+    fun goFullscreen() {
+        activity.goFullscreen()
+    }
+
+    @android.webkit.JavascriptInterface
+    fun exitFullscreen() {
+        activity.exitFullscreen()
     }
 }

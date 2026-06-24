@@ -336,7 +336,7 @@ async function loadCategoryStreamsCached(section, categoryId) {
     let filtered = [];
 
     if (state.currentPlaylistType === 'xtream') {
-        const loadAllAtOnce = !isTvWrapper;
+        const loadAllAtOnce = true;
         
         let categoryCached = (state.streams[section] || []).filter(item => {
             const catId = item.category_id;
