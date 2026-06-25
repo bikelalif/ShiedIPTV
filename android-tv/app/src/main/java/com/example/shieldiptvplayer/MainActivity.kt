@@ -241,27 +241,27 @@ class MainActivity : ComponentActivity() {
         val mediaSourceFactory = DefaultMediaSourceFactory(httpDataSourceFactory)
             .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
 
-        // Buffer durations tuned to maximize buffering and prevent stuttering on live streams and VODs.
+        // Buffer durations tuned for instant start (1s) and quick resume, with background buffering up to 30s.
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                50000, // Min buffer (50s)
-                120000, // Max buffer (120s)
-                5000,  // Buffer for playback (5s)
-                10000   // Buffer for resume (10s)
+                30000, // Min buffer (30s)
+                60000, // Max buffer (60s)
+                1000,  // Buffer for playback (1s)
+                1000   // Buffer for resume (1s)
             )
-            .setBackBuffer(60000, true)
+            .setBackBuffer(30000, true)
             .build()
 
         val newPlayer = ExoPlayer.Builder(this, renderersFactory)
             .setMediaSourceFactory(mediaSourceFactory)
             .setLoadControl(loadControl)
             .build().apply {
-                // Build media item with 30 seconds target live offset to allow deep buffering
+                // Build media item with 10 seconds target live offset
                 val mediaItem = MediaItem.Builder()
                     .setUri(url)
                     .setLiveConfiguration(
                         MediaItem.LiveConfiguration.Builder()
-                            .setTargetOffsetMs(30000)
+                            .setTargetOffsetMs(10000)
                             .build()
                     )
                     .build()
