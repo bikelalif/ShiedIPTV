@@ -9,7 +9,8 @@ const TARGETS = {
     pc: path.join(ROOT_DIR, 'pc', 'src'),
     android: path.join(ROOT_DIR, 'android-tv', 'app', 'src', 'main', 'assets', 'www'),
     vidaa: path.join(ROOT_DIR, 'vidaa'),
-    mac: path.join(ROOT_DIR, 'mac', 'src')
+    mac: path.join(ROOT_DIR, 'mac', 'src'),
+    ios: path.join(ROOT_DIR, 'ios', 'App', 'App', 'public')
 };
 
 // Recursive Copy Directory Function

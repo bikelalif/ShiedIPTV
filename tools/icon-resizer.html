@@ -301,7 +301,7 @@
     <div class="container">
         <header>
             <h1>Shield<span>IPTV</span> Asset Resizer</h1>
-            <p>Créez, cadrez et redimensionnez vos logos pour les versions <strong>Android APK</strong>, <strong>PC (Electron)</strong>, <strong>webOS</strong> et <strong>Vidaa OS</strong>.</p>
+            <p>Créez, cadrez et redimensionnez vos logos pour les versions <strong>Android APK</strong>, <strong>PC (Electron)</strong>, <strong>webOS</strong>, <strong>Vidaa OS</strong> et <strong>Microsoft Store</strong>.</p>
         </header>
 
         <div class="workspace">
@@ -333,6 +333,7 @@
                     <button class="tab-btn" onclick="switchTab('pc')">PC Client (Electron)</button>
                     <button class="tab-btn" onclick="switchTab('webos')">webOS (LG TV)</button>
                     <button class="tab-btn" onclick="switchTab('vidaa')">Vidaa OS (Hisense)</button>
+                    <button class="tab-btn" onclick="switchTab('msstore')">Microsoft Store</button>
                 </div>
 
                 <!-- Google Play Store Previews -->
@@ -571,6 +572,63 @@
                     </div>
                 </div>
 
+                <!-- Microsoft Store (AppX) Previews -->
+                <div class="preview-panel" id="msstore-tab" style="display: none;">
+                    <div class="section-title">Icônes Microsoft Store (AppX / MSIX)</div>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 1rem 0; text-align: left; width: 100%;">Ces 4 fichiers sont à placer dans <code>pc/build/</code> puis lancer <code>npm run resize:pc</code> pour tout régénérer automatiquement.</p>
+                    <div class="grid-previews">
+
+                        <!-- 1. Square44x44Logo (tuile petite / barre des tâches) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 44px; height: 44px;">
+                                <canvas id="canvas-ms-44" width="44" height="44" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>Square44x44Logo.png</h4>
+                                <p>44 x 44 px — Tuile petite &amp; icône barre des tâches</p>
+                                <button class="btn-download" id="btn-dl-ms-44">Enregistrer</button>
+                            </div>
+                        </div>
+
+                        <!-- 2. Square150x150Logo (tuile moyenne menu Démarrer) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 80px; height: 80px;">
+                                <canvas id="canvas-ms-150" width="150" height="150" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>Square150x150Logo.png</h4>
+                                <p>150 x 150 px — Tuile moyenne menu Démarrer</p>
+                                <button class="btn-download" id="btn-dl-ms-150">Enregistrer</button>
+                            </div>
+                        </div>
+
+                        <!-- 3. Wide310x150Logo (tuile large menu Démarrer) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 155px; height: 75px;">
+                                <canvas id="canvas-ms-wide" width="310" height="150" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>Wide310x150Logo.png</h4>
+                                <p>310 x 150 px — Tuile large menu Démarrer</p>
+                                <button class="btn-download" id="btn-dl-ms-wide">Enregistrer</button>
+                            </div>
+                        </div>
+
+                        <!-- 4. StoreLogo (affiché dans la page Microsoft Store) -->
+                        <div class="preview-box">
+                            <div class="preview-canvas-wrapper" style="width: 50px; height: 50px;">
+                                <canvas id="canvas-ms-store" width="50" height="50" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                                <h4>StoreLogo.png</h4>
+                                <p>50 x 50 px — Logo affiché dans le Microsoft Store</p>
+                                <button class="btn-download" id="btn-dl-ms-store">Enregistrer</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -622,6 +680,18 @@
         const btnDlVidaaIcon = document.getElementById('btn-dl-vidaa-icon');
         const btnDlVidaaBanner = document.getElementById('btn-dl-vidaa-banner');
 
+        // Microsoft Store Canvases
+        const canvasMs44 = document.getElementById('canvas-ms-44');
+        const canvasMs150 = document.getElementById('canvas-ms-150');
+        const canvasMsWide = document.getElementById('canvas-ms-wide');
+        const canvasMsStore = document.getElementById('canvas-ms-store');
+
+        // Microsoft Store Download buttons
+        const btnDlMs44 = document.getElementById('btn-dl-ms-44');
+        const btnDlMs150 = document.getElementById('btn-dl-ms-150');
+        const btnDlMsWide = document.getElementById('btn-dl-ms-wide');
+        const btnDlMsStore = document.getElementById('btn-dl-ms-store');
+
         let loadedImage = null;
 
         // Play Store Canvases
@@ -644,7 +714,8 @@
                 'android': 'android-tab',
                 'pc': 'pc-tab',
                 'webos': 'webos-tab',
-                'vidaa': 'vidaa-tab'
+                'vidaa': 'vidaa-tab',
+                'msstore': 'msstore-tab'
             };
             
             document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
@@ -755,6 +826,16 @@
             // Vidaa Download setups
             setupDownload(canvasVidaaIcon, btnDlVidaaIcon, 'icon.png');
             setupDownload(canvasVidaaBanner, btnDlVidaaBanner, 'banner.png');
+
+            // Microsoft Store AppX icons
+            cropSquare(loadedImage, canvasMs44, 44);
+            cropSquare(loadedImage, canvasMs150, 150);
+            cropWide(loadedImage, canvasMsWide, 310, 150);
+            cropSquare(loadedImage, canvasMsStore, 50);
+            setupDownload(canvasMs44, btnDlMs44, 'Square44x44Logo.png');
+            setupDownload(canvasMs150, btnDlMs150, 'Square150x150Logo.png');
+            setupDownload(canvasMsWide, btnDlMsWide, 'Wide310x150Logo.png');
+            setupDownload(canvasMsStore, btnDlMsStore, 'StoreLogo.png');
         }
 
         function cropSquare(img, canvas, targetSize) {
@@ -797,6 +878,27 @@
             const ctx = canvas.getContext('2d');
             const targetRatio = targetW / targetH; // 1024/500 = 2.048
             
+            let srcW = img.width;
+            let srcH = img.width / targetRatio;
+            let srcX = 0;
+            let srcY = (img.height - srcH) / 2;
+
+            if (srcH > img.height) {
+                srcH = img.height;
+                srcW = img.height * targetRatio;
+                srcX = (img.width - srcW) / 2;
+                srcY = 0;
+            }
+
+            ctx.clearRect(0, 0, targetW, targetH);
+            ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH);
+        }
+
+        // Wide crop: recadre la source au ratio 310:150 et remplit toute la tuile
+        function cropWide(img, canvas, targetW, targetH) {
+            const ctx = canvas.getContext('2d');
+            const targetRatio = targetW / targetH;
+
             let srcW = img.width;
             let srcH = img.width / targetRatio;
             let srcX = 0;

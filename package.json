@@ -8,7 +8,8 @@
     "sync:android": "node scripts/sync-platforms.js --platform android",
     "sync:vidaa": "node scripts/sync-platforms.js --platform vidaa",
     "sync:mac": "node scripts/sync-platforms.js --platform mac",
-    "sync:all": "node scripts/sync-platforms.js",
+    "sync:ios": "node scripts/sync-platforms.js --platform ios && npx cap sync ios",
+    "sync:all": "node scripts/sync-platforms.js && npx cap sync ios",
     "resize:android": "powershell -ExecutionPolicy Bypass -File scripts/resize-apk-images.ps1",
     "resize:pc": "powershell -ExecutionPolicy Bypass -File scripts/resize-pc-images.ps1",
     "resize:vidaa": "powershell -ExecutionPolicy Bypass -File scripts/resize-vidaa-images.ps1",
@@ -16,5 +17,12 @@
     "build:webos": "powershell -ExecutionPolicy Bypass -File scripts/build-webos.ps1"
   },
   "author": "Bilal",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1"
+  },
+  "dependencies": {
+    "@capacitor/ios": "^8.4.1"
+  }
 }
