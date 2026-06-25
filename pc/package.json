@@ -46,7 +46,9 @@
     "appx": {
       "identityName": "Shieldk2F.ShieldIPTVPlayer",
       "publisher": "CN=05D90470-1EFA-471D-B4F6-289221A95AEA",
-      "publisherDisplayName": "Shieldk2F"
+      "publisherDisplayName": "Shieldk2F",
+      "applicationId": "ShieldIPTVPlayer",
+      "displayName": "Shield IPTV Player"
     }
   }
 }
