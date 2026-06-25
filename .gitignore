@@ -1,6 +1,7 @@
 node_modules/
 dist/
 *.exe
+*.appx
 bin/
 
 # Bundled native player binaries (mpv / VLC) — large, fetched separately, not committed
