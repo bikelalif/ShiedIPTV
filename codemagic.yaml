@@ -24,7 +24,7 @@ workflows:
       - name: Set up code signing
         script: |
           # Installs profiles and certificates configured in Codemagic UI
-          xcode-project use-profiles --default
+          xcode-project use-profiles
       - name: Build IPA (Real Device)
         script: |
           # Compiles the Xcode project and generates the .ipa file
