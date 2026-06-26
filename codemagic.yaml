@@ -1,6 +1,6 @@
 workflows:
-  ios-workflow:
-    name: Shield IPTV Player iOS Build
+  ios-simulator:
+    name: Shield IPTV - iOS Simulator Build (No Signing Required)
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
@@ -21,14 +21,34 @@ workflows:
       - name: Sync iOS platform
         script: |
           npm run sync:ios
+      - name: Build Simulator App
+        script: |
+          xcodebuild -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME" -configuration Debug -sdk iphonesimulator -derivedDataPath build clean build
+    artifacts:
+      - build/Build/Products/Debug-iphonesimulator/*.app
+
+  ios-device:
+    name: Shield IPTV - iOS Device Build (Requires Code Signing)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      node: latest
+      xcode: latest
+      vars:
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+        XCODE_SCHEME: "App"
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+      - name: Sync iOS platform
+        script: |
+          npm run sync:ios
       - name: Set up code signing
         script: |
-          # Installs profiles and certificates configured in Codemagic UI
           xcode-project use-profiles
-      - name: Build IPA (Real Device)
+      - name: Build IPA
         script: |
-          # Compiles the Xcode project and generates the .ipa file
-          # Note: This will succeed if Code Signing is set up in Codemagic UI
           xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
