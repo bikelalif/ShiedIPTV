@@ -7,7 +7,7 @@ workflows:
       node: latest
       xcode: latest
       vars:
-        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
     triggering:
       events:
@@ -29,6 +29,6 @@ workflows:
         script: |
           # Compiles the Xcode project and generates the .ipa file
           # Note: This will succeed if Code Signing is set up in Codemagic UI
-          xcode-project build-ipa --workspace "$XCODE_WORKSPACE" --scheme "$XCODE_SCHEME"
+          xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
