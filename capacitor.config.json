@@ -1,5 +1,10 @@
 {
   "appId": "com.shieldiptv.app",
   "appName": "Shield IPTV Player",
-  "webDir": "web"
+  "webDir": "web",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
 }
