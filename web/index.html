@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ShieldIPTV</title>
     <script>
         (function() {
+            // Disable pinch-to-zoom gestures on iOS WKWebView
+            document.addEventListener('gesturestart', function(e) {
+                e.preventDefault();
+            });
+
             function showError(message, source, lineno, colno, error) {
                 var overlay = document.getElementById('debug-error-overlay');
                 if (!overlay) {
