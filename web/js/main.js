@@ -827,7 +827,11 @@ function setupEventListeners() {
                 vlcUrl = 'vlc://' + vlcUrl;
             }
             console.log("[VLC] Launching stream in external player:", vlcUrl);
-            window.location.href = vlcUrl;
+            if (window.cordova || window.Capacitor || (typeof window.Capacitor !== 'undefined')) {
+                window.open(vlcUrl, '_system');
+            } else {
+                window.location.href = vlcUrl;
+            }
         }
     };
     const launchVlc = window.launchVlc;
