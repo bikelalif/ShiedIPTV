@@ -752,8 +752,19 @@ function launchVideoPlayer(url, title, logoUrl) {
     document.getElementById("player-btn-channels").title = t.zapListTitle;
     document.getElementById("player-btn-play").title = t.playPause;
     
-    state.lastAttemptedStreamUrl = url;
-    startPlayback(url, false);
+    if (state.isDohEnabled && typeof resolveUrlWithDoH === 'function') {
+        resolveUrlWithDoH(url, isLive).then(resolvedUrl => {
+            state.lastAttemptedStreamUrl = resolvedUrl;
+            startPlayback(resolvedUrl, false);
+        }).catch(err => {
+            console.warn("[Player] DoH resolution failed, using original url:", err);
+            state.lastAttemptedStreamUrl = url;
+            startPlayback(url, false);
+        });
+    } else {
+        state.lastAttemptedStreamUrl = url;
+        startPlayback(url, false);
+    }
     
     bindFullscreenVideoHandlers();
     
