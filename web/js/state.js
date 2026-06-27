@@ -1212,7 +1212,8 @@ function initPlayerSettingsDropdowns(lang) {
     
     const isElectron = !!(window.electronAPI && window.electronAPI.isElectron);
     const isAndroid = !!window.AndroidApp;
-    const isWeb = !isElectron && !isAndroid && !isTvWrapper;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isWeb = !isElectron && !isAndroid && !isTvWrapper && !isIOS;
     
     const vlcLabel = t.playerOptionVlc || "Lecteur VLC";
     const mpvLabel = t.playerOptionMpv || "Lecteur MPV";
