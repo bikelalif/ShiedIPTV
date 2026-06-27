@@ -1,8 +1,20 @@
 function checkIsMobileWeb() {
-    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && 
-           !window.cordova && 
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) &&
+           !window.cordova &&
            !window.AndroidApp &&
            !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent);
+}
+
+// Detect iOS/iPadOS WKWebView (Safari + the Capacitor app). WKWebView has no
+// window.MediaSource, so mpegts.js and (on older iOS) hls.js cannot run — but it
+// plays HLS (.m3u8) natively in the <video> element with no MediaSource needed.
+function isAppleWebView() {
+    if (window.Capacitor && typeof window.Capacitor.getPlatform === 'function') {
+        return window.Capacitor.getPlatform() === 'ios';
+    }
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) return true;
+    // iPadOS 13+ reports a desktop "Macintosh" UA but exposes touch points.
+    return navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1;
 }
 
 function getLiveStreamExt() {
@@ -384,7 +396,11 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
             video.play().catch(err => {});
         }
     } else if (resolvedStreamUrl.includes('.m3u8')) {
-        const hlsSupported = (typeof Hls !== 'undefined' && Hls.isSupported());
+        // hls.js (MSE) cannot run in iOS WKWebView (no window.MediaSource). Even where
+        // ManagedMediaSource exists, the native HLS player is more reliable AND correctly
+        // follows the panel's 302 redirect + relative /hls/ segment paths. So on iOS we
+        // always use the native <video> HLS player with the direct (un-rewritten) URL.
+        const hlsSupported = (typeof Hls !== 'undefined' && Hls.isSupported()) && !isAppleWebView();
         let playUrl = resolvedStreamUrl;
         // Only rewrite the manifest into an in-memory blob: URL when playback goes through
         // hls.js (MSE/ManagedMediaSource), which can load blob: sources. Native HLS players
@@ -1414,7 +1430,9 @@ async function loadLivePreview(item) {
                 });
             }
         } else if (resolvedUrl.includes('.m3u8')) {
-            const hlsSupported = (typeof Hls !== 'undefined' && Hls.isSupported());
+            // On iOS use the native HLS player (no MediaSource in WKWebView); blob: manifests
+            // and hls.js are only used where MSE is available.
+            const hlsSupported = (typeof Hls !== 'undefined' && Hls.isSupported()) && !isAppleWebView();
             let playUrl = resolvedUrl;
             // Blob: manifests only work with hls.js (MSE); native HLS (iOS) needs the direct URL.
             if (state.isDohEnabled && hlsSupported) {
