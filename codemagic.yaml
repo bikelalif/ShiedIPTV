@@ -34,6 +34,9 @@ workflows:
     environment:
       node: latest
       xcode: latest
+      ios_signing:
+        distribution_type: ad_hoc
+        bundle_identifier: com.shieldiptv.app
       vars:
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
