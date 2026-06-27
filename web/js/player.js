@@ -384,8 +384,13 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
             video.play().catch(err => {});
         }
     } else if (resolvedStreamUrl.includes('.m3u8')) {
+        const hlsSupported = (typeof Hls !== 'undefined' && Hls.isSupported());
         let playUrl = resolvedStreamUrl;
-        if (state.isDohEnabled) {
+        // Only rewrite the manifest into an in-memory blob: URL when playback goes through
+        // hls.js (MSE/ManagedMediaSource), which can load blob: sources. Native HLS players
+        // (iOS Safari/WKWebView) CANNOT load a blob: manifest, so for them we keep the direct
+        // (already DoH-resolved) URL and let the native player fetch the segments itself.
+        if (state.isDohEnabled && hlsSupported) {
             try {
                 playUrl = await fetchAndRewritePlaylist(resolvedStreamUrl);
                 state.currentHlsBlobUrl = playUrl;
@@ -401,7 +406,7 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
             }
         }
         
-        if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+        if (hlsSupported) {
             console.log("[Player] Initializing HLS.js for stream:", playUrl);
             state.hlsPlayer = new Hls({
                 enableWorker: true,
@@ -1409,8 +1414,10 @@ async function loadLivePreview(item) {
                 });
             }
         } else if (resolvedUrl.includes('.m3u8')) {
+            const hlsSupported = (typeof Hls !== 'undefined' && Hls.isSupported());
             let playUrl = resolvedUrl;
-            if (state.isDohEnabled) {
+            // Blob: manifests only work with hls.js (MSE); native HLS (iOS) needs the direct URL.
+            if (state.isDohEnabled && hlsSupported) {
                 try {
                     playUrl = await fetchAndRewritePlaylist(resolvedUrl);
                     state.currentHlsBlobUrl = playUrl;
@@ -1431,7 +1438,7 @@ async function loadLivePreview(item) {
                 }
             }
             
-            if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+            if (hlsSupported) {
                 console.log("[Preview] Initializing HLS.js for preview:", playUrl);
                 state.hlsPlayer = new Hls({
                     enableWorker: true,
