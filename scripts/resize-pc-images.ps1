@@ -2,9 +2,11 @@ Add-Type -AssemblyName System.Drawing
 
 $root = Resolve-Path "."
 $pcDir = Join-Path $root "pc"
-$sourceIcon = Join-Path $pcDir "icon.png"
+$sourceIcon = Join-Path $root "store_icon_400.png"
 
-# Fall back to pc/build/icon.png if the source doesn't exist at pc/icon.png
+if (-not (Test-Path $sourceIcon)) {
+    $sourceIcon = Join-Path $pcDir "icon.png"
+}
 if (-not (Test-Path $sourceIcon)) {
     $sourceIcon = Join-Path $pcDir "build/icon.png"
 }
@@ -12,7 +14,7 @@ if (-not (Test-Path $sourceIcon)) {
 Write-Host "Source PC Icon: $sourceIcon"
 
 if (-not (Test-Path $sourceIcon)) {
-    Write-Error "Source icon not found. Place a large icon.png in pc/ or pc/build/"
+    Write-Error "Source icon not found. Make sure store_icon_400.png is in the root directory."
     exit 1
 }
 
@@ -140,7 +142,8 @@ $appxSrc = Join-Path $pcDir "build/icon.png"
 if (-not (Test-Path $appxSrc)) {
     $appxSrc = $sourceIcon
 }
-$appxDir = Join-Path $pcDir "build/appx-icons"
+$appxDir = Join-Path $pcDir "build/appx"
+
 
 Write-Host ""
 Write-Host "=== Generating Windows Store AppX icons ==="
