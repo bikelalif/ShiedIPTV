@@ -965,28 +965,20 @@ function setupEventListeners() {
 }
 
 function initTvInputs() {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (!isTvWrapper && !isIOS) return;
-
+    if (!isTvWrapper) return;
     const textInputs = document.querySelectorAll('input[type="text"], input[type="url"], input[type="password"]');
     textInputs.forEach(input => {
-        if (isIOS) {
-            // Disable native keyboard completely on iOS
-            input.setAttribute('inputmode', 'none');
-        } else {
-            // TV wrapper handling
-            input.setAttribute('readonly', 'true');
-            
-            input.addEventListener('click', function() {
-                if (this.hasAttribute('readonly')) {
-                    this.removeAttribute('readonly');
-                    this.focus();
-                }
-            });
-            
-            input.addEventListener('blur', function() {
-                this.setAttribute('readonly', 'true');
-            });
-        }
+        input.setAttribute('readonly', 'true');
+        
+        input.addEventListener('click', function() {
+            if (this.hasAttribute('readonly')) {
+                this.removeAttribute('readonly');
+                this.focus();
+            }
+        });
+        
+        input.addEventListener('blur', function() {
+            this.setAttribute('readonly', 'true');
+        });
     });
 }

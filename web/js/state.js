@@ -56,9 +56,12 @@ const safeStorage = {
     }
 };
 
-const isTvWrapper = window.cordova || 
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isTvWrapper = !isIOS && !/Mobile/i.test(navigator.userAgent) && (
+                    window.cordova || 
                     window.AndroidApp ||
-                    /SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent);
+                    /SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent)
+);
 
 // Fallback dynamic placeholders (using local PNG assets for universal compatibility on older WebViews)
 const PLACEHOLDERS = {
