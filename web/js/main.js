@@ -805,32 +805,46 @@ function setupEventListeners() {
                 targetUrl = `${state.serverUrl}/${section === 'series' ? 'series' : 'movie'}/${state.username}/${state.password}/${streamId}.${originalExt}`;
             }
 
-            // On Electron, launch directly via main process spawn
-            if (window.electronAPI && window.electronAPI.isElectron) {
-                console.log("[VLC] Launching stream via Electron helper:", targetUrl);
-                window.electronAPI.openVlcExternal(targetUrl);
-                return;
-            }
-            // On Android TV, use native intent to open external player (VLC, MX Player, etc.)
-            if (window.AndroidApp && typeof window.AndroidApp.openExternalPlayer === 'function') {
-                console.log("[VLC] Launching stream via Android native intent:", state.currentPlayingStreamUrl);
-                window.AndroidApp.openExternalPlayer(state.currentPlayingStreamUrl);
-                return;
-            }
-            // On web/PC, use vlc:// protocol
-            let vlcUrl = state.currentPlayingStreamUrl;
-            if (vlcUrl.startsWith('http://')) {
-                vlcUrl = vlcUrl.replace('http://', 'vlc://');
-            } else if (vlcUrl.startsWith('https://')) {
-                vlcUrl = vlcUrl.replace('https://', 'vlc://');
+            const performLaunch = (finalUrl) => {
+                // On Electron, launch directly via main process spawn
+                if (window.electronAPI && window.electronAPI.isElectron) {
+                    console.log("[VLC] Launching stream via Electron helper:", finalUrl);
+                    window.electronAPI.openVlcExternal(finalUrl);
+                    return;
+                }
+                // On Android TV, use native intent to open external player (VLC, MX Player, etc.)
+                if (window.AndroidApp && typeof window.AndroidApp.openExternalPlayer === 'function') {
+                    console.log("[VLC] Launching stream via Android native intent:", finalUrl);
+                    window.AndroidApp.openExternalPlayer(finalUrl);
+                    return;
+                }
+                // On web/PC, use vlc:// protocol
+                let vlcUrl = finalUrl;
+                if (vlcUrl.startsWith('http://')) {
+                    vlcUrl = vlcUrl.replace('http://', 'vlc://');
+                } else if (vlcUrl.startsWith('https://')) {
+                    vlcUrl = vlcUrl.replace('https://', 'vlc://');
+                } else {
+                    vlcUrl = 'vlc://' + vlcUrl;
+                }
+                console.log("[VLC] Launching stream in external player:", vlcUrl);
+                if (window.cordova || window.Capacitor || (typeof window.Capacitor !== 'undefined')) {
+                    window.open(vlcUrl, '_system');
+                } else {
+                    window.location.href = vlcUrl;
+                }
+            };
+
+            const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
+            if (state.isDohEnabled && typeof resolveUrlWithDoH === 'function') {
+                resolveUrlWithDoH(targetUrl, isLive).then(resolvedUrl => {
+                    performLaunch(resolvedUrl);
+                }).catch(err => {
+                    console.warn("[VLC] DoH resolution failed, using original:", err);
+                    performLaunch(targetUrl);
+                });
             } else {
-                vlcUrl = 'vlc://' + vlcUrl;
-            }
-            console.log("[VLC] Launching stream in external player:", vlcUrl);
-            if (window.cordova || window.Capacitor || (typeof window.Capacitor !== 'undefined')) {
-                window.open(vlcUrl, '_system');
-            } else {
-                window.location.href = vlcUrl;
+                performLaunch(targetUrl);
             }
         }
     };
