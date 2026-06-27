@@ -7,6 +7,7 @@
     "title":  "Shield IPTV",
     "icon":  "icon.png",
     "largeIcon":  "largeIcon.png",
+    "iconColor":  "#05070B",
     "requiredPermissions":  [
                                 "localconnection"
                             ],
