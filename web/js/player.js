@@ -679,6 +679,20 @@ function launchVideoPlayer(url, title, logoUrl) {
             fullscreenBtn.style.display = "";
         }
     }
+
+    // Hide/Show Picture-in-Picture button based on TV mode/device support
+    const pipBtn = document.getElementById("player-btn-pip");
+    if (pipBtn) {
+        if (isTvWrapper || window.AndroidApp || document.body.classList.contains("tv-mode")) {
+            pipBtn.style.display = "none";
+        } else {
+            const videoTemp = document.getElementById("video-player");
+            const supportsPipGlobal = ('pictureInPictureEnabled' in document) || 
+                                     (videoTemp && typeof videoTemp.webkitSetPresentationMode === "function") ||
+                                     (videoTemp && videoTemp.webkitSupportsPresentationMode);
+            pipBtn.style.display = supportsPipGlobal ? "" : "none";
+        }
+    }
     
     showScreen("player-screen");
     const video = document.getElementById("video-player");

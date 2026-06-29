@@ -3598,3 +3598,8 @@ body.tv-mode .zap-item.focused {
     border-color: var(--border-focus) !important;
 }
 
+/* Mobile device specific styles */
+body.is-mobile-device .player-volume-container {
+    display: none !important;
+}
+

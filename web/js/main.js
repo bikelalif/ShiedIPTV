@@ -19,6 +19,11 @@ function initApp() {
             document.body.classList.add("is-webapp");
         }
         
+        const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isMobileDevice) {
+            document.body.classList.add("is-mobile-device");
+        }
+        
         try {
             setupEventListeners();
         } catch (e) {
@@ -703,6 +708,27 @@ function setupEventListeners() {
     document.getElementById("player-btn-fullscreen").addEventListener("click", () => {
         toggleFullscreen();
     });
+    
+    const pipBtn = document.getElementById("player-btn-pip");
+    if (pipBtn) {
+        pipBtn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const video = document.getElementById("video-player");
+            if (!video) return;
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                } else if (video.webkitPresentationMode && typeof video.webkitSetPresentationMode === "function") {
+                    const newMode = video.webkitPresentationMode === "picture-in-picture" ? "inline" : "picture-in-picture";
+                    video.webkitSetPresentationMode(newMode);
+                } else if (video.requestPictureInPicture) {
+                    await video.requestPictureInPicture();
+                }
+            } catch (err) {
+                console.error("Error toggling PiP:", err);
+            }
+        });
+    }
     
     // Volume Control Logic
     const volumeSlider = document.getElementById("player-volume-slider");
