@@ -53,11 +53,11 @@ function getLiveStreamExt() {
 }
 
 function getPlayerForSection(section) {
-    if (!state.playerSettings) return 'html5';
-    if (section === 'live') return state.playerSettings.live || 'html5';
-    if (section === 'movies') return state.playerSettings.movies || (window.AndroidApp ? 'exoplayer' : 'html5');
-    if (section === 'series') return state.playerSettings.series || (window.AndroidApp ? 'exoplayer' : 'html5');
-    return 'html5';
+    if (!state.playerSettings) return getDefaultPlayer(section);
+    if (section === 'live') return state.playerSettings.live || getDefaultPlayer('live');
+    if (section === 'movies') return state.playerSettings.movies || getDefaultPlayer('movies');
+    if (section === 'series') return state.playerSettings.series || getDefaultPlayer('series');
+    return getDefaultPlayer(section);
 }
 
 async function playMedia(item, section) {
@@ -506,9 +506,16 @@ async function playWithNativeVlc(title) {
     if (!stream || !stream.item) return;
     const section = stream.section;
     const item = stream.item;
-    const originalExt = (item.container_extension || 'mp4').toLowerCase();
     const streamId = item.stream_id || item.id;
-    let targetUrl = `${state.serverUrl}/${section === 'series' ? 'series' : 'movie'}/${state.username}/${state.password}/${streamId}.${originalExt}`;
+
+    let targetUrl;
+    if (section === 'live') {
+        // VLCKit decodes raw MPEG-TS directly — no HLS wrapper needed.
+        targetUrl = `${state.serverUrl}/live/${state.username}/${state.password}/${streamId}.ts`;
+    } else {
+        const originalExt = (item.container_extension || 'mp4').toLowerCase();
+        targetUrl = `${state.serverUrl}/${section === 'series' ? 'series' : 'movie'}/${state.username}/${state.password}/${streamId}.${originalExt}`;
+    }
 
     if (state.isDohEnabled && typeof resolveUrlWithDoH === 'function') {
         try { targetUrl = await resolveUrlWithDoH(targetUrl, false); } catch (e) {}
@@ -533,10 +540,10 @@ function launchVideoPlayer(url, title, logoUrl) {
     const section = state.currentPlayingStream ? state.currentPlayingStream.section : 'movies';
     const targetPlayer = getPlayerForSection(section);
 
-    // On iOS, movies/series play in the native VLCKit player, which decodes the formats
-    // the WebView <video> cannot (MKV, AC3/E-AC3/DTS Dolby audio, H.265, AVI...). Live
-    // channels keep the native HLS player. Falls through to HTML5 if the plugin is absent.
-    if (isAppleWebView() && (section === 'movies' || section === 'series') &&
+    // Native in-app VLCKit player (iOS) when the user selected "vlc_internal" for this
+    // section. VLCKit decodes formats the WebView <video> cannot (MKV, AC3/E-AC3/DTS
+    // Dolby audio, H.265, AVI, raw .ts...). Falls through if the plugin is absent.
+    if (isAppleWebView() && targetPlayer === 'vlc_internal' &&
         window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ShieldVlcPlayer) {
         playWithNativeVlc(title);
         return;

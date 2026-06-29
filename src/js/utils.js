@@ -152,8 +152,7 @@ function loadImageWithFallback(imgElement, originalUrl, defaultPoster) {
 }
 // Proxy retry helper using custom Cloudflare Worker first, then public corsproxy.io as fallback
 async function fetchWithProxy(url, tryFetch, originalError) {
-    const isWebapp = document.body.classList.contains("is-webapp");
-    if (isWebapp && url.startsWith("http")) {
+    if (url.startsWith("http")) {
         console.log(`[CORS Proxy] Retrying fetch via custom worker for: ${url}`);
         const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
         try {

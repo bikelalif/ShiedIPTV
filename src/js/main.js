@@ -65,10 +65,10 @@ function initApp() {
                 const isElectron = !!(window.electronAPI && window.electronAPI.isElectron);
                 if (settings.playerSettings) {
                     state.playerSettings = {
-                        live: settings.playerSettings.live || (isAndroid ? 'exoplayer_preview' : 'html5'),
+                        live: settings.playerSettings.live || getDefaultPlayer('live'),
                         liveFormat: settings.playerSettings.liveFormat || 'ts',
-                        movies: settings.playerSettings.movies || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5')),
-                        series: settings.playerSettings.series || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'))
+                        movies: settings.playerSettings.movies || getDefaultPlayer('movies'),
+                        series: settings.playerSettings.series || getDefaultPlayer('series')
                     };
                     
                     // Force Android TV defaults if they are set to incompatible 'html5' or if they are missing
@@ -85,10 +85,10 @@ function initApp() {
                     }
                 } else {
                     state.playerSettings = {
-                        live: isAndroid ? 'exoplayer_preview' : 'html5',
+                        live: getDefaultPlayer('live'),
                         liveFormat: 'ts',
-                        movies: isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'),
-                        series: isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5')
+                        movies: getDefaultPlayer('movies'),
+                        series: getDefaultPlayer('series')
                     };
                 }
                 
