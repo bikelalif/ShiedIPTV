@@ -59,7 +59,7 @@ public class ShieldVlcPlayer: CAPPlugin, CAPBridgedPlugin {
 }
 
 /// Full-screen VLC player with a tap-to-toggle controls overlay.
-class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate {
+class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, UIGestureRecognizerDelegate {
 
     private let streamURL: URL
     private let titleText: String
@@ -276,8 +276,18 @@ class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate {
     }
 
     private func setupGestures() {
+        // Attach the tap to the always-visible, always-interactive controls overlay
+        // (alpha stays 1, only the bars fade) so taps are reliably caught even when the
+        // bars are hidden — tapping the bare video then brings the controls back.
+        controlsOverlay.isUserInteractionEnabled = true
         let tap = UITapGestureRecognizer(target: self, action: #selector(toggleControls))
-        view.addGestureRecognizer(tap)
+        tap.delegate = self
+        controlsOverlay.addGestureRecognizer(tap)
+    }
+
+    // Don't let the toggle gesture swallow taps meant for the buttons.
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        return !(touch.view is UIControl)
     }
 
     // MARK: - Playback
@@ -393,16 +403,21 @@ class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate {
         controlsVisible ? hideControls() : showControls()
     }
 
+    private func setBarsAlpha(_ alpha: CGFloat) {
+        topBar.alpha = alpha
+        bottomBar.alpha = alpha
+    }
+
     private func showControls() {
         controlsVisible = true
-        UIView.animate(withDuration: 0.2) { self.controlsOverlay.alpha = 1 }
+        UIView.animate(withDuration: 0.2) { self.setBarsAlpha(1) }
         scheduleHideControls()
     }
 
     private func hideControls() {
         controlsVisible = false
         hideTimer?.invalidate()
-        UIView.animate(withDuration: 0.2) { self.controlsOverlay.alpha = 0 }
+        UIView.animate(withDuration: 0.2) { self.setBarsAlpha(0) }
     }
 
     private func scheduleHideControls() {
