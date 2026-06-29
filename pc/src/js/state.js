@@ -1006,7 +1006,7 @@ function applyLanguage(lang) {
     if (dohGroup) {
         const h3 = dohGroup.querySelector("h3");
         const desc = dohGroup.querySelector(".settings-desc");
-        const labelBypassMode = dohGroup.querySelector('label[for="setting-bypass-mode"]');
+        const labelBypassMode = dohGroup.querySelector('#settings-bypass-mode-label') || dohGroup.querySelector('label[for="setting-bypass-mode"]');
         const labelSelect = dohGroup.querySelector('label[for="setting-doh-url"]');
         if (h3) h3.innerText = t.dohTitle;
         if (desc) desc.innerText = t.dohDesc;

@@ -879,7 +879,7 @@ function moveFocus(direction) {
     
     // Custom rule: ArrowUp on first element in settings goes directly to back button
     if (state.currentSection === 'settings') {
-        if ((active.id === 'setting-doh-toggle' || active.id === 'setting-bypass-mode') && direction === 'up') {
+        if ((active.id === 'setting-doh-toggle' || active.id === 'setting-bypass-mode' || active.id === 'setting-bypass-mode-btn') && direction === 'up') {
             const backBtn = document.getElementById("btn-header-back");
             if (backBtn) {
                 // Reset scroll positions of settings-panel and page viewport instantly
@@ -1123,7 +1123,9 @@ function getFocusFallbackForScreen(screenId) {
             return container.querySelector("#media-grid .media-card") ||
                    container.querySelector(".category-item.active") ||
                    container.querySelector(".category-item") ||
-                   container.querySelector(".focusable:not(.btn-back-round):not(#btn-header-back):not(#search-bar):not(#category-search-bar)");
+                   container.querySelector(".focusable:not(.btn-back-round):not(#btn-header-back):not(#search-bar):not(#category-search-bar)") ||
+                   container.querySelector("#btn-header-back") ||
+                   container.querySelector(".focusable");
         }
     } else if (screenId === 'series-details-screen') {
         if (state.lastFocusedSeriesDetailsElement && document.body.contains(state.lastFocusedSeriesDetailsElement) && state.lastFocusedSeriesDetailsElement.offsetWidth > 0) {
@@ -1162,7 +1164,7 @@ function focusFirst() {
             target = container.querySelector("#player-btn-play") || container.querySelector("#player-btn-back") || Array.from(container.querySelectorAll(".focusable")).find(el => el.offsetWidth > 0 || el.offsetHeight > 0);
         } else if (screenId === 'home-screen' || screenId === 'series-details-screen') {
             if (screenId === 'home-screen' && state.currentSection === 'settings') {
-                target = container.querySelector("#setting-bypass-mode") || container.querySelector("#setting-doh-toggle") || container.querySelector(".settings-panel .focusable");
+                target = container.querySelector("#setting-bypass-mode-btn") || container.querySelector("#setting-bypass-mode") || container.querySelector("#setting-doh-toggle") || container.querySelector(".settings-panel .focusable");
             } else {
                 target = getFocusFallbackForScreen(screenId);
             }

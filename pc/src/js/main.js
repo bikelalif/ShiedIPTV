@@ -569,46 +569,69 @@ function setupEventListeners() {
         });
     }
     
-    // DoH & Proxy Bypass Mode Settings Listeners
+    // DoH & Proxy bypass mode. The settings selector is a custom focusable BUTTON
+    // (not a native <select>, which traps/breaks D-pad focus on Android TV) that
+    // cycles none -> doh -> proxy. applyBypassModeUI keeps every surface in sync.
+    function bypassModeText(mode) {
+        if (mode === 'doh') return 'DoH (Bypass DNS)';
+        if (mode === 'proxy') return 'Tunneling Proxy (Bypass DNS & IP)';
+        return 'Désactivé (Direct)';
+    }
+    function applyBypassModeUI(mode) {
+        const txt = document.getElementById("setting-bypass-mode-text");
+        if (txt) txt.innerText = bypassModeText(mode);
+        const resolverGroup = document.getElementById("setting-doh-resolver-group");
+        if (resolverGroup) resolverGroup.style.display = (mode === 'doh') ? '' : 'none';
+        const sel = document.getElementById("setting-bypass-mode");
+        if (sel) sel.value = mode;
+        const loginToggle = document.getElementById("login-doh-toggle");
+        if (loginToggle) loginToggle.checked = (mode !== 'none');
+    }
+    function setBypassMode(mode, withToast) {
+        state.bypassMode = mode;
+        state.isDohEnabled = (mode !== 'none');
+        applyBypassModeUI(mode);
+        if (typeof saveSettings === 'function') saveSettings();
+        if (withToast) {
+            const t = TRANSLATIONS[state.language || 'en'];
+            let toastMsg = t.dohDisabledToast || "Contournement désactivé";
+            if (mode === 'doh') toastMsg = "Contournement DNS (DoH) activé";
+            else if (mode === 'proxy') toastMsg = "Tunneling Proxy (Bypass DNS & IP) activé";
+            showToast(toastMsg, 2500);
+        }
+    }
+
     const loginDohLabel = document.getElementById("login-doh-label");
     const loginDohToggle = document.getElementById("login-doh-toggle");
     if (loginDohLabel && loginDohToggle) {
         loginDohLabel.addEventListener("click", (e) => {
             e.preventDefault();
             loginDohToggle.checked = !loginDohToggle.checked;
-            state.bypassMode = loginDohToggle.checked ? 'proxy' : 'none';
-            state.isDohEnabled = loginDohToggle.checked;
-            const mainBypass = document.getElementById("setting-bypass-mode");
-            if (mainBypass) mainBypass.value = state.bypassMode;
-            saveSettings();
+            setBypassMode(loginDohToggle.checked ? 'proxy' : 'none', false);
         });
         loginDohToggle.addEventListener("change", (e) => {
-            state.bypassMode = e.target.checked ? 'proxy' : 'none';
-            state.isDohEnabled = e.target.checked;
-            const mainBypass = document.getElementById("setting-bypass-mode");
-            if (mainBypass) mainBypass.value = state.bypassMode;
-            saveSettings();
+            setBypassMode(e.target.checked ? 'proxy' : 'none', false);
         });
     }
 
-    const settingBypassModeEl = document.getElementById("setting-bypass-mode");
-    if (settingBypassModeEl) {
-        settingBypassModeEl.addEventListener("change", (e) => {
-            const mode = e.target.value;
-            state.bypassMode = mode;
-            state.isDohEnabled = (mode !== 'none');
-            
-            const loginDohToggle = document.getElementById("login-doh-toggle");
-            if (loginDohToggle) loginDohToggle.checked = (mode !== 'none');
-            
-            saveSettings();
-            const t = TRANSLATIONS[state.language || 'en'];
-            let toastMsg = t.dohDisabledToast || "Bypass désactivé";
-            if (mode === 'doh') toastMsg = "Contournement DNS (DoH) activé";
-            else if (mode === 'proxy') toastMsg = "Tunneling Proxy (Bypass DNS & IP) activé";
-            showToast(toastMsg, 2500);
+    // Custom button (Android TV-safe) cycles through the bypass modes on activation.
+    const bypassBtn = document.getElementById("setting-bypass-mode-btn");
+    if (bypassBtn) {
+        bypassBtn.addEventListener("click", () => {
+            const order = ['none', 'doh', 'proxy'];
+            const next = order[(order.indexOf(state.bypassMode) + 1) % order.length];
+            setBypassMode(next, true);
         });
     }
+
+    // Legacy native <select> fallback, in case a platform still ships it.
+    const settingBypassModeEl = document.getElementById("setting-bypass-mode");
+    if (settingBypassModeEl) {
+        settingBypassModeEl.addEventListener("change", (e) => setBypassMode(e.target.value, true));
+    }
+
+    // Reflect the restored mode on the settings button/label at startup.
+    applyBypassModeUI(state.bypassMode);
     
     document.getElementById("setting-doh-url").addEventListener("change", (e) => {
         state.dohResolver = e.target.value;
