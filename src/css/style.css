@@ -2834,25 +2834,6 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
         grid-template-columns: 1fr !important;
         gap: 0.75rem !important;
     }
-    
-    /* Playlist Manager safe-area adjustments */
-    .playlist-manager-container {
-        padding-top: calc(1.5rem + env(safe-area-inset-top, 0px)) !important;
-    }
-    
-    /* Series Details Screen safe-area adjustments */
-    .series-details-container {
-        padding: 1.25rem 1rem !important;
-        padding-top: calc(1.5rem + env(safe-area-inset-top, 0px)) !important;
-        padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px)) !important;
-        padding-left: calc(1rem + env(safe-area-inset-left, 0px)) !important;
-        padding-right: calc(1rem + env(safe-area-inset-right, 0px)) !important;
-    }
-    
-    .episodes-list {
-        grid-template-columns: 1fr !important;
-        gap: 0.75rem !important;
-    }
 }
 
 @media (max-width: 600px) {
@@ -3596,87 +3577,5 @@ body.tv-mode .zap-item.focused {
     transform: none !important; /* Prevent layout shifting in zapping sidebar */
     box-shadow: none !important; /* Improve render time */
     border-color: var(--border-focus) !important;
-}
-
-/* Mobile device specific styles */
-body.is-mobile-device .player-volume-container {
-    display: none !important;
-}
-
-/* Optimize Playlist Manager and Login page on mobile landscape screens to prevent scrolling and fit everything */
-@media (max-height: 480px) and (max-width: 1024px) {
-    #playlist-manager-screen {
-        overflow: hidden !important;
-        height: 100vh !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-    
-    .playlist-manager-container {
-        height: 100% !important;
-        width: 95% !important;
-        gap: 0.5rem !important;
-        padding: 0.5rem 0 !important;
-        justify-content: center !important;
-        display: flex !important;
-        flex-direction: column !important;
-    }
-    
-    .playlist-manager-header {
-        margin-bottom: 0 !important;
-        padding: 0 !important;
-    }
-    
-    .playlist-manager-header img {
-        height: 32px !important;
-        width: 32px !important;
-    }
-    
-    .playlist-manager-header h1 {
-        font-size: 1.5rem !important;
-    }
-    
-    .playlist-manager-header p {
-        display: none !important;
-    }
-    
-    .playlists-grid {
-        gap: 0.75rem !important;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
-    }
-    
-    .playlist-card {
-        min-height: 110px !important;
-        padding: 0.75rem 1rem !important;
-        gap: 0.5rem !important;
-        border-radius: 12px !important;
-    }
-    
-    .playlist-card-icon,
-    .playlist-icon {
-        font-size: 2rem !important;
-    }
-    
-    .playlist-card-title {
-        font-size: 1rem !important;
-        margin: 0 !important;
-    }
-    
-    .playlist-card-type {
-        font-size: 0.75rem !important;
-        margin: 0 !important;
-    }
-    
-    .playlist-manager-actions {
-        margin-top: 0.5rem !important;
-        gap: 0.5rem !important;
-    }
-    
-    .playlist-manager-actions button {
-        padding: 0.4rem 1rem !important;
-        font-size: 0.8rem !important;
-    }
 }
 
