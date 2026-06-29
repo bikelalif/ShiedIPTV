@@ -320,7 +320,7 @@ class VLCPlayerViewController: UIViewController,
         mediaPlayer.drawable = self   // VLCDrawable + VLCPictureInPictureDrawable -> enables PiP
         let media = VLCMedia(url: streamURL)
         // Larger network cache to avoid the periodic re-buffering / stalls on network streams.
-        media.addOption(":network-caching=3000")
+        media?.addOption(":network-caching=3000")
         mediaPlayer.media = media
         mediaPlayer.play()
         scheduleHideControls()
