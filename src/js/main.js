@@ -47,17 +47,15 @@ function initApp() {
         if (savedSettings) {
             try {
                 const settings = JSON.parse(savedSettings);
-                // DoH is required to reach the IPTV server on many networks; a stale saved
-                // "false" was breaking the connection until manually re-enabled. Force it on
-                // by default and correct the stored value.
-                state.isDohEnabled = true;
-                if (settings.isDohEnabled === false && typeof saveSettings === 'function') {
-                    saveSettings();
-                }
+                // Determine bypass mode, default to 'proxy'
+                state.bypassMode = settings.bypassMode || (settings.isDohEnabled === false ? 'none' : 'proxy');
+                state.isDohEnabled = (state.bypassMode !== 'none');
                 state.dohResolver = settings.dohResolver || 'https://dns.google/resolve';
                 
-                const toggleEl = document.getElementById("setting-doh-toggle");
-                if (toggleEl) toggleEl.checked = state.isDohEnabled;
+                const bypassEl = document.getElementById("setting-bypass-mode");
+                if (bypassEl) bypassEl.value = state.bypassMode;
+                const loginDohEl = document.getElementById("login-doh-toggle");
+                if (loginDohEl) loginDohEl.checked = (state.bypassMode !== 'none');
                 const urlEl = document.getElementById("setting-doh-url");
                 if (urlEl) urlEl.value = state.dohResolver;
 
@@ -571,34 +569,46 @@ function setupEventListeners() {
         });
     }
     
-    // DoH
+    // DoH & Proxy Bypass Mode Settings Listeners
     const loginDohLabel = document.getElementById("login-doh-label");
     const loginDohToggle = document.getElementById("login-doh-toggle");
     if (loginDohLabel && loginDohToggle) {
         loginDohLabel.addEventListener("click", (e) => {
             e.preventDefault();
             loginDohToggle.checked = !loginDohToggle.checked;
+            state.bypassMode = loginDohToggle.checked ? 'proxy' : 'none';
             state.isDohEnabled = loginDohToggle.checked;
-            const mainDoh = document.getElementById("setting-doh-toggle");
-            if (mainDoh) mainDoh.checked = state.isDohEnabled;
+            const mainBypass = document.getElementById("setting-bypass-mode");
+            if (mainBypass) mainBypass.value = state.bypassMode;
             saveSettings();
         });
         loginDohToggle.addEventListener("change", (e) => {
+            state.bypassMode = e.target.checked ? 'proxy' : 'none';
             state.isDohEnabled = e.target.checked;
-            const mainDoh = document.getElementById("setting-doh-toggle");
-            if (mainDoh) mainDoh.checked = state.isDohEnabled;
+            const mainBypass = document.getElementById("setting-bypass-mode");
+            if (mainBypass) mainBypass.value = state.bypassMode;
             saveSettings();
         });
     }
 
-    document.getElementById("setting-doh-toggle").addEventListener("change", (e) => {
-        state.isDohEnabled = e.target.checked;
-        const loginDohToggle = document.getElementById("login-doh-toggle");
-        if (loginDohToggle) loginDohToggle.checked = state.isDohEnabled;
-        saveSettings();
-        const t = TRANSLATIONS[state.language || 'en'];
-        showToast(state.isDohEnabled ? t.dohEnabledToast : t.dohDisabledToast, 2000);
-    });
+    const settingBypassModeEl = document.getElementById("setting-bypass-mode");
+    if (settingBypassModeEl) {
+        settingBypassModeEl.addEventListener("change", (e) => {
+            const mode = e.target.value;
+            state.bypassMode = mode;
+            state.isDohEnabled = (mode !== 'none');
+            
+            const loginDohToggle = document.getElementById("login-doh-toggle");
+            if (loginDohToggle) loginDohToggle.checked = (mode !== 'none');
+            
+            saveSettings();
+            const t = TRANSLATIONS[state.language || 'en'];
+            let toastMsg = t.dohDisabledToast || "Bypass désactivé";
+            if (mode === 'doh') toastMsg = "Contournement DNS (DoH) activé";
+            else if (mode === 'proxy') toastMsg = "Tunneling Proxy (Bypass DNS & IP) activé";
+            showToast(toastMsg, 2500);
+        });
+    }
     
     document.getElementById("setting-doh-url").addEventListener("change", (e) => {
         state.dohResolver = e.target.value;
