@@ -289,12 +289,19 @@ function handlePlaybackFallback(originalUrl, onFailCallback) {
 }
 
 function tryProxyFallback(originalUrl, onFailCallback) {
-    if (!originalUrl || !originalUrl.startsWith("http")) {
+    const fallbackSourceUrl = state.originalStreamUrl || originalUrl;
+    if (!fallbackSourceUrl || !fallbackSourceUrl.startsWith("http") || fallbackSourceUrl.includes("allorigins.win")) {
         if (typeof onFailCallback === 'function') onFailCallback();
         return;
     }
     
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(originalUrl)}`;
+    // Ensure we don't pass an IP URL if we have a saved original domain URL
+    let cleanSourceUrl = fallbackSourceUrl;
+    if (state.originalStreamUrl && cleanSourceUrl.includes("103.176.90.102") && !state.originalStreamUrl.includes("103.176.90.102")) {
+        cleanSourceUrl = state.originalStreamUrl;
+    }
+    
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(cleanSourceUrl)}`;
     console.log("[Player] Trying AllOrigins CORS proxy stream fallback:", proxyUrl);
     state.lastAttemptedStreamUrl = proxyUrl;
     startPlayback(proxyUrl, true);
@@ -547,6 +554,7 @@ async function playWithNativeVlc(title) {
 
 function launchVideoPlayer(url, title, logoUrl) {
     const preservedStream = state.currentPlayingStream;
+    state.originalStreamUrl = url;
     state.currentPlayingStreamUrl = url;
     destroyPreviewMpegtsPlayer();
     state.currentPlayingStream = preservedStream;
@@ -1433,6 +1441,7 @@ async function loadLivePreview(item) {
     
     const previewExt = getLiveStreamExt();
     const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${previewExt}`;
+    state.originalStreamUrl = streamUrl;
     
     resolveUrlWithDoH(streamUrl, true).then(async resolvedUrl => {
         if (window.AndroidApp && typeof window.AndroidApp.startPreview === 'function') {
