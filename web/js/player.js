@@ -263,24 +263,33 @@ function triggerDirectStreamFallback() {
 }
 
 function handlePlaybackFallback(originalUrl, onFailCallback) {
-    if (state.isDohEnabled && state.lastAttemptedStreamUrl === originalUrl) {
+    const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
+    
+    if (state.bypassMode !== 'none' && state.lastAttemptedStreamUrl === originalUrl) {
         console.warn("[Player] Stream failed using original URL. Retrying with DNS-over-HTTPS fallback...");
         state.lastAttemptedStreamUrl = ""; // prevent loop
         
-        const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
         resolveUrlWithDoH(originalUrl, isLive).then(resolvedUrl => {
             if (resolvedUrl && resolvedUrl !== originalUrl) {
                 console.log("[Player] DoH resolved fallback URL:", resolvedUrl);
                 state.lastAttemptedStreamUrl = resolvedUrl;
                 startPlayback(resolvedUrl, true);
             } else {
-                tryProxyFallback(originalUrl, onFailCallback);
+                if (state.bypassMode === 'proxy') {
+                    tryProxyFallback(originalUrl, onFailCallback);
+                } else {
+                    if (typeof onFailCallback === 'function') onFailCallback();
+                }
             }
         }).catch(err => {
             console.error("[Player] DoH resolution failed during fallback:", err);
-            tryProxyFallback(originalUrl, onFailCallback);
+            if (state.bypassMode === 'proxy') {
+                tryProxyFallback(originalUrl, onFailCallback);
+            } else {
+                if (typeof onFailCallback === 'function') onFailCallback();
+            }
         });
-    } else if (state.lastAttemptedStreamUrl && !state.lastAttemptedStreamUrl.includes("workers.dev") && !state.lastAttemptedStreamUrl.includes("corsproxy.io") && !state.lastAttemptedStreamUrl.includes("allorigins.win")) {
+    } else if (state.bypassMode === 'proxy' && state.lastAttemptedStreamUrl && !state.lastAttemptedStreamUrl.includes("workers.dev") && !state.lastAttemptedStreamUrl.includes("corsproxy.io") && !state.lastAttemptedStreamUrl.includes("allorigins.win")) {
         console.warn("[Player] Stream failed with IP URL. Retrying with CORS Proxy fallback...");
         tryProxyFallback(originalUrl, onFailCallback);
     } else {
