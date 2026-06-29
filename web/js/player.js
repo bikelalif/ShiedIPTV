@@ -670,10 +670,11 @@ function launchVideoPlayer(url, title, logoUrl) {
         }
     }
     
-    // Hide fullscreen button on TV mode/wrapper
+    // Hide fullscreen button on TV mode/wrapper, and also on iOS
     const fullscreenBtn = document.getElementById("player-btn-fullscreen");
     if (fullscreenBtn) {
-        if (isTvWrapper || window.AndroidApp || document.body.classList.contains("tv-mode")) {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        if (isTvWrapper || window.AndroidApp || document.body.classList.contains("tv-mode") || isIOS) {
             fullscreenBtn.style.display = "none";
         } else {
             fullscreenBtn.style.display = "";
