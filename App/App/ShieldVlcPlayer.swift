@@ -7,8 +7,8 @@ import VLCKitSPM
 /// Capacitor plugin that opens a native, full-screen VLCKit player.
 ///
 /// VLCKit decodes containers/codecs that the iOS HTML5 <video> element cannot
-/// (MKV, AVI, AC3/E-AC3/DTS Dolby audio, H.265, ...), so it is used for movies
-/// and series. Live channels keep using the native HLS player in the WebView.
+/// (MKV, AVI, AC3/E-AC3/DTS Dolby audio, H.265, ...). Used for movies/series
+/// (and live when selected). VLCKit 4 also provides native Picture-in-Picture.
 @objc(ShieldVlcPlayer)
 public class ShieldVlcPlayer: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "ShieldVlcPlayer"
@@ -26,7 +26,6 @@ public class ShieldVlcPlayer: CAPPlugin, CAPBridgedPlugin {
             return
         }
         let title = call.getString("title") ?? ""
-        // Resolve the promise only when the player is closed by the user.
         call.keepAlive = true
 
         DispatchQueue.main.async {
@@ -58,14 +57,20 @@ public class ShieldVlcPlayer: CAPPlugin, CAPBridgedPlugin {
     }
 }
 
-/// Full-screen VLC player with a tap-to-toggle controls overlay.
-class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, UIGestureRecognizerDelegate {
+/// Full-screen VLC player (VLCKit 4) with tap-to-toggle controls and native PiP.
+class VLCPlayerViewController: UIViewController,
+                              VLCMediaPlayerDelegate,
+                              UIGestureRecognizerDelegate,
+                              VLCDrawable,
+                              VLCPictureInPictureDrawable,
+                              VLCPictureInPictureMediaControlling {
 
     private let streamURL: URL
     private let titleText: String
     var onClose: (() -> Void)?
 
     private let mediaPlayer = VLCMediaPlayer()
+    private weak var pipController: VLCPictureInPictureWindowControlling?
 
     private let videoView = UIView()
     private let controlsOverlay = UIView()
@@ -76,6 +81,7 @@ class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, UIGestu
     private let titleLabel = UILabel()
     private let closeButton = UIButton(type: .system)
     private let playPauseButton = UIButton(type: .system)
+    private let pipButton = UIButton(type: .system)
     private let audioButton = UIButton(type: .system)
     private let subtitleButton = UIButton(type: .system)
     private let slider = UISlider()
@@ -153,7 +159,7 @@ class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, UIGestu
 
         let guide = view.safeAreaLayoutGuide
 
-        // Top bar: close + title
+        // Top bar: close + title + PiP
         topBar.translatesAutoresizingMaskIntoConstraints = false
         controlsOverlay.addSubview(topBar)
 
@@ -162,6 +168,12 @@ class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, UIGestu
         closeButton.tintColor = .white
         closeButton.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
         topBar.addSubview(closeButton)
+
+        pipButton.translatesAutoresizingMaskIntoConstraints = false
+        pipButton.setImage(UIImage(systemName: "pip.enter"), for: .normal)
+        pipButton.tintColor = .white
+        pipButton.addTarget(self, action: #selector(pipTapped), for: .touchUpInside)
+        topBar.addSubview(pipButton)
 
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.text = titleText
@@ -181,8 +193,13 @@ class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, UIGestu
             closeButton.widthAnchor.constraint(equalToConstant: 44),
             closeButton.heightAnchor.constraint(equalToConstant: 44),
 
+            pipButton.trailingAnchor.constraint(equalTo: topBar.trailingAnchor),
+            pipButton.centerYAnchor.constraint(equalTo: topBar.centerYAnchor),
+            pipButton.widthAnchor.constraint(equalToConstant: 44),
+            pipButton.heightAnchor.constraint(equalToConstant: 44),
+
             titleLabel.leadingAnchor.constraint(equalTo: closeButton.trailingAnchor, constant: 8),
-            titleLabel.trailingAnchor.constraint(equalTo: topBar.trailingAnchor, constant: -8),
+            titleLabel.trailingAnchor.constraint(equalTo: pipButton.leadingAnchor, constant: -8),
             titleLabel.centerYAnchor.constraint(equalTo: topBar.centerYAnchor)
         ])
 
@@ -197,13 +214,13 @@ class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, UIGestu
         bottomBar.addSubview(playPauseButton)
 
         currentTimeLabel.translatesAutoresizingMaskIntoConstraints = false
-        currentTimeLabel.text = "00:00"
+        currentTimeLabel.text = "0:00"
         currentTimeLabel.textColor = .white
         currentTimeLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .regular)
         bottomBar.addSubview(currentTimeLabel)
 
         totalTimeLabel.translatesAutoresizingMaskIntoConstraints = false
-        totalTimeLabel.text = "00:00"
+        totalTimeLabel.text = "0:00"
         totalTimeLabel.textColor = .white
         totalTimeLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .regular)
         bottomBar.addSubview(totalTimeLabel)
@@ -276,9 +293,8 @@ class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, UIGestu
     }
 
     private func setupGestures() {
-        // Attach the tap to the always-visible, always-interactive controls overlay
-        // (alpha stays 1, only the bars fade) so taps are reliably caught even when the
-        // bars are hidden — tapping the bare video then brings the controls back.
+        // Tap on the always-interactive overlay (alpha stays 1, only the bars fade)
+        // so taps are reliably caught even when the bars are hidden.
         controlsOverlay.isUserInteractionEnabled = true
         let tap = UITapGestureRecognizer(target: self, action: #selector(toggleControls))
         tap.delegate = self
@@ -293,7 +309,6 @@ class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, UIGestu
     // MARK: - Playback
 
     private func startPlayback() {
-        // Use the playback category so audio is heard even with the mute switch on.
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
             try AVAudioSession.sharedInstance().setActive(true)
@@ -301,10 +316,9 @@ class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, UIGestu
             NSLog("[ShieldVlcPlayer] AVAudioSession error: \(error)")
         }
 
-        let media = VLCMedia(url: streamURL)
-        mediaPlayer.media = media
-        mediaPlayer.drawable = videoView
         mediaPlayer.delegate = self
+        mediaPlayer.drawable = self   // VLCDrawable + VLCPictureInPictureDrawable -> enables PiP
+        mediaPlayer.media = VLCMedia(url: streamURL)
         mediaPlayer.play()
         scheduleHideControls()
     }
@@ -324,6 +338,10 @@ class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, UIGestu
         }
     }
 
+    @objc private func pipTapped() {
+        pipController?.startPictureInPicture()
+    }
+
     @objc private func togglePlayPause() {
         if mediaPlayer.isPlaying {
             mediaPlayer.pause()
@@ -341,58 +359,50 @@ class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, UIGestu
     }
 
     @objc private func sliderValueChanged() {
-        let totalMs = Double(mediaPlayer.media?.length.intValue ?? 0)
+        let totalMs = mediaLength()
         if totalMs > 0 {
-            let previewMs = Int32(totalMs * Double(slider.value))
-            currentTimeLabel.text = VLCTime(int: previewMs).stringValue
+            currentTimeLabel.text = formatTime(Int64(Double(totalMs) * Double(slider.value)))
         }
     }
 
     @objc private func sliderTouchUp() {
-        mediaPlayer.position = slider.value
+        mediaPlayer.position = Double(slider.value)
         isSeeking = false
         scheduleHideControls()
     }
 
     @objc private func audioTapped() {
-        presentTrackSheet(
-            title: "Piste audio",
-            names: mediaPlayer.audioTrackNames as? [String] ?? [],
-            indexes: mediaPlayer.audioTrackIndexes as? [NSNumber] ?? [],
-            current: mediaPlayer.currentAudioTrackIndex
-        ) { [weak self] index in
-            self?.mediaPlayer.currentAudioTrackIndex = index
-        }
+        presentTrackSheet(title: "Piste audio", tracks: mediaPlayer.audioTracks, type: .audio, allowDisable: false)
     }
 
     @objc private func subtitleTapped() {
-        presentTrackSheet(
-            title: "Sous-titres",
-            names: mediaPlayer.videoSubTitlesNames as? [String] ?? [],
-            indexes: mediaPlayer.videoSubTitlesIndexes as? [NSNumber] ?? [],
-            current: mediaPlayer.currentVideoSubTitleIndex
-        ) { [weak self] index in
-            self?.mediaPlayer.currentVideoSubTitleIndex = index
-        }
+        presentTrackSheet(title: "Sous-titres", tracks: mediaPlayer.textTracks, type: .text, allowDisable: true)
     }
 
-    private func presentTrackSheet(title: String, names: [String], indexes: [NSNumber], current: Int32, onSelect: @escaping (Int32) -> Void) {
+    private func presentTrackSheet(title: String, tracks: [VLCMediaPlayerTrack], type: VLCMediaTrackType, allowDisable: Bool) {
         hideTimer?.invalidate()
         let sheet = UIAlertController(title: title, message: nil, preferredStyle: .actionSheet)
-        for (i, name) in names.enumerated() where i < indexes.count {
-            let idx = indexes[i].int32Value
-            let mark = (idx == current) ? "  ✓" : ""
-            sheet.addAction(UIAlertAction(title: name + mark, style: .default) { _ in
-                onSelect(idx)
-                self.scheduleHideControls()
+
+        for (i, track) in tracks.enumerated() {
+            let mark = track.isSelected ? "  ✓" : ""
+            sheet.addAction(UIAlertAction(title: track.trackName + mark, style: .default) { [weak self] _ in
+                self?.mediaPlayer.selectTrack(atIndex: i, type: type)
+                self?.scheduleHideControls()
             })
         }
-        sheet.addAction(UIAlertAction(title: "Annuler", style: .cancel) { _ in
-            self.scheduleHideControls()
+        if allowDisable {
+            sheet.addAction(UIAlertAction(title: "Désactiver", style: .default) { [weak self] _ in
+                self?.mediaPlayer.deselectAllTextTracks()
+                self?.scheduleHideControls()
+            })
+        }
+        sheet.addAction(UIAlertAction(title: "Annuler", style: .cancel) { [weak self] _ in
+            self?.scheduleHideControls()
         })
         if let pop = sheet.popoverPresentationController {
-            pop.sourceView = title == "Sous-titres" ? subtitleButton : audioButton
-            pop.sourceRect = (title == "Sous-titres" ? subtitleButton : audioButton).bounds
+            let anchor = (type == .text) ? subtitleButton : audioButton
+            pop.sourceView = anchor
+            pop.sourceRect = anchor.bounds
         }
         present(sheet, animated: true)
     }
@@ -428,36 +438,56 @@ class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, UIGestu
         }
     }
 
+    // MARK: - Helpers
+
+    private func formatTime(_ ms: Int64) -> String {
+        let totalSeconds = max(0, Int(ms / 1000))
+        let h = totalSeconds / 3600
+        let m = (totalSeconds % 3600) / 60
+        let s = totalSeconds % 60
+        if h > 0 {
+            return String(format: "%d:%02d:%02d", h, m, s)
+        }
+        return String(format: "%d:%02d", m, s)
+    }
+
     // MARK: - VLCMediaPlayerDelegate
 
-    func mediaPlayerStateChanged(_ aNotification: Notification) {
-        switch mediaPlayer.state {
-        case .buffering, .opening:
+    func mediaPlayerStateChanged(_ newState: VLCMediaPlayerState) {
+        switch newState {
+        case .opening:
             if !mediaPlayer.isPlaying { spinner.startAnimating() }
         case .playing:
             spinner.stopAnimating()
             playPauseButton.setImage(UIImage(systemName: "pause.fill"), for: .normal)
-        case .paused, .stopped:
+        case .paused, .stopped, .stopping:
             spinner.stopAnimating()
-        case .ended:
-            closeTapped()
         case .error:
             spinner.stopAnimating()
             showError()
-        default:
+        @unknown default:
             break
+        }
+        pipController?.invalidatePlaybackState()
+    }
+
+    func mediaPlayerTimeChanged(_ aNotification: Notification!) {
+        spinner.stopAnimating()
+        if !isSeeking {
+            slider.value = Float(mediaPlayer.position)
+            currentTimeLabel.text = formatTime(mediaTime())
+        }
+        let total = mediaLength()
+        if total > 0 {
+            totalTimeLabel.text = formatTime(total)
         }
     }
 
-    func mediaPlayerTimeChanged(_ aNotification: Notification) {
-        spinner.stopAnimating()
-        if !isSeeking {
-            slider.value = mediaPlayer.position
-            currentTimeLabel.text = mediaPlayer.time.stringValue
+    func mediaPlayerLengthChanged(_ length: Int64) {
+        if length > 0 {
+            totalTimeLabel.text = formatTime(length)
         }
-        if let length = mediaPlayer.media?.length, length.intValue > 0 {
-            totalTimeLabel.text = length.stringValue
-        }
+        pipController?.invalidatePlaybackState()
     }
 
     private func showError() {
@@ -468,5 +498,57 @@ class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, UIGestu
             self?.closeTapped()
         })
         present(alert, animated: true)
+    }
+
+    // MARK: - VLCDrawable
+
+    func addSubview(_ view: UIView) {
+        videoView.addSubview(view)
+    }
+
+    func bounds() -> CGRect {
+        return videoView.bounds
+    }
+
+    // MARK: - VLCPictureInPictureDrawable
+
+    func mediaController() -> VLCPictureInPictureMediaControlling {
+        return self
+    }
+
+    func pictureInPictureReady() -> ((VLCPictureInPictureWindowControlling) -> Void) {
+        return { [weak self] controller in
+            self?.pipController = controller
+        }
+    }
+
+    // MARK: - VLCPictureInPictureMediaControlling
+
+    func play() {
+        mediaPlayer.play()
+    }
+
+    func pause() {
+        mediaPlayer.pause()
+    }
+
+    func seekBy(_ offset: Int64, completion: @escaping () -> Void) {
+        mediaPlayer.jump(withOffset: Int(offset), completion: completion)
+    }
+
+    func mediaLength() -> Int64 {
+        return mediaPlayer.media?.length.value?.int64Value ?? 0
+    }
+
+    func mediaTime() -> Int64 {
+        return mediaPlayer.time.value?.int64Value ?? 0
+    }
+
+    func isMediaSeekable() -> Bool {
+        return mediaPlayer.isSeekable
+    }
+
+    func isMediaPlaying() -> Bool {
+        return mediaPlayer.isPlaying
     }
 }
