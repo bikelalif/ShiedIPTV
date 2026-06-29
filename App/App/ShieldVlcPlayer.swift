@@ -386,7 +386,7 @@ class VLCPlayerViewController: UIViewController,
         for (i, track) in tracks.enumerated() {
             let mark = track.isSelected ? "  ✓" : ""
             sheet.addAction(UIAlertAction(title: track.trackName + mark, style: .default) { [weak self] _ in
-                self?.mediaPlayer.selectTrack(atIndex: i, type: type)
+                self?.mediaPlayer.selectTrack(at: i, type: type)
                 self?.scheduleHideControls()
             })
         }
@@ -465,7 +465,7 @@ class VLCPlayerViewController: UIViewController,
         case .error:
             spinner.stopAnimating()
             showError()
-        @unknown default:
+        default:
             break
         }
         pipController?.invalidatePlaybackState()
@@ -516,7 +516,7 @@ class VLCPlayerViewController: UIViewController,
         return self
     }
 
-    func pictureInPictureReady() -> ((VLCPictureInPictureWindowControlling) -> Void) {
+    func pictureInPictureReady() -> ((VLCPictureInPictureWindowControlling?) -> Void) {
         return { [weak self] controller in
             self?.pipController = controller
         }
@@ -533,7 +533,7 @@ class VLCPlayerViewController: UIViewController,
     }
 
     func seekBy(_ offset: Int64, completion: @escaping () -> Void) {
-        mediaPlayer.jump(withOffset: Int(offset), completion: completion)
+        mediaPlayer.jump(withOffset: Int32(offset), completion: completion)
     }
 
     func mediaLength() -> Int64 {
