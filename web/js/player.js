@@ -499,6 +499,31 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
     }
 }
 
+// Play a movie/series episode in the native iOS VLCKit player. Builds the direct
+// file URL with the original container extension (no transmux — VLC decodes it all).
+async function playWithNativeVlc(title) {
+    const stream = state.currentPlayingStream;
+    if (!stream || !stream.item) return;
+    const section = stream.section;
+    const item = stream.item;
+    const originalExt = (item.container_extension || 'mp4').toLowerCase();
+    const streamId = item.stream_id || item.id;
+    let targetUrl = `${state.serverUrl}/${section === 'series' ? 'series' : 'movie'}/${state.username}/${state.password}/${streamId}.${originalExt}`;
+
+    if (state.isDohEnabled && typeof resolveUrlWithDoH === 'function') {
+        try { targetUrl = await resolveUrlWithDoH(targetUrl, false); } catch (e) {}
+    }
+
+    try {
+        console.log('[VLC] Native playback:', targetUrl);
+        await window.Capacitor.Plugins.ShieldVlcPlayer.play({ url: targetUrl, title: title || '' });
+        // Promise resolves when the user closes the native player; nothing else to do
+        // since the WebView still shows the screen underneath.
+    } catch (e) {
+        console.warn('[VLC] Native playback error:', e);
+    }
+}
+
 function launchVideoPlayer(url, title, logoUrl) {
     const preservedStream = state.currentPlayingStream;
     state.currentPlayingStreamUrl = url;
@@ -507,7 +532,16 @@ function launchVideoPlayer(url, title, logoUrl) {
     
     const section = state.currentPlayingStream ? state.currentPlayingStream.section : 'movies';
     const targetPlayer = getPlayerForSection(section);
-    
+
+    // On iOS, movies/series play in the native VLCKit player, which decodes the formats
+    // the WebView <video> cannot (MKV, AC3/E-AC3/DTS Dolby audio, H.265, AVI...). Live
+    // channels keep the native HLS player. Falls through to HTML5 if the plugin is absent.
+    if (isAppleWebView() && (section === 'movies' || section === 'series') &&
+        window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ShieldVlcPlayer) {
+        playWithNativeVlc(title);
+        return;
+    }
+
     if ((targetPlayer === 'vlc' || targetPlayer === 'mpv') && !window.AndroidApp && !isTvWrapper) {
         if (window.electronAPI && window.electronAPI.isElectron) {
             // Show embedded container
