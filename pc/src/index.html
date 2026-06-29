@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ShieldIPTV</title>
     <script>
         (function() {
+            // Disable pinch-to-zoom gestures on iOS WKWebView
+            document.addEventListener('gesturestart', function(e) {
+                e.preventDefault();
+            });
+
             function showError(message, source, lineno, colno, error) {
                 var overlay = document.getElementById('debug-error-overlay');
                 if (!overlay) {
@@ -133,7 +138,7 @@
     <link rel="icon" type="image/png" href="assets/icon.png">
     <!-- Google Fonts: Outfit & Material Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Material+Icons&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=1.0.9.8">
+    <link rel="stylesheet" href="css/style.css?v=1.1.0">
     <!-- Local mpegts.js for live TS stream decoding in browser -->
     <script src="libs/mpegts.min.js"></script>
     <!-- Local hls.js for live HLS stream decoding in browser -->
@@ -472,8 +477,9 @@
                                 <label for="setting-player-live" id="settings-player-live-label">Direct (Live TV)</label>
                                 <select id="setting-player-live" class="focusable">
                                     <option value="html5">Lecteur par défaut (HTML5)</option>
-                                    <option value="exoplayer">ExoPlayer (Pur / Plein Écran Direct)</option>
+                                    <option value="exoplayer">ExoPlayer (Natif Android)</option>
                                     <option value="exoplayer_preview">ExoPlayer (Avec Prévisualisation)</option>
+                                    <option value="vlc">VLC Player (Externe / Recommandé pour iOS)</option>
                                 </select>
                             </div>
                             <div class="input-group">
@@ -486,13 +492,17 @@
                             <div class="input-group">
                                 <label for="setting-player-movies" id="settings-player-movies-label">Films (Movies)</label>
                                 <select id="setting-player-movies" class="focusable">
+                                    <option value="html5">Lecteur par défaut (HTML5)</option>
                                     <option value="exoplayer">ExoPlayer (Natif Android)</option>
+                                    <option value="vlc">VLC Player (Externe / Recommandé pour MKV/4K/Dolby)</option>
                                 </select>
                             </div>
                             <div class="input-group">
                                 <label for="setting-player-series" id="settings-player-series-label">Séries (Series)</label>
                                 <select id="setting-player-series" class="focusable">
+                                    <option value="html5">Lecteur par défaut (HTML5)</option>
                                     <option value="exoplayer">ExoPlayer (Natif Android)</option>
+                                    <option value="vlc">VLC Player (Externe / Recommandé pour MKV/4K/Dolby)</option>
                                 </select>
                             </div>
                         </div>
@@ -704,6 +714,9 @@
                                     <input type="range" id="player-volume-slider" class="focusable" min="0" max="1" step="0.05" value="1">
                                 </div>
                             </div>
+                            <button class="focusable player-btn" id="player-btn-pip" title="Mini-lecteur (Picture-in-Picture)">
+                                <span class="material-icons">picture_in_picture_alt</span>
+                            </button>
                             <button class="focusable player-btn" id="player-btn-fullscreen" title="Plein Écran">
                                 <span class="material-icons">fullscreen</span>
                             </button>

@@ -3598,3 +3598,85 @@ body.tv-mode .zap-item.focused {
     border-color: var(--border-focus) !important;
 }
 
+/* Mobile device specific styles */
+body.is-mobile-device .player-volume-container {
+    display: none !important;
+}
+
+/* Optimize Playlist Manager and Login page on mobile landscape screens to prevent scrolling and fit everything */
+@media (max-height: 480px) and (max-width: 1024px) {
+    #playlist-manager-screen {
+        overflow: hidden !important;
+        height: 100vh !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    .playlist-manager-container {
+        height: 100% !important;
+        width: 95% !important;
+        gap: 0.5rem !important;
+        padding: 0.5rem 0 !important;
+        justify-content: center !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    
+    .playlist-manager-header {
+        margin-bottom: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .playlist-manager-header img {
+        height: 32px !important;
+        width: 32px !important;
+    }
+    
+    .playlist-manager-header h1 {
+        font-size: 1.5rem !important;
+    }
+    
+    .playlist-manager-header p {
+        display: none !important;
+    }
+    
+    .playlists-grid {
+        gap: 0.75rem !important;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+    }
+    
+    .playlist-card {
+        min-height: 110px !important;
+        padding: 0.75rem 1rem !important;
+        gap: 0.5rem !important;
+        border-radius: 12px !important;
+    }
+    
+    .playlist-card-icon,
+    .playlist-icon {
+        font-size: 2rem !important;
+    }
+    
+    .playlist-card-title {
+        font-size: 1rem !important;
+        margin: 0 !important;
+    }
+    
+    .playlist-card-type {
+        font-size: 0.75rem !important;
+        margin: 0 !important;
+    }
+    
+    .playlist-manager-actions {
+        margin-top: 0.5rem !important;
+        gap: 0.5rem !important;
+    }
+    
+    .playlist-manager-actions button {
+        padding: 0.4rem 1rem !important;
+        font-size: 0.8rem !important;
+    }
+}
+

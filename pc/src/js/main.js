@@ -19,6 +19,11 @@ function initApp() {
             document.body.classList.add("is-webapp");
         }
         
+        const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isMobileDevice) {
+            document.body.classList.add("is-mobile-device");
+        }
+        
         try {
             setupEventListeners();
         } catch (e) {
@@ -704,6 +709,27 @@ function setupEventListeners() {
         toggleFullscreen();
     });
     
+    const pipBtn = document.getElementById("player-btn-pip");
+    if (pipBtn) {
+        pipBtn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const video = document.getElementById("video-player");
+            if (!video) return;
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                } else if (video.webkitPresentationMode && typeof video.webkitSetPresentationMode === "function") {
+                    const newMode = video.webkitPresentationMode === "picture-in-picture" ? "inline" : "picture-in-picture";
+                    video.webkitSetPresentationMode(newMode);
+                } else if (video.requestPictureInPicture) {
+                    await video.requestPictureInPicture();
+                }
+            } catch (err) {
+                console.error("Error toggling PiP:", err);
+            }
+        });
+    }
+    
     // Volume Control Logic
     const volumeSlider = document.getElementById("player-volume-slider");
     const volumeBtn = document.getElementById("player-btn-volume");
@@ -805,29 +831,47 @@ function setupEventListeners() {
                 targetUrl = `${state.serverUrl}/${section === 'series' ? 'series' : 'movie'}/${state.username}/${state.password}/${streamId}.${originalExt}`;
             }
 
-            // On Electron, launch directly via main process spawn
-            if (window.electronAPI && window.electronAPI.isElectron) {
-                console.log("[VLC] Launching stream via Electron helper:", targetUrl);
-                window.electronAPI.openVlcExternal(targetUrl);
-                return;
-            }
-            // On Android TV, use native intent to open external player (VLC, MX Player, etc.)
-            if (window.AndroidApp && typeof window.AndroidApp.openExternalPlayer === 'function') {
-                console.log("[VLC] Launching stream via Android native intent:", state.currentPlayingStreamUrl);
-                window.AndroidApp.openExternalPlayer(state.currentPlayingStreamUrl);
-                return;
-            }
-            // On web/PC, use vlc:// protocol
-            let vlcUrl = state.currentPlayingStreamUrl;
-            if (vlcUrl.startsWith('http://')) {
-                vlcUrl = vlcUrl.replace('http://', 'vlc://');
-            } else if (vlcUrl.startsWith('https://')) {
-                vlcUrl = vlcUrl.replace('https://', 'vlc://');
+            const performLaunch = (finalUrl) => {
+                // On Electron, launch directly via main process spawn
+                if (window.electronAPI && window.electronAPI.isElectron) {
+                    console.log("[VLC] Launching stream via Electron helper:", finalUrl);
+                    window.electronAPI.openVlcExternal(finalUrl);
+                    return;
+                }
+                // On Android TV, use native intent to open external player (VLC, MX Player, etc.)
+                if (window.AndroidApp && typeof window.AndroidApp.openExternalPlayer === 'function') {
+                    console.log("[VLC] Launching stream via Android native intent:", finalUrl);
+                    window.AndroidApp.openExternalPlayer(finalUrl);
+                    return;
+                }
+                // On web/PC, use vlc:// protocol
+                let vlcUrl = finalUrl;
+                if (vlcUrl.startsWith('http://')) {
+                    vlcUrl = vlcUrl.replace('http://', 'vlc://');
+                } else if (vlcUrl.startsWith('https://')) {
+                    vlcUrl = vlcUrl.replace('https://', 'vlc://');
+                } else {
+                    vlcUrl = 'vlc://' + vlcUrl;
+                }
+                console.log("[VLC] Launching stream in external player:", vlcUrl);
+                if (window.cordova || window.Capacitor || (typeof window.Capacitor !== 'undefined')) {
+                    window.open(vlcUrl, '_system');
+                } else {
+                    window.location.href = vlcUrl;
+                }
+            };
+
+            const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
+            if (state.isDohEnabled && typeof resolveUrlWithDoH === 'function') {
+                resolveUrlWithDoH(targetUrl, isLive).then(resolvedUrl => {
+                    performLaunch(resolvedUrl);
+                }).catch(err => {
+                    console.warn("[VLC] DoH resolution failed, using original:", err);
+                    performLaunch(targetUrl);
+                });
             } else {
-                vlcUrl = 'vlc://' + vlcUrl;
+                performLaunch(targetUrl);
             }
-            console.log("[VLC] Launching stream in external player:", vlcUrl);
-            window.location.href = vlcUrl;
         }
     };
     const launchVlc = window.launchVlc;
