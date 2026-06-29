@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ShieldIPTV</title>
     <script>
         (function() {
+            // Disable pinch-to-zoom gestures on iOS WKWebView
+            document.addEventListener('gesturestart', function(e) {
+                e.preventDefault();
+            });
+
             function showError(message, source, lineno, colno, error) {
                 var overlay = document.getElementById('debug-error-overlay');
                 if (!overlay) {
@@ -133,7 +138,7 @@
     <link rel="icon" type="image/png" href="assets/icon.png">
     <!-- Google Fonts: Outfit & Material Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Material+Icons&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=1.0.9.8">
+    <link rel="stylesheet" href="css/style.css?v=1.1.0">
     <!-- Local mpegts.js for live TS stream decoding in browser -->
     <script src="libs/mpegts.min.js"></script>
     <!-- Local hls.js for live HLS stream decoding in browser -->
@@ -299,7 +304,7 @@
                     <div class="login-doh-wrapper">
                         <label for="login-doh-toggle" class="focusable doh-checkbox-label" tabindex="0" id="login-doh-label" style="width: 100%; display: flex; align-items: center; padding: 0.5rem 0.75rem; border-radius: 10px; border: 1px solid transparent; cursor: pointer;">
                             <input type="checkbox" id="login-doh-toggle" style="width: 18px; height: 18px; margin: 0; pointer-events: none; accent-color: var(--primary);">
-                            <span style="margin-left: 0.75rem;">Enable DNS Bypass (DoH)</span>
+                            <span style="margin-left: 0.75rem;">Contournement FAI (Bypass DNS & IP)</span>
                         </label>
                     </div>
                     
@@ -436,14 +441,17 @@
                     <div id="settings-panel" class="settings-panel glass hidden">
                         <h2>Global Settings</h2>
                         <div class="settings-group">
-                            <h3>DNS over HTTPS (DoH)</h3>
-                            <p class="settings-desc">Allows bypassing DNS blocking imposed by some ISPs to play IPTV streams.</p>
-                            <div class="toggle-wrapper">
-                                <label for="setting-doh-toggle">Enable DoH</label>
-                                <input type="checkbox" id="setting-doh-toggle" class="focusable">
-                            </div>
+                            <h3 id="settings-bypass-title">Contournement FAI / Blocage</h3>
+                            <p class="settings-desc" id="settings-bypass-desc">Permet de contourner les blocages DNS et d'IP imposés par les fournisseurs d'accès Internet.</p>
                             <div class="input-group">
-                                <label for="setting-doh-url">DoH Resolver</label>
+                                 <label id="settings-bypass-mode-label">Mode de Contournement</label>
+                                 <button id="setting-bypass-mode-btn" class="focusable settings-btn-value" style="width: 100%; text-align: left; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: var(--text-color); cursor: pointer; font-weight: 500; display: flex; justify-content: space-between; align-items: center;">
+                                     <span id="setting-bypass-mode-text">Tunneling Proxy (Bypass DNS & IP)</span>
+                                     <span class="material-icons" style="font-size: 1.2rem; color: var(--text-muted);">sync</span>
+                                 </button>
+                             </div>
+                            <div class="input-group" id="setting-doh-resolver-group">
+                                <label for="setting-doh-url" id="settings-doh-resolver-label">Résolveur DoH</label>
                                 <select id="setting-doh-url" class="focusable">
                                     <option value="https://dns.google/resolve">Google DNS (Recommandé)</option>
                                     <option value="https://cloudflare-dns.com/dns-query">Cloudflare DNS</option>
@@ -472,8 +480,9 @@
                                 <label for="setting-player-live" id="settings-player-live-label">Direct (Live TV)</label>
                                 <select id="setting-player-live" class="focusable">
                                     <option value="html5">Lecteur par défaut (HTML5)</option>
-                                    <option value="exoplayer">ExoPlayer (Pur / Plein Écran Direct)</option>
+                                    <option value="exoplayer">ExoPlayer (Natif Android)</option>
                                     <option value="exoplayer_preview">ExoPlayer (Avec Prévisualisation)</option>
+                                    <option value="vlc">VLC Player (Externe / Recommandé pour iOS)</option>
                                 </select>
                             </div>
                             <div class="input-group">
@@ -486,13 +495,17 @@
                             <div class="input-group">
                                 <label for="setting-player-movies" id="settings-player-movies-label">Films (Movies)</label>
                                 <select id="setting-player-movies" class="focusable">
+                                    <option value="html5">Lecteur par défaut (HTML5)</option>
                                     <option value="exoplayer">ExoPlayer (Natif Android)</option>
+                                    <option value="vlc">VLC Player (Externe / Recommandé pour MKV/4K/Dolby)</option>
                                 </select>
                             </div>
                             <div class="input-group">
                                 <label for="setting-player-series" id="settings-player-series-label">Séries (Series)</label>
                                 <select id="setting-player-series" class="focusable">
+                                    <option value="html5">Lecteur par défaut (HTML5)</option>
                                     <option value="exoplayer">ExoPlayer (Natif Android)</option>
+                                    <option value="vlc">VLC Player (Externe / Recommandé pour MKV/4K/Dolby)</option>
                                 </select>
                             </div>
                         </div>
@@ -704,6 +717,9 @@
                                     <input type="range" id="player-volume-slider" class="focusable" min="0" max="1" step="0.05" value="1">
                                 </div>
                             </div>
+                            <button class="focusable player-btn" id="player-btn-pip" title="Mini-lecteur (Picture-in-Picture)">
+                                <span class="material-icons">picture_in_picture_alt</span>
+                            </button>
                             <button class="focusable player-btn" id="player-btn-fullscreen" title="Plein Écran">
                                 <span class="material-icons">fullscreen</span>
                             </button>
@@ -853,13 +869,13 @@
     </div>
 
     <!-- JS Logic - Sequential Standard Script Imports (shares global window scope, fully compatible with file:// WebView protocols) -->
-    <script src="js/state.js?v=1.0.9.8"></script>
-    <script src="js/utils.js?v=1.0.9.8"></script>
-    <script src="js/player.js?v=1.0.9.9"></script>
-    <script src="js/navigation.js?v=1.0.9.8"></script>
-    <script src="js/playlist.js?v=1.0.9.8"></script>
-    <script src="js/content.js?v=1.0.9.8"></script>
-    <script src="js/diagnostics.js?v=1.0.9.8"></script>
-    <script src="js/main.js?v=1.0.9.8"></script>
+    <script src="js/state.js?v=1.1.1"></script>
+    <script src="js/utils.js?v=1.1.1"></script>
+    <script src="js/player.js?v=1.1.1"></script>
+    <script src="js/navigation.js?v=1.1.1"></script>
+    <script src="js/playlist.js?v=1.1.1"></script>
+    <script src="js/content.js?v=1.1.1"></script>
+    <script src="js/diagnostics.js?v=1.1.1"></script>
+    <script src="js/main.js?v=1.1.1"></script>
 </body>
 </html>
