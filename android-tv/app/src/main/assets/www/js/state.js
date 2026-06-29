@@ -1,32 +1,3 @@
-// Detect iOS/iPadOS (Safari + the Capacitor app). Used to pick native players.
-function detectIosPlatform() {
-    try {
-        if (typeof window !== 'undefined' && window.Capacitor && typeof window.Capacitor.getPlatform === 'function') {
-            return window.Capacitor.getPlatform() === 'ios';
-        }
-    } catch (e) {}
-    return typeof navigator !== 'undefined' && (
-        /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-        (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1)
-    );
-}
-
-// Per-platform default player for a section. iOS defaults: live -> HTML5,
-// movies/series -> internal VLCKit ('vlc_internal').
-function getDefaultPlayer(section) {
-    const isAndroid = !!(window.AndroidApp || (typeof navigator !== 'undefined' && /Android|GoogleTV|AndroidTV|FireTV/i.test(navigator.userAgent)));
-    const isElectron = !!(window.electronAPI && window.electronAPI.isElectron);
-    const isIos = detectIosPlatform();
-    if (section === 'live') {
-        return isAndroid ? 'exoplayer_preview' : 'html5';
-    }
-    // movies / series
-    if (isAndroid) return 'exoplayer';
-    if (isElectron) return 'mpv';
-    if (isIos) return 'vlc_internal';
-    return 'html5';
-}
-
 // Safe localStorage/sessionStorage helper wrapper to prevent security exceptions in strict TV WebView environments
 const safeStorage = {
     local: {
@@ -85,12 +56,9 @@ const safeStorage = {
     }
 };
 
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const isTvWrapper = !isIOS && !/Mobile/i.test(navigator.userAgent) && (
-                    window.cordova || 
+const isTvWrapper = window.cordova || 
                     window.AndroidApp ||
-                    /SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent)
-);
+                    /SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent);
 
 // Fallback dynamic placeholders (using local PNG assets for universal compatibility on older WebViews)
 const PLACEHOLDERS = {
@@ -193,7 +161,6 @@ const state = {
     username: '',
     password: '',
     isLoggedIn: false,
-    bypassMode: 'proxy',
     isDohEnabled: true,
     dohResolver: 'https://dns.google/resolve',
     
@@ -261,10 +228,10 @@ const state = {
     
     // Video player selection settings (ExoPlayer vs HTML5 default)
     playerSettings: {
-        live: getDefaultPlayer('live'),
+        live: (window.AndroidApp || (typeof navigator !== 'undefined' && /Android|GoogleTV|AndroidTV|FireTV/i.test(navigator.userAgent))) ? 'exoplayer_preview' : 'html5',
         liveFormat: 'ts',
-        movies: getDefaultPlayer('movies'),
-        series: getDefaultPlayer('series')
+        movies: (window.AndroidApp || (typeof navigator !== 'undefined' && /Android|GoogleTV|AndroidTV|FireTV/i.test(navigator.userAgent))) ? 'exoplayer' : ((window.electronAPI && window.electronAPI.isElectron) ? 'mpv' : 'html5'),
+        series: (window.AndroidApp || (typeof navigator !== 'undefined' && /Android|GoogleTV|AndroidTV|FireTV/i.test(navigator.userAgent))) ? 'exoplayer' : ((window.electronAPI && window.electronAPI.isElectron) ? 'mpv' : 'html5')
     },
     exoplayerLaunchedForLive: false
 };
@@ -334,11 +301,10 @@ const TRANSLATIONS = {
         epgEmpty: "Aucun programme disponible pour le moment.",
         epgUnavailable: "Guide de programme indisponible.",
         settingsTitle: "Paramètres globaux",
-        dohTitle: "Contournement FAI / Blocage",
-        dohDesc: "Permet de contourner les blocages DNS et d'IP imposés par certains FAI pour lire les flux IPTV.",
-        dohEnable: "Contournement Blocage FAI",
-        dohEnableLogin: "Contournement FAI (Bypass DNS & IP)",
-        bypassModeLabel: "Mode de Contournement",
+        dohTitle: "DNS over HTTPS (DoH)",
+        dohDesc: "Permet de contourner les blocages DNS imposés par certains FAI pour lire les flux IPTV.",
+        dohEnable: "Activer DoH",
+        dohEnableLogin: "Activer le contournement DNS (DoH)",
         dohResolver: "Résolveur DoH",
         langTitle: "Langue / Language",
         langDesc: "Sélectionnez la langue de l'interface.",
@@ -470,11 +436,10 @@ const TRANSLATIONS = {
         epgEmpty: "No program available at the moment.",
         epgUnavailable: "Program guide unavailable.",
         settingsTitle: "Global Settings",
-        dohTitle: "ISP Block Bypass",
-        dohDesc: "Allows bypassing DNS and IP blocking imposed by some ISPs to play IPTV streams.",
-        dohEnable: "ISP Block Bypass",
-        dohEnableLogin: "Bypass FAI Blocking (DNS & IP)",
-        bypassModeLabel: "Bypass Mode",
+        dohTitle: "DNS over HTTPS (DoH)",
+        dohDesc: "Allows bypassing DNS blocking imposed by some ISPs to play IPTV streams.",
+        dohEnable: "Enable DoH",
+        dohEnableLogin: "Enable DNS Bypass (DoH)",
         dohResolver: "DoH Resolver",
         langTitle: "Language / Langue",
         langDesc: "Select the interface language.",
@@ -606,11 +571,10 @@ const TRANSLATIONS = {
         epgEmpty: "Ningún programa disponible por el momento.",
         epgUnavailable: "Guía de programación no disponible.",
         settingsTitle: "Ajustes Globales",
-        dohTitle: "Bypass Bloqueo FAI",
-        dohDesc: "Permite evadir los bloqueos de DNS y de IP impuestos por algunos proveedores de Internet para reproducir transmisiones de IPTV.",
-        dohEnable: "Bypass Bloqueo FAI",
-        dohEnableLogin: "Desvío FAI (Bypass DNS y IP)",
-        bypassModeLabel: "Modo de desvío",
+        dohTitle: "DNS sobre HTTPS (DoH)",
+        dohDesc: "Permite eludir los bloqueos de DNS impuestos por algunos proveedores de Internet para reproducir transmisiones de IPTV.",
+        dohEnable: "Activar DoH",
+        dohEnableLogin: "Activar el desvío de DNS (DoH)",
         dohResolver: "Servidor DoH",
         langTitle: "Idioma / Language",
         langDesc: "Seleccione el idioma de la interfaz.",
@@ -741,11 +705,10 @@ const TRANSLATIONS = {
         epgEmpty: "Nessun programma disponibile al momento.",
         epgUnavailable: "Guida programmi non disponibile.",
         settingsTitle: "Impostazioni Generali",
-        dohTitle: "Bypass Blocco FAI",
-        dohDesc: "Consente di aggirare i blocchi DNS e IP imposti da alcuni ISP per riprodurre i flussi IPTV.",
-        dohEnable: "Bypass Blocco FAI",
-        dohEnableLogin: "Bypass blocco FAI (DNS e IP)",
-        bypassModeLabel: "Modalità di bypass",
+        dohTitle: "DNS over HTTPS (DoH)",
+        dohDesc: "Consente di aggirare i blocchi DNS imposti da alcuni ISP per riprodurre i flussi IPTV.",
+        dohEnable: "Attiva DoH",
+        dohEnableLogin: "Abilita bypass DNS (DoH)",
         dohResolver: "Risolutore DoH",
         langTitle: "Lingua / Language",
         langDesc: "Seleziona la lingua dell'interfaccia.",
@@ -1006,11 +969,11 @@ function applyLanguage(lang) {
     if (dohGroup) {
         const h3 = dohGroup.querySelector("h3");
         const desc = dohGroup.querySelector(".settings-desc");
-        const labelBypassMode = dohGroup.querySelector('#settings-bypass-mode-label') || dohGroup.querySelector('label[for="setting-bypass-mode"]');
+        const labelToggle = dohGroup.querySelector('label[for="setting-doh-toggle"]');
         const labelSelect = dohGroup.querySelector('label[for="setting-doh-url"]');
         if (h3) h3.innerText = t.dohTitle;
         if (desc) desc.innerText = t.dohDesc;
-        if (labelBypassMode) labelBypassMode.innerText = t.bypassModeLabel || "Bypass Mode";
+        if (labelToggle) labelToggle.innerText = t.dohEnable;
         if (labelSelect) labelSelect.innerText = t.dohResolver;
     }
     
@@ -1246,12 +1209,9 @@ function initPlayerSettingsDropdowns(lang) {
     
     const isElectron = !!(window.electronAPI && window.electronAPI.isElectron);
     const isAndroid = !!window.AndroidApp;
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isWeb = !isElectron && !isAndroid && !isTvWrapper && !isIOS;
+    const isWeb = !isElectron && !isAndroid && !isTvWrapper;
     
     const vlcLabel = t.playerOptionVlc || "Lecteur VLC";
-    const vlcInternalLabel = t.playerOptionVlcInternal || "VLC (interne)";
-    const vlcExternalLabel = isIOS ? (t.playerOptionVlcExternal || "VLC (externe)") : vlcLabel;
     const mpvLabel = t.playerOptionMpv || "Lecteur MPV";
     const html5Label = t.playerOptionDefault || "Lecteur par défaut (HTML5)";
     const exoLabel = t.playerOptionExo || "ExoPlayer (Pur / Plein Écran)";
@@ -1260,9 +1220,9 @@ function initPlayerSettingsDropdowns(lang) {
     // 1. Live player options
     const liveSelect = document.getElementById("setting-player-live");
     if (liveSelect) {
-        const currentVal = liveSelect.value || state.playerSettings.live || getDefaultPlayer('live');
+        const currentVal = liveSelect.value || state.playerSettings.live || 'html5';
         liveSelect.innerHTML = "";
-
+        
         addOption(liveSelect, "html5", html5Label);
         if (isAndroid) {
             addOption(liveSelect, "exoplayer", exoLabel);
@@ -1271,16 +1231,13 @@ function initPlayerSettingsDropdowns(lang) {
         if (isElectron) {
             addOption(liveSelect, "mpv", mpvLabel);
         }
-        if (isIOS) {
-            addOption(liveSelect, "vlc_internal", vlcInternalLabel);
-        }
         if (!isWeb) {
-            addOption(liveSelect, "vlc", vlcExternalLabel);
+            addOption(liveSelect, "vlc", vlcLabel);
         }
-
+        
         liveSelect.value = currentVal;
         if (!liveSelect.value) {
-            liveSelect.value = getDefaultPlayer('live');
+            liveSelect.value = isAndroid ? "exoplayer_preview" : "html5";
         }
         state.playerSettings.live = liveSelect.value;
     }
@@ -1288,9 +1245,9 @@ function initPlayerSettingsDropdowns(lang) {
     // 2. Movies player options
     const moviesSelect = document.getElementById("setting-player-movies");
     if (moviesSelect) {
-        const currentVal = moviesSelect.value || state.playerSettings.movies || getDefaultPlayer('movies');
+        const currentVal = moviesSelect.value || state.playerSettings.movies || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'));
         moviesSelect.innerHTML = "";
-
+        
         if (isElectron) {
             addOption(moviesSelect, "mpv", mpvLabel);
         }
@@ -1299,16 +1256,13 @@ function initPlayerSettingsDropdowns(lang) {
         } else {
             addOption(moviesSelect, "exoplayer", exoLabel);
         }
-        if (isIOS) {
-            addOption(moviesSelect, "vlc_internal", vlcInternalLabel);
-        }
         if (!isWeb) {
-            addOption(moviesSelect, "vlc", vlcExternalLabel);
+            addOption(moviesSelect, "vlc", vlcLabel);
         }
-
+        
         moviesSelect.value = currentVal;
         if (!moviesSelect.value) {
-            moviesSelect.value = getDefaultPlayer('movies');
+            moviesSelect.value = isElectron ? "mpv" : (isAndroid ? "exoplayer" : "html5");
         }
         state.playerSettings.movies = moviesSelect.value;
     }
@@ -1316,9 +1270,9 @@ function initPlayerSettingsDropdowns(lang) {
     // 3. Series player options
     const seriesSelect = document.getElementById("setting-player-series");
     if (seriesSelect) {
-        const currentVal = seriesSelect.value || state.playerSettings.series || getDefaultPlayer('series');
+        const currentVal = seriesSelect.value || state.playerSettings.series || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'));
         seriesSelect.innerHTML = "";
-
+        
         if (isElectron) {
             addOption(seriesSelect, "mpv", mpvLabel);
         }
@@ -1327,16 +1281,13 @@ function initPlayerSettingsDropdowns(lang) {
         } else {
             addOption(seriesSelect, "exoplayer", exoLabel);
         }
-        if (isIOS) {
-            addOption(seriesSelect, "vlc_internal", vlcInternalLabel);
-        }
         if (!isWeb) {
-            addOption(seriesSelect, "vlc", vlcExternalLabel);
+            addOption(seriesSelect, "vlc", vlcLabel);
         }
-
+        
         seriesSelect.value = currentVal;
         if (!seriesSelect.value) {
-            seriesSelect.value = getDefaultPlayer('series');
+            seriesSelect.value = isElectron ? "mpv" : (isAndroid ? "exoplayer" : "html5");
         }
         state.playerSettings.series = seriesSelect.value;
     }
