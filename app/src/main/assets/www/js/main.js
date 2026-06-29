@@ -19,11 +19,6 @@ function initApp() {
             document.body.classList.add("is-webapp");
         }
         
-        const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        if (isMobileDevice) {
-            document.body.classList.add("is-mobile-device");
-        }
-        
         try {
             setupEventListeners();
         } catch (e) {
@@ -47,15 +42,17 @@ function initApp() {
         if (savedSettings) {
             try {
                 const settings = JSON.parse(savedSettings);
-                // Determine bypass mode, default to 'proxy'
-                state.bypassMode = settings.bypassMode || (settings.isDohEnabled === false ? 'none' : 'proxy');
-                state.isDohEnabled = (state.bypassMode !== 'none');
+                // DoH is required to reach the IPTV server on many networks; a stale saved
+                // "false" was breaking the connection until manually re-enabled. Force it on
+                // by default and correct the stored value.
+                state.isDohEnabled = true;
+                if (settings.isDohEnabled === false && typeof saveSettings === 'function') {
+                    saveSettings();
+                }
                 state.dohResolver = settings.dohResolver || 'https://dns.google/resolve';
                 
-                const bypassEl = document.getElementById("setting-bypass-mode");
-                if (bypassEl) bypassEl.value = state.bypassMode;
-                const loginDohEl = document.getElementById("login-doh-toggle");
-                if (loginDohEl) loginDohEl.checked = (state.bypassMode !== 'none');
+                const toggleEl = document.getElementById("setting-doh-toggle");
+                if (toggleEl) toggleEl.checked = state.isDohEnabled;
                 const urlEl = document.getElementById("setting-doh-url");
                 if (urlEl) urlEl.value = state.dohResolver;
 
@@ -63,10 +60,10 @@ function initApp() {
                 const isElectron = !!(window.electronAPI && window.electronAPI.isElectron);
                 if (settings.playerSettings) {
                     state.playerSettings = {
-                        live: settings.playerSettings.live || getDefaultPlayer('live'),
+                        live: settings.playerSettings.live || (isAndroid ? 'exoplayer_preview' : 'html5'),
                         liveFormat: settings.playerSettings.liveFormat || 'ts',
-                        movies: settings.playerSettings.movies || getDefaultPlayer('movies'),
-                        series: settings.playerSettings.series || getDefaultPlayer('series')
+                        movies: settings.playerSettings.movies || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5')),
+                        series: settings.playerSettings.series || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'))
                     };
                     
                     // Force Android TV defaults if they are set to incompatible 'html5' or if they are missing
@@ -83,10 +80,10 @@ function initApp() {
                     }
                 } else {
                     state.playerSettings = {
-                        live: getDefaultPlayer('live'),
+                        live: isAndroid ? 'exoplayer_preview' : 'html5',
                         liveFormat: 'ts',
-                        movies: getDefaultPlayer('movies'),
-                        series: getDefaultPlayer('series')
+                        movies: isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'),
+                        series: isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5')
                     };
                 }
                 
@@ -569,69 +566,34 @@ function setupEventListeners() {
         });
     }
     
-    // DoH & Proxy bypass mode. The settings selector is a custom focusable BUTTON
-    // (not a native <select>, which traps/breaks D-pad focus on Android TV) that
-    // cycles none -> doh -> proxy. applyBypassModeUI keeps every surface in sync.
-    function bypassModeText(mode) {
-        if (mode === 'doh') return 'DoH (Bypass DNS)';
-        if (mode === 'proxy') return 'Tunneling Proxy (Bypass DNS & IP)';
-        return 'Désactivé (Direct)';
-    }
-    function applyBypassModeUI(mode) {
-        const txt = document.getElementById("setting-bypass-mode-text");
-        if (txt) txt.innerText = bypassModeText(mode);
-        const resolverGroup = document.getElementById("setting-doh-resolver-group");
-        if (resolverGroup) resolverGroup.style.display = (mode === 'doh') ? '' : 'none';
-        const sel = document.getElementById("setting-bypass-mode");
-        if (sel) sel.value = mode;
-        const loginToggle = document.getElementById("login-doh-toggle");
-        if (loginToggle) loginToggle.checked = (mode !== 'none');
-    }
-    function setBypassMode(mode, withToast) {
-        state.bypassMode = mode;
-        state.isDohEnabled = (mode !== 'none');
-        applyBypassModeUI(mode);
-        if (typeof saveSettings === 'function') saveSettings();
-        if (withToast) {
-            const t = TRANSLATIONS[state.language || 'en'];
-            let toastMsg = t.dohDisabledToast || "Contournement désactivé";
-            if (mode === 'doh') toastMsg = "Contournement DNS (DoH) activé";
-            else if (mode === 'proxy') toastMsg = "Tunneling Proxy (Bypass DNS & IP) activé";
-            showToast(toastMsg, 2500);
-        }
-    }
-
+    // DoH
     const loginDohLabel = document.getElementById("login-doh-label");
     const loginDohToggle = document.getElementById("login-doh-toggle");
     if (loginDohLabel && loginDohToggle) {
         loginDohLabel.addEventListener("click", (e) => {
             e.preventDefault();
             loginDohToggle.checked = !loginDohToggle.checked;
-            setBypassMode(loginDohToggle.checked ? 'proxy' : 'none', false);
+            state.isDohEnabled = loginDohToggle.checked;
+            const mainDoh = document.getElementById("setting-doh-toggle");
+            if (mainDoh) mainDoh.checked = state.isDohEnabled;
+            saveSettings();
         });
         loginDohToggle.addEventListener("change", (e) => {
-            setBypassMode(e.target.checked ? 'proxy' : 'none', false);
+            state.isDohEnabled = e.target.checked;
+            const mainDoh = document.getElementById("setting-doh-toggle");
+            if (mainDoh) mainDoh.checked = state.isDohEnabled;
+            saveSettings();
         });
     }
 
-    // Custom button (Android TV-safe) cycles through the bypass modes on activation.
-    const bypassBtn = document.getElementById("setting-bypass-mode-btn");
-    if (bypassBtn) {
-        bypassBtn.addEventListener("click", () => {
-            const order = ['none', 'doh', 'proxy'];
-            const next = order[(order.indexOf(state.bypassMode) + 1) % order.length];
-            setBypassMode(next, true);
-        });
-    }
-
-    // Legacy native <select> fallback, in case a platform still ships it.
-    const settingBypassModeEl = document.getElementById("setting-bypass-mode");
-    if (settingBypassModeEl) {
-        settingBypassModeEl.addEventListener("change", (e) => setBypassMode(e.target.value, true));
-    }
-
-    // Reflect the restored mode on the settings button/label at startup.
-    applyBypassModeUI(state.bypassMode);
+    document.getElementById("setting-doh-toggle").addEventListener("change", (e) => {
+        state.isDohEnabled = e.target.checked;
+        const loginDohToggle = document.getElementById("login-doh-toggle");
+        if (loginDohToggle) loginDohToggle.checked = state.isDohEnabled;
+        saveSettings();
+        const t = TRANSLATIONS[state.language || 'en'];
+        showToast(state.isDohEnabled ? t.dohEnabledToast : t.dohDisabledToast, 2000);
+    });
     
     document.getElementById("setting-doh-url").addEventListener("change", (e) => {
         state.dohResolver = e.target.value;
@@ -742,27 +704,6 @@ function setupEventListeners() {
         toggleFullscreen();
     });
     
-    const pipBtn = document.getElementById("player-btn-pip");
-    if (pipBtn) {
-        pipBtn.addEventListener("click", async (e) => {
-            e.stopPropagation();
-            const video = document.getElementById("video-player");
-            if (!video) return;
-            try {
-                if (document.pictureInPictureElement) {
-                    await document.exitPictureInPicture();
-                } else if (video.webkitPresentationMode && typeof video.webkitSetPresentationMode === "function") {
-                    const newMode = video.webkitPresentationMode === "picture-in-picture" ? "inline" : "picture-in-picture";
-                    video.webkitSetPresentationMode(newMode);
-                } else if (video.requestPictureInPicture) {
-                    await video.requestPictureInPicture();
-                }
-            } catch (err) {
-                console.error("Error toggling PiP:", err);
-            }
-        });
-    }
-    
     // Volume Control Logic
     const volumeSlider = document.getElementById("player-volume-slider");
     const volumeBtn = document.getElementById("player-btn-volume");
@@ -864,47 +805,29 @@ function setupEventListeners() {
                 targetUrl = `${state.serverUrl}/${section === 'series' ? 'series' : 'movie'}/${state.username}/${state.password}/${streamId}.${originalExt}`;
             }
 
-            const performLaunch = (finalUrl) => {
-                // On Electron, launch directly via main process spawn
-                if (window.electronAPI && window.electronAPI.isElectron) {
-                    console.log("[VLC] Launching stream via Electron helper:", finalUrl);
-                    window.electronAPI.openVlcExternal(finalUrl);
-                    return;
-                }
-                // On Android TV, use native intent to open external player (VLC, MX Player, etc.)
-                if (window.AndroidApp && typeof window.AndroidApp.openExternalPlayer === 'function') {
-                    console.log("[VLC] Launching stream via Android native intent:", finalUrl);
-                    window.AndroidApp.openExternalPlayer(finalUrl);
-                    return;
-                }
-                // On web/PC, use vlc:// protocol
-                let vlcUrl = finalUrl;
-                if (vlcUrl.startsWith('http://')) {
-                    vlcUrl = vlcUrl.replace('http://', 'vlc://');
-                } else if (vlcUrl.startsWith('https://')) {
-                    vlcUrl = vlcUrl.replace('https://', 'vlc://');
-                } else {
-                    vlcUrl = 'vlc://' + vlcUrl;
-                }
-                console.log("[VLC] Launching stream in external player:", vlcUrl);
-                if (window.cordova || window.Capacitor || (typeof window.Capacitor !== 'undefined')) {
-                    window.open(vlcUrl, '_system');
-                } else {
-                    window.location.href = vlcUrl;
-                }
-            };
-
-            const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
-            if (state.isDohEnabled && typeof resolveUrlWithDoH === 'function') {
-                resolveUrlWithDoH(targetUrl, isLive).then(resolvedUrl => {
-                    performLaunch(resolvedUrl);
-                }).catch(err => {
-                    console.warn("[VLC] DoH resolution failed, using original:", err);
-                    performLaunch(targetUrl);
-                });
-            } else {
-                performLaunch(targetUrl);
+            // On Electron, launch directly via main process spawn
+            if (window.electronAPI && window.electronAPI.isElectron) {
+                console.log("[VLC] Launching stream via Electron helper:", targetUrl);
+                window.electronAPI.openVlcExternal(targetUrl);
+                return;
             }
+            // On Android TV, use native intent to open external player (VLC, MX Player, etc.)
+            if (window.AndroidApp && typeof window.AndroidApp.openExternalPlayer === 'function') {
+                console.log("[VLC] Launching stream via Android native intent:", state.currentPlayingStreamUrl);
+                window.AndroidApp.openExternalPlayer(state.currentPlayingStreamUrl);
+                return;
+            }
+            // On web/PC, use vlc:// protocol
+            let vlcUrl = state.currentPlayingStreamUrl;
+            if (vlcUrl.startsWith('http://')) {
+                vlcUrl = vlcUrl.replace('http://', 'vlc://');
+            } else if (vlcUrl.startsWith('https://')) {
+                vlcUrl = vlcUrl.replace('https://', 'vlc://');
+            } else {
+                vlcUrl = 'vlc://' + vlcUrl;
+            }
+            console.log("[VLC] Launching stream in external player:", vlcUrl);
+            window.location.href = vlcUrl;
         }
     };
     const launchVlc = window.launchVlc;
