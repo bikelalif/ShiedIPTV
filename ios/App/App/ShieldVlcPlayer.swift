@@ -379,7 +379,7 @@ class VLCPlayerViewController: UIViewController,
         presentTrackSheet(title: "Sous-titres", tracks: mediaPlayer.textTracks, type: .text, allowDisable: true)
     }
 
-    private func presentTrackSheet(title: String, tracks: [VLCMediaPlayerTrack], type: VLCMediaTrackType, allowDisable: Bool) {
+    private func presentTrackSheet(title: String, tracks: [VLCMediaPlayer.Track], type: VLCMedia.TrackType, allowDisable: Bool) {
         hideTimer?.invalidate()
         let sheet = UIAlertController(title: title, message: nil, preferredStyle: .actionSheet)
 
@@ -471,7 +471,7 @@ class VLCPlayerViewController: UIViewController,
         pipController?.invalidatePlaybackState()
     }
 
-    func mediaPlayerTimeChanged(_ aNotification: Notification!) {
+    func mediaPlayerTimeChanged(_ aNotification: Notification) {
         spinner.stopAnimating()
         if !isSeeking {
             slider.value = Float(mediaPlayer.position)
@@ -532,7 +532,7 @@ class VLCPlayerViewController: UIViewController,
         mediaPlayer.pause()
     }
 
-    func seekBy(_ offset: Int64, completion: @escaping () -> Void) {
+    func seek(by offset: Int64, completion: @escaping () -> Void) {
         mediaPlayer.jump(withOffset: Int32(offset), completion: completion)
     }
 
