@@ -280,7 +280,7 @@ function handlePlaybackFallback(originalUrl, onFailCallback) {
             console.error("[Player] DoH resolution failed during fallback:", err);
             tryProxyFallback(originalUrl, onFailCallback);
         });
-    } else if (state.lastAttemptedStreamUrl && !state.lastAttemptedStreamUrl.includes("workers.dev") && !state.lastAttemptedStreamUrl.includes("corsproxy.io")) {
+    } else if (state.lastAttemptedStreamUrl && !state.lastAttemptedStreamUrl.includes("workers.dev") && !state.lastAttemptedStreamUrl.includes("corsproxy.io") && !state.lastAttemptedStreamUrl.includes("allorigins.win")) {
         console.warn("[Player] Stream failed with IP URL. Retrying with CORS Proxy fallback...");
         tryProxyFallback(originalUrl, onFailCallback);
     } else {
@@ -294,8 +294,8 @@ function tryProxyFallback(originalUrl, onFailCallback) {
         return;
     }
     
-    const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(originalUrl)}`;
-    console.log("[Player] Trying custom CORS proxy stream fallback:", proxyUrl);
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(originalUrl)}`;
+    console.log("[Player] Trying AllOrigins CORS proxy stream fallback:", proxyUrl);
     state.lastAttemptedStreamUrl = proxyUrl;
     startPlayback(proxyUrl, true);
 }
