@@ -4,7 +4,7 @@
 
 // DNS-over-HTTPS (DoH) Resolver
 async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
-    if (!state.isDohEnabled) return url;
+    if (state.bypassMode === 'none') return url;
     // If the DoH resolver already proved unreachable this session, skip it entirely
     // so we don't pay the timeout again on every subsequent request.
     if (state.dohUnavailable) return url;
@@ -79,17 +79,22 @@ async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
 
 // Synchronous DNS bypass for logo image elements using pre-resolved cache
 function resolveUrlWithDoHSync(url) {
-    if (!state.isDohEnabled || !state.dohCache || !url) return url;
+    if (state.bypassMode === 'none') return url;
     try {
         const parsedUrl = new URL(url);
         const hostname = parsedUrl.hostname;
         if (/^[0-9.]+$/.test(hostname)) return url;
         
         const isHttps = url.startsWith('https://');
-        const ip = state.dohCache[hostname];
-        if (ip && !isHttps) {
-            parsedUrl.hostname = ip;
-            return parsedUrl.toString();
+        
+        if (state.dohCache && state.dohCache[hostname] && !isHttps) {
+            const ip = state.dohCache[hostname];
+            const serverHostname = state.serverUrl ? new URL(state.serverUrl).hostname : "";
+            const isIptvServer = (hostname === serverHostname);
+            if (isIptvServer) {
+                parsedUrl.hostname = ip;
+                return parsedUrl.toString();
+            }
         }
     } catch (e) {}
     return url;
@@ -152,8 +157,7 @@ function loadImageWithFallback(imgElement, originalUrl, defaultPoster) {
 }
 // Proxy retry helper using custom Cloudflare Worker first, then public corsproxy.io as fallback
 async function fetchWithProxy(url, tryFetch, originalError) {
-    const isWebapp = document.body.classList.contains("is-webapp");
-    if (isWebapp && url.startsWith("http")) {
+    if (state.bypassMode === 'proxy' && url.startsWith("http")) {
         console.log(`[CORS Proxy] Retrying fetch via custom worker for: ${url}`);
         const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
         try {

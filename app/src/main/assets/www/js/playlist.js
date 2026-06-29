@@ -231,6 +231,7 @@ function loadSavedPlaylists() {
 
 function saveSettings() {
     safeStorage.local.setItem("shield_iptv_settings", JSON.stringify({
+        bypassMode: state.bypassMode,
         isDohEnabled: state.isDohEnabled,
         dohResolver: state.dohResolver,
         language: state.language,
@@ -819,7 +820,7 @@ function renderPlaylistsGrid() {
     addCard.className = "playlist-card add-card glass focusable";
     addCard.setAttribute("tabindex", "0");
     addCard.innerHTML = `
-        <span class="material-icons playlist-card-icon" style="font-size: 3rem !important;">add_circle_outline</span>
+        <span class="material-icons playlist-card-icon">add_circle_outline</span>
         <h3 class="playlist-card-title">${t.pmAddPlaylist}</h3>
         <p class="playlist-card-type">${t.pmAddPlaylistSub}</p>
     `;
