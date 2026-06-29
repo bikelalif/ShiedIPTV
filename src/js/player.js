@@ -274,16 +274,30 @@ function handlePlaybackFallback(originalUrl, onFailCallback) {
                 state.lastAttemptedStreamUrl = resolvedUrl;
                 startPlayback(resolvedUrl, true);
             } else {
-                console.log("[Player] DoH resolution did not yield a different URL.");
-                if (typeof onFailCallback === 'function') onFailCallback();
+                tryProxyFallback(originalUrl, onFailCallback);
             }
         }).catch(err => {
             console.error("[Player] DoH resolution failed during fallback:", err);
-            if (typeof onFailCallback === 'function') onFailCallback();
+            tryProxyFallback(originalUrl, onFailCallback);
         });
+    } else if (state.lastAttemptedStreamUrl && !state.lastAttemptedStreamUrl.includes("workers.dev") && !state.lastAttemptedStreamUrl.includes("corsproxy.io")) {
+        console.warn("[Player] Stream failed with IP URL. Retrying with CORS Proxy fallback...");
+        tryProxyFallback(originalUrl, onFailCallback);
     } else {
         if (typeof onFailCallback === 'function') onFailCallback();
     }
+}
+
+function tryProxyFallback(originalUrl, onFailCallback) {
+    if (!originalUrl || !originalUrl.startsWith("http")) {
+        if (typeof onFailCallback === 'function') onFailCallback();
+        return;
+    }
+    
+    const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(originalUrl)}`;
+    console.log("[Player] Trying custom CORS proxy stream fallback:", proxyUrl);
+    state.lastAttemptedStreamUrl = proxyUrl;
+    startPlayback(proxyUrl, true);
 }
 
 async function fetchAndRewritePlaylist(playlistUrl) {
