@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shield IPTV - MPV External Demo</title>
+    <!-- Outfit Font & Material Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Material+Icons&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #090d16 0%, #030408 100%);
+            --primary: #10b981;
+            --primary-glow: rgba(16, 185, 129, 0.4);
+            --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.4);
+            --card-bg: rgba(15, 23, 42, 0.6);
+            --card-border: rgba(255, 255, 255, 0.06);
+            --text: #f8fafc;
+            --text-muted: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 1.5rem;
+        }
+
+        /* Glassmorphic header card */
+        header {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.25rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            margin-bottom: 1.5rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo .icon {
+            font-size: 2.2rem;
+            color: var(--primary);
+            text-shadow: 0 0 12px var(--primary-glow);
+        }
+
+        .logo h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .logo h1 span {
+            color: var(--primary);
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        /* Premium Buttons */
+        .btn {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            padding: 0.75rem 1.75rem;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.25s ease;
+        }
+
+        .btn-play {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid var(--primary);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.1);
+        }
+
+        .btn-play:hover:not(:disabled) {
+            background: var(--primary);
+            box-shadow: 0 6px 20px var(--primary-glow);
+            transform: translateY(-2px);
+        }
+
+        .btn-stop {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid var(--danger);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.1);
+        }
+
+        .btn-stop:hover:not(:disabled) {
+            background: var(--danger);
+            box-shadow: 0 6px 20px var(--danger-glow);
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+            background: rgba(255,255,255,0.02) !important;
+            border-color: rgba(255,255,255,0.05) !important;
+            color: var(--text-muted) !important;
+        }
+
+        /* Main Workspace Player Area */
+        .player-viewport {
+            flex-grow: 1;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Mount Placeholder container */
+        #mpv-placeholder {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            right: 24px;
+            bottom: 24px;
+            border-radius: 12px;
+            border: 2px dashed rgba(255,255,255,0.08);
+            background: #020305;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+
+        #mpv-placeholder.active {
+            border-color: var(--primary);
+            background: #050811;
+            border-style: solid;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.6);
+        }
+
+        .pulse-icon {
+            font-size: 80px;
+            color: var(--primary);
+            text-shadow: 0 0 20px var(--primary-glow);
+            animation: pulse 2s infinite ease-in-out;
+            display: none;
+        }
+
+        .status-text {
+            font-size: 1.25rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-align: center;
+            max-width: 500px;
+            line-height: 1.5;
+        }
+
+        .sub-text {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            text-align: center;
+            max-width: 450px;
+            line-height: 1.6;
+            display: none;
+        }
+
+        .info-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.03);
+            padding: 0.75rem 1.25rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            color: #8a99ad;
+            font-family: monospace;
+            word-break: break-all;
+            text-align: center;
+            max-width: 90%;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.08); opacity: 1; text-shadow: 0 0 35px var(--primary-glow); }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <span class="material-icons icon">shield</span>
+            <h1>Shield <span>MPV Demo</span></h1>
+        </div>
+        <div class="controls">
+            <button id="btn-play" class="btn btn-play">
+                <span class="material-icons">play_circle_filled</span>
+                <span>Play Demo Stream</span>
+            </button>
+            <button id="btn-stop" class="btn btn-stop" disabled>
+                <span class="material-icons">stop</span>
+                <span>Stop Stream</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="player-viewport">
+        <div id="mpv-placeholder">
+            <span class="material-icons" id="placeholder-icon" style="font-size: 72px; opacity: 0.2;">movie</span>
+            <span class="material-icons pulse-icon" id="playing-icon">play_circle_filled</span>
+            <div class="status-text" id="status-text">Prêt. Cliquez sur Play pour lancer le lecteur MPV externe.</div>
+            <div class="sub-text" id="sub-text">Le flux vidéo est ouvert dans une fenêtre séparée. Vous pouvez la contrôler et passer en plein écran directement depuis MPV. Fermez MPV ou cliquez sur Arrêter pour quitter.</div>
+            <div class="info-card" id="info-url">Stream: http://103.176.90.109/movie/bilal000/mpbK2326/1351014.mkv</div>
+        </div>
+    </div>
+
+    <script>
+        const STREAM_URL = "http://103.176.90.109/movie/bilal000/mpbK2326/1351014.mkv";
+        let isPlaying = false;
+
+        const btnPlay = document.getElementById("btn-play");
+        const btnStop = document.getElementById("btn-stop");
+        const placeholder = document.getElementById("mpv-placeholder");
+        const icon = document.getElementById("placeholder-icon");
+        const playingIcon = document.getElementById("playing-icon");
+        const statusText = document.getElementById("status-text");
+        const subText = document.getElementById("sub-text");
+
+        btnPlay.addEventListener("click", () => {
+            if (isPlaying) return;
+
+            isPlaying = true;
+            btnPlay.disabled = true;
+            btnStop.disabled = false;
+            
+            // UI state updates
+            placeholder.classList.add("active");
+            icon.style.display = "none";
+            playingIcon.style.display = "block";
+            statusText.innerText = "Lecture en cours dans MPV (Fenêtre Externe)";
+            statusText.style.color = "var(--primary)";
+            subText.style.display = "block";
+
+            // Request main process to launch MPV
+            window.electronAPI.play(STREAM_URL).then(success => {
+                if (!success) {
+                    resetUIState("Échec du lancement du lecteur MPV.");
+                }
+            }).catch(err => {
+                resetUIState("Erreur: " + err.message);
+            });
+        });
+
+        btnStop.addEventListener("click", () => {
+            if (!isPlaying) return;
+            window.electronAPI.stop().then(() => {
+                resetUIState("Lecture arrêtée.");
+            });
+        });
+
+        function resetUIState(message = "Prêt. Cliquez sur Play pour lancer le lecteur MPV externe.") {
+            isPlaying = false;
+            btnPlay.disabled = false;
+            btnStop.disabled = true;
+            placeholder.classList.remove("active");
+            icon.style.display = "block";
+            playingIcon.style.display = "none";
+            statusText.innerText = message;
+            statusText.style.color = "";
+            subText.style.display = "none";
+        }
+
+        // Listen for native exit event
+        window.electronAPI.onExited(() => {
+            console.log("Native MPV exited.");
+            resetUIState("Lecture terminée (Fenêtre MPV fermée).");
+        });
+    </script>
+</body>
+</html>

@@ -105,7 +105,7 @@ class MainActivity : ComponentActivity() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
-        settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+        settings.cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
         
         settings.setSupportZoom(false)
