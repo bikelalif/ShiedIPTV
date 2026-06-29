@@ -318,15 +318,20 @@ class VLCPlayerViewController: UIViewController,
 
         mediaPlayer.delegate = self
         mediaPlayer.drawable = self   // VLCDrawable + VLCPictureInPictureDrawable -> enables PiP
-        mediaPlayer.media = VLCMedia(url: streamURL)
+        let media = VLCMedia(url: streamURL)
+        // Larger network cache to avoid the periodic re-buffering / stalls on network streams.
+        media.addOption(":network-caching=3000")
+        mediaPlayer.media = media
         mediaPlayer.play()
         scheduleHideControls()
     }
 
     private func cleanup() {
         hideTimer?.invalidate()
-        mediaPlayer.stop()
+        // Detach the delegate BEFORE stopping so a late state callback (delivered on a
+        // background thread by VLCKit) can't touch UIKit while the view is being torn down.
         mediaPlayer.delegate = nil
+        mediaPlayer.stop()
     }
 
     // MARK: - Controls actions
@@ -453,41 +458,52 @@ class VLCPlayerViewController: UIViewController,
 
     // MARK: - VLCMediaPlayerDelegate
 
+    // VLCKit 4 delivers delegate callbacks on a background thread, so every UIKit/state
+    // update below must be hopped onto the main queue.
     func mediaPlayerStateChanged(_ newState: VLCMediaPlayerState) {
-        switch newState {
-        case .opening:
-            if !mediaPlayer.isPlaying { spinner.startAnimating() }
-        case .playing:
-            spinner.stopAnimating()
-            playPauseButton.setImage(UIImage(systemName: "pause.fill"), for: .normal)
-        case .paused, .stopped, .stopping:
-            spinner.stopAnimating()
-        case .error:
-            spinner.stopAnimating()
-            showError()
-        default:
-            break
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            switch newState {
+            case .opening:
+                if !self.mediaPlayer.isPlaying { self.spinner.startAnimating() }
+            case .playing:
+                self.spinner.stopAnimating()
+                self.playPauseButton.setImage(UIImage(systemName: "pause.fill"), for: .normal)
+            case .paused, .stopped, .stopping:
+                self.spinner.stopAnimating()
+            case .error:
+                self.spinner.stopAnimating()
+                self.showError()
+            default:
+                break
+            }
+            self.pipController?.invalidatePlaybackState()
         }
-        pipController?.invalidatePlaybackState()
     }
 
     func mediaPlayerTimeChanged(_ aNotification: Notification) {
-        spinner.stopAnimating()
-        if !isSeeking {
-            slider.value = Float(mediaPlayer.position)
-            currentTimeLabel.text = formatTime(mediaTime())
-        }
-        let total = mediaLength()
-        if total > 0 {
-            totalTimeLabel.text = formatTime(total)
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.spinner.stopAnimating()
+            if !self.isSeeking {
+                self.slider.value = Float(self.mediaPlayer.position)
+                self.currentTimeLabel.text = self.formatTime(self.mediaTime())
+            }
+            let total = self.mediaLength()
+            if total > 0 {
+                self.totalTimeLabel.text = self.formatTime(total)
+            }
         }
     }
 
     func mediaPlayerLengthChanged(_ length: Int64) {
-        if length > 0 {
-            totalTimeLabel.text = formatTime(length)
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            if length > 0 {
+                self.totalTimeLabel.text = self.formatTime(length)
+            }
+            self.pipController?.invalidatePlaybackState()
         }
-        pipController?.invalidatePlaybackState()
     }
 
     private func showError() {
