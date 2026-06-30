@@ -42,17 +42,13 @@ function initApp() {
         if (savedSettings) {
             try {
                 const settings = JSON.parse(savedSettings);
-                // DoH is required to reach the IPTV server on many networks; a stale saved
-                // "false" was breaking the connection until manually re-enabled. Force it on
-                // by default and correct the stored value.
-                state.isDohEnabled = true;
-                if (settings.isDohEnabled === false && typeof saveSettings === 'function') {
-                    saveSettings();
-                }
+                state.bypassMode = settings.bypassMode || 'proxy';
+                state.isDohEnabled = (state.bypassMode !== 'none');
                 state.dohResolver = settings.dohResolver || 'https://dns.google/resolve';
                 
-                const toggleEl = document.getElementById("setting-doh-toggle");
-                if (toggleEl) toggleEl.checked = state.isDohEnabled;
+                if (typeof window.applyBypassModeUI === 'function') {
+                    window.applyBypassModeUI(state.bypassMode);
+                }
                 const urlEl = document.getElementById("setting-doh-url");
                 if (urlEl) urlEl.value = state.dohResolver;
 
@@ -566,34 +562,64 @@ function setupEventListeners() {
         });
     }
     
-    // DoH
+    // DoH & Proxy bypass mode. The settings selector is a custom focusable BUTTON
+    // (not a native <select>, which traps/breaks D-pad focus on Android TV) that
+    // cycles none -> doh -> proxy. applyBypassModeUI keeps every surface in sync.
+    window.bypassModeText = function(mode) {
+        const t = TRANSLATIONS[state.language || 'en'];
+        if (mode === 'doh') return t.bypassModeDoh || 'DoH (Bypass DNS)';
+        if (mode === 'proxy') return t.bypassModeProxy || 'Tunneling Proxy (Bypass DNS & IP)';
+        return t.bypassModeNone || 'Désactivé (Direct)';
+    };
+
+    window.applyBypassModeUI = function(mode) {
+        const txt = document.getElementById("setting-bypass-mode-text");
+        if (txt) txt.innerText = window.bypassModeText(mode);
+        const resolverGroup = document.getElementById("setting-doh-resolver-group");
+        if (resolverGroup) resolverGroup.style.display = (mode === 'doh') ? '' : 'none';
+        const loginToggle = document.getElementById("login-doh-toggle");
+        if (loginToggle) loginToggle.checked = (mode !== 'none');
+    };
+
+    window.setBypassMode = function(mode, withToast) {
+        state.bypassMode = mode;
+        state.isDohEnabled = (mode !== 'none');
+        window.applyBypassModeUI(mode);
+        if (typeof saveSettings === 'function') saveSettings();
+        if (withToast) {
+            const t = TRANSLATIONS[state.language || 'en'];
+            let toastMsg = t.dohDisabledToast || "Contournement désactivé";
+            if (mode === 'doh') toastMsg = t.dohEnabledToast || "Contournement DNS (DoH) activé";
+            else if (mode === 'proxy') toastMsg = "Tunneling Proxy (Bypass DNS & IP) activé";
+            showToast(toastMsg, 2500);
+        }
+    };
+
     const loginDohLabel = document.getElementById("login-doh-label");
     const loginDohToggle = document.getElementById("login-doh-toggle");
     if (loginDohLabel && loginDohToggle) {
         loginDohLabel.addEventListener("click", (e) => {
             e.preventDefault();
             loginDohToggle.checked = !loginDohToggle.checked;
-            state.isDohEnabled = loginDohToggle.checked;
-            const mainDoh = document.getElementById("setting-doh-toggle");
-            if (mainDoh) mainDoh.checked = state.isDohEnabled;
-            saveSettings();
+            window.setBypassMode(loginDohToggle.checked ? 'proxy' : 'none', false);
         });
         loginDohToggle.addEventListener("change", (e) => {
-            state.isDohEnabled = e.target.checked;
-            const mainDoh = document.getElementById("setting-doh-toggle");
-            if (mainDoh) mainDoh.checked = state.isDohEnabled;
-            saveSettings();
+            window.setBypassMode(e.target.checked ? 'proxy' : 'none', false);
         });
     }
 
-    document.getElementById("setting-doh-toggle").addEventListener("change", (e) => {
-        state.isDohEnabled = e.target.checked;
-        const loginDohToggle = document.getElementById("login-doh-toggle");
-        if (loginDohToggle) loginDohToggle.checked = state.isDohEnabled;
-        saveSettings();
-        const t = TRANSLATIONS[state.language || 'en'];
-        showToast(state.isDohEnabled ? t.dohEnabledToast : t.dohDisabledToast, 2000);
-    });
+    // Custom button (Android TV-safe) cycles through the bypass modes on activation.
+    const bypassBtn = document.getElementById("setting-bypass-mode-btn");
+    if (bypassBtn) {
+        bypassBtn.addEventListener("click", () => {
+            const order = ['none', 'doh', 'proxy'];
+            const next = order[(order.indexOf(state.bypassMode) + 1) % order.length];
+            window.setBypassMode(next, true);
+        });
+    }
+
+    // Apply the restored bypass mode settings at startup
+    window.applyBypassModeUI(state.bypassMode);
     
     document.getElementById("setting-doh-url").addEventListener("change", (e) => {
         state.dohResolver = e.target.value;
