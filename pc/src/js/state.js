@@ -311,6 +311,7 @@ const TRANSLATIONS = {
         bypassModeNone: "Désactivé (Direct)",
         bypassModeDoh: "DoH (Bypass DNS)",
         bypassModeProxy: "Tunneling Proxy (Bypass DNS & IP)",
+        updatePlaylist: "Mettre à jour la playlist",
         langTitle: "Langue / Language",
         langDesc: "Sélectionnez la langue de l'interface.",
         langLabel: "Langue",
@@ -450,6 +451,7 @@ const TRANSLATIONS = {
         bypassModeNone: "Disabled (Direct)",
         bypassModeDoh: "DoH (Bypass DNS)",
         bypassModeProxy: "Tunneling Proxy (Bypass DNS & IP)",
+        updatePlaylist: "Update Playlist",
         langTitle: "Language / Langue",
         langDesc: "Select the interface language.",
         langLabel: "Language",
@@ -589,6 +591,7 @@ const TRANSLATIONS = {
         bypassModeNone: "Desactivado (Directo)",
         bypassModeDoh: "DoH (Bypass DNS)",
         bypassModeProxy: "Tunneling Proxy (Bypass DNS & IP)",
+        updatePlaylist: "Actualizar lista",
         langTitle: "Idioma / Language",
         langDesc: "Seleccione el idioma de la interfaz.",
         langLabel: "Idioma",
@@ -727,6 +730,7 @@ const TRANSLATIONS = {
         bypassModeNone: "Disattivato (Diretto)",
         bypassModeDoh: "DoH (Bypass DNS)",
         bypassModeProxy: "Tunneling Proxy (Bypass DNS & IP)",
+        updatePlaylist: "Aggiorna playlist",
         langTitle: "Lingua / Language",
         langDesc: "Seleziona la lingua dell'interfaccia.",
         langLabel: "Lingua",
@@ -1025,6 +1029,9 @@ function applyLanguage(lang) {
         }
     }
     
+    const updateBtnLabel = document.getElementById("settings-update-playlist-label");
+    if (updateBtnLabel) updateBtnLabel.innerText = t.updatePlaylist || "Mettre à jour la playlist";
+
     const btnLogout = document.getElementById("btn-logout");
     if (btnLogout) {
         const span = btnLogout.querySelector("span:not(.material-icons)");

@@ -662,7 +662,14 @@ function setupEventListeners() {
         }
     });
     
-    // Logout
+    // Update Playlist & Logout
+    const btnUpdatePlaylist = document.getElementById("btn-update-playlist");
+    if (btnUpdatePlaylist) {
+        btnUpdatePlaylist.addEventListener("click", () => {
+            reloadActivePlaylist();
+        });
+    }
+
     document.getElementById("btn-logout").addEventListener("click", () => {
         logout();
     });
