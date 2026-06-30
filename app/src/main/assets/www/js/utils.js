@@ -11,8 +11,19 @@ async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
     // 1. Proxy Tunneling: route through Cloudflare Worker proxy
     if (state.bypassMode === 'proxy') {
         if (url && url.startsWith("http")) {
-            console.log(`[Tunneling] Proxying URL: ${url}`);
-            return `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
+            const isVideoStream = isLiveStream || 
+                                  url.includes("/live/") || 
+                                  url.includes("/movie/") || 
+                                  url.includes("/series/") || 
+                                  /\.(ts|mp4|mkv|m3u8|avi|mov)$/i.test(url.split('?')[0]);
+            
+            if (isVideoStream) {
+                console.log(`[Tunneling] Proxying video stream via corsproxy.io: ${url}`);
+                return `https://corsproxy.io/?${encodeURIComponent(url)}`;
+            } else {
+                console.log(`[Tunneling] Proxying URL via custom worker: ${url}`);
+                return `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
+            }
         }
         return url;
     }
@@ -93,6 +104,13 @@ function resolveUrlWithDoHSync(url) {
     
     if (state.bypassMode === 'proxy') {
         if (url.startsWith("http")) {
+            const isVideoStream = url.includes("/live/") || 
+                                  url.includes("/movie/") || 
+                                  url.includes("/series/") || 
+                                  /\.(ts|mp4|mkv|m3u8|avi|mov)$/i.test(url.split('?')[0]);
+            if (isVideoStream) {
+                return `https://corsproxy.io/?${encodeURIComponent(url)}`;
+            }
             return `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
         }
         return url;
