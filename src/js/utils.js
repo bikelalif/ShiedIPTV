@@ -2,96 +2,23 @@
    SHIELDIPTV UTILITIES & PARSERS
    ========================================================================== */
 
-// DNS-over-HTTPS (DoH) Resolver
+// DNS-over-HTTPS (DoH) & Proxy Tunneling Resolver
 async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
     if (!state.isDohEnabled) return url;
-    // If the DoH resolver already proved unreachable this session, skip it entirely
-    // so we don't pay the timeout again on every subsequent request.
-    if (state.dohUnavailable) return url;
-
-    try {
-        const parsedUrl = new URL(url);
-        const hostname = parsedUrl.hostname;
-        
-        // Already an IP address — no need to resolve
-        if (/^[0-9.]+$/.test(hostname)) return url;
-        
-        const isHttps = url.startsWith('https://');
-        
-        if (!state.dohCache) state.dohCache = {};
-        
-        let ip = state.dohCache[hostname];
-        
-        if (!ip) {
-            // DoH fetch with a short timeout so a blocked resolver doesn't hang the whole login
-            const dohController = new AbortController();
-            const dohTimeout = setTimeout(() => dohController.abort(), 2000);
-            
-            let dnsData;
-            try {
-                const acceptHeader = state.dohResolver.includes("dns.google")
-                    ? 'application/json'
-                    : 'application/dns-json';
-                const dohResponse = await fetch(
-                    `${state.dohResolver}?name=${encodeURIComponent(hostname)}&type=A`,
-                    { headers: { 'Accept': acceptHeader }, signal: dohController.signal }
-                );
-                clearTimeout(dohTimeout);
-                dnsData = await dohResponse.json();
-            } catch (dohErr) {
-                clearTimeout(dohTimeout);
-                // Resolver is blocked/slow — disable DoH for the rest of the session to avoid
-                // repeating this delay on every request.
-                state.dohUnavailable = true;
-                console.warn(`[DoH] Resolver ${state.dohResolver} unreachable or timed out. Disabling DoH for this session.`, dohErr);
-                return url;
-            }
-            
-            if (dnsData && dnsData.Answer && dnsData.Answer.length > 0) {
-                const aRecord = dnsData.Answer.find(record => record.type === 1);
-                if (aRecord) {
-                    ip = aRecord.data;
-                    state.dohCache[hostname] = ip; // Cache resolved IP
-                    console.log(`[DoH] Cached resolution: ${hostname} -> ${ip}`);
-                }
-            }
-        }
-        
-        if (ip && !isHttps) {
-            const serverHostname = state.serverUrl ? new URL(state.serverUrl).hostname : "";
-            const isIptvServer = (hostname === serverHostname);
-            
-            // Only substitute IP if:
-            // 1. It is a live stream (which we always want to bypass DNS for)
-            // 2. OR it is an image hosted on our IPTV server (to bypass ISP block on server domain)
-            if (isLiveStream || isIptvServer) {
-                parsedUrl.hostname = ip;
-                console.log(`[DoH] Resolved & Substituted IP: ${hostname} -> ${ip}`);
-                return parsedUrl.toString();
-            }
-        }
-    } catch (error) {
-        console.warn("[DoH] DNS lookup failed, using fallback URL:", error);
-    }
     
+    if (url && url.startsWith("http")) {
+        console.log(`[Tunneling] Proxying URL: ${url}`);
+        return `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
+    }
     return url;
 }
 
 // Synchronous DNS bypass for logo image elements using pre-resolved cache
 function resolveUrlWithDoHSync(url) {
-    if (!state.isDohEnabled || !state.dohCache || !url) return url;
-    try {
-        const parsedUrl = new URL(url);
-        const hostname = parsedUrl.hostname;
-        if (/^[0-9.]+$/.test(hostname)) return url;
-        
-        const isHttps = url.startsWith('https://');
-        const ip = state.dohCache[hostname];
-        if (ip && !isHttps) {
-            parsedUrl.hostname = ip;
-            return parsedUrl.toString();
-        }
-    } catch (e) {}
+    if (!state.isDohEnabled || !url) return url;
+    if (url && url.startsWith("http")) {
+        return `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
+    }
     return url;
 }
 
