@@ -42,7 +42,7 @@ function initApp() {
         if (savedSettings) {
             try {
                 const settings = JSON.parse(savedSettings);
-                state.bypassMode = settings.bypassMode || 'proxy';
+                state.bypassMode = settings.bypassMode || 'doh';
                 state.isDohEnabled = (state.bypassMode !== 'none');
                 state.dohResolver = settings.dohResolver || 'https://dns.google/resolve';
                 

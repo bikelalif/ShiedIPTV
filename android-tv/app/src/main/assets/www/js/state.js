@@ -161,7 +161,7 @@ const state = {
     username: '',
     password: '',
     isLoggedIn: false,
-    bypassMode: 'proxy',
+    bypassMode: 'doh',
     isDohEnabled: true,
     dohResolver: 'https://dns.google/resolve',
     
@@ -1239,7 +1239,7 @@ function initPlayerSettingsDropdowns(lang) {
     const t = TRANSLATIONS[newLang];
     
     const isElectron = !!(window.electronAPI && window.electronAPI.isElectron);
-    const isAndroid = !!window.AndroidApp;
+    const isAndroid = !!(window.AndroidApp || (typeof navigator !== 'undefined' && /Android|GoogleTV|AndroidTV|FireTV/i.test(navigator.userAgent)));
     const isWeb = !isElectron && !isAndroid && !isTvWrapper;
     
     const vlcLabel = t.playerOptionVlc || "Lecteur VLC";
