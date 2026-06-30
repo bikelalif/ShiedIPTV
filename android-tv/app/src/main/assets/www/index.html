@@ -439,12 +439,13 @@
                             <h3 id="settings-bypass-title">Contournement FAI / Blocage</h3>
                             <p class="settings-desc" id="settings-bypass-desc">Permet de contourner les blocages DNS et d'IP imposés par les fournisseurs d'accès Internet.</p>
                             <div class="input-group">
-                                 <label id="settings-bypass-mode-label">Mode de Contournement</label>
-                                 <button id="setting-bypass-mode-btn" class="focusable settings-btn-value" style="width: 100%; text-align: left; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: var(--text-color); cursor: pointer; font-weight: 500; display: flex; justify-content: space-between; align-items: center;">
-                                     <span id="setting-bypass-mode-text">Tunneling Proxy (Bypass DNS & IP)</span>
-                                     <span class="material-icons" style="font-size: 1.2rem; color: var(--text-muted);">sync</span>
-                                 </button>
-                             </div>
+                                <label for="setting-bypass-mode" id="settings-bypass-mode-label">Mode de Contournement</label>
+                                <select id="setting-bypass-mode" class="focusable">
+                                    <option value="none" id="bypass-mode-option-none">Désactivé (Direct)</option>
+                                    <option value="doh" id="bypass-mode-option-doh">DoH (Bypass DNS)</option>
+                                    <option value="proxy" id="bypass-mode-option-proxy">Tunneling Proxy (Bypass DNS & IP)</option>
+                                </select>
+                            </div>
                             <div class="input-group" id="setting-doh-resolver-group" style="display: none;">
                                 <label for="setting-doh-url" id="settings-doh-resolver-label">Résolveur DoH</label>
                                 <select id="setting-doh-url" class="focusable">
