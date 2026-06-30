@@ -161,6 +161,7 @@ const state = {
     username: '',
     password: '',
     isLoggedIn: false,
+    bypassMode: 'proxy',
     isDohEnabled: true,
     dohResolver: 'https://dns.google/resolve',
     
@@ -301,11 +302,15 @@ const TRANSLATIONS = {
         epgEmpty: "Aucun programme disponible pour le moment.",
         epgUnavailable: "Guide de programme indisponible.",
         settingsTitle: "Paramètres globaux",
-        dohTitle: "Tunneling Proxy (Bypass FAI)",
+        dohTitle: "Contournement FAI / Blocage",
         dohDesc: "Permet de contourner les blocages DNS et d'IP imposés par certains FAI pour lire les flux IPTV.",
-        dohEnable: "Activer le Tunneling (Bypass FAI)",
-        dohEnableLogin: "Activer le Tunneling Proxy (Bypass FAI)",
-        dohResolver: "Résolveur de secours (DoH)",
+        dohEnable: "Contournement Blocage FAI",
+        dohEnableLogin: "Contournement FAI (Bypass DNS & IP)",
+        dohResolver: "Résolveur DoH de secours",
+        bypassModeLabel: "Mode de Contournement",
+        bypassModeNone: "Désactivé (Direct)",
+        bypassModeDoh: "DoH (Bypass DNS)",
+        bypassModeProxy: "Tunneling Proxy (Bypass DNS & IP)",
         langTitle: "Langue / Language",
         langDesc: "Sélectionnez la langue de l'interface.",
         langLabel: "Langue",
@@ -436,11 +441,15 @@ const TRANSLATIONS = {
         epgEmpty: "No program available at the moment.",
         epgUnavailable: "Program guide unavailable.",
         settingsTitle: "Global Settings",
-        dohTitle: "Tunneling Proxy (ISP Bypass)",
+        dohTitle: "ISP Block Bypass",
         dohDesc: "Allows bypassing DNS and IP blocking imposed by some ISPs to play IPTV streams.",
-        dohEnable: "Enable Tunneling (ISP Bypass)",
-        dohEnableLogin: "Enable Tunneling Proxy (ISP Bypass)",
-        dohResolver: "Backup Resolver (DoH)",
+        dohEnable: "ISP Block Bypass",
+        dohEnableLogin: "Bypass FAI Blocking (DNS & IP)",
+        dohResolver: "DoH Backup Resolver",
+        bypassModeLabel: "Bypass Mode",
+        bypassModeNone: "Disabled (Direct)",
+        bypassModeDoh: "DoH (Bypass DNS)",
+        bypassModeProxy: "Tunneling Proxy (Bypass DNS & IP)",
         langTitle: "Language / Langue",
         langDesc: "Select the interface language.",
         langLabel: "Language",
@@ -571,11 +580,15 @@ const TRANSLATIONS = {
         epgEmpty: "Ningún programa disponible por el momento.",
         epgUnavailable: "Guía de programación no disponible.",
         settingsTitle: "Ajustes Globales",
-        dohTitle: "Tunneling Proxy (Bypass FAI)",
-        dohDesc: "Permite evadir los bloqueos de DNS y de IP impuestos por algunos proveedores de Internet.",
-        dohEnable: "Activar Tunneling (Bypass FAI)",
-        dohEnableLogin: "Activar Tunneling Proxy (Bypass FAI)",
-        dohResolver: "Servidor de respaldo (DoH)",
+        dohTitle: "Bypass Bloqueo FAI",
+        dohDesc: "Permite evadir los bloqueos de DNS y de IP impuestos por algunos proveedores de Internet para reproducir transmisiones de IPTV.",
+        dohEnable: "Bypass Bloqueo FAI",
+        dohEnableLogin: "Desvío FAI (Bypass DNS y IP)",
+        dohResolver: "Servidor DoH de respaldo",
+        bypassModeLabel: "Modo de desvío",
+        bypassModeNone: "Desactivado (Directo)",
+        bypassModeDoh: "DoH (Bypass DNS)",
+        bypassModeProxy: "Tunneling Proxy (Bypass DNS & IP)",
         langTitle: "Idioma / Language",
         langDesc: "Seleccione el idioma de la interfaz.",
         langLabel: "Idioma",
@@ -705,11 +718,15 @@ const TRANSLATIONS = {
         epgEmpty: "Nessun programma disponibile al momento.",
         epgUnavailable: "Guida programmi non disponibile.",
         settingsTitle: "Impostazioni Generali",
-        dohTitle: "Tunneling Proxy (Bypass ISP)",
+        dohTitle: "Bypass Blocco FAI",
         dohDesc: "Consente di aggirare i blocchi DNS e IP imposti da alcuni ISP per riprodurre i flussi IPTV.",
-        dohEnable: "Attiva Tunneling (Bypass ISP)",
-        dohEnableLogin: "Attiva Tunneling Proxy (Bypass ISP)",
-        dohResolver: "Risolutore di riserva (DoH)",
+        dohEnable: "Bypass Blocco FAI",
+        dohEnableLogin: "Bypass blocco FAI (DNS e IP)",
+        dohResolver: "Risolutore DoH di riserva",
+        bypassModeLabel: "Modalità di bypass",
+        bypassModeNone: "Disattivato (Diretto)",
+        bypassModeDoh: "DoH (Bypass DNS)",
+        bypassModeProxy: "Tunneling Proxy (Bypass DNS & IP)",
         langTitle: "Lingua / Language",
         langDesc: "Seleziona la lingua dell'interfaccia.",
         langLabel: "Lingua",
@@ -969,11 +986,11 @@ function applyLanguage(lang) {
     if (dohGroup) {
         const h3 = dohGroup.querySelector("h3");
         const desc = dohGroup.querySelector(".settings-desc");
-        const labelToggle = dohGroup.querySelector('label[for="setting-doh-toggle"]');
-        const labelSelect = dohGroup.querySelector('label[for="setting-doh-url"]');
+        const labelBypassMode = dohGroup.querySelector('#settings-bypass-mode-label') || dohGroup.querySelector('label[for="setting-bypass-mode"]');
+        const labelSelect = dohGroup.querySelector('#settings-doh-resolver-label') || dohGroup.querySelector('label[for="setting-doh-url"]');
         if (h3) h3.innerText = t.dohTitle;
         if (desc) desc.innerText = t.dohDesc;
-        if (labelToggle) labelToggle.innerText = t.dohEnable;
+        if (labelBypassMode) labelBypassMode.innerText = t.bypassModeLabel || "Bypass Mode";
         if (labelSelect) labelSelect.innerText = t.dohResolver;
     }
     
