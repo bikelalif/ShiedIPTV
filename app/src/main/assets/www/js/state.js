@@ -992,6 +992,13 @@ function applyLanguage(lang) {
         if (desc) desc.innerText = t.dohDesc;
         if (labelBypassMode) labelBypassMode.innerText = t.bypassModeLabel || "Bypass Mode";
         if (labelSelect) labelSelect.innerText = t.dohResolver;
+
+        const optNone = document.getElementById("bypass-mode-option-none");
+        if (optNone) optNone.innerText = t.bypassModeNone || "Désactivé (Direct)";
+        const optDoh = document.getElementById("bypass-mode-option-doh");
+        if (optDoh) optDoh.innerText = t.bypassModeDoh || "DoH (Bypass DNS)";
+        const optProxy = document.getElementById("bypass-mode-option-proxy");
+        if (optProxy) optProxy.innerText = t.bypassModeProxy || "Tunneling Proxy (Bypass DNS & IP)";
     }
     
     const langGroup = document.querySelector("#settings-panel .settings-group:nth-of-type(2)");

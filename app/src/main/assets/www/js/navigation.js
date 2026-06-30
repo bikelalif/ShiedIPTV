@@ -879,7 +879,7 @@ function moveFocus(direction) {
     
     // Custom rule: ArrowUp on first element in settings goes directly to back button
     if (state.currentSection === 'settings') {
-        if (active.id === 'setting-bypass-mode-btn' && direction === 'up') {
+        if (active.id === 'setting-bypass-mode' && direction === 'up') {
             const backBtn = document.getElementById("btn-header-back");
             if (backBtn) {
                 // Reset scroll positions of settings-panel and page viewport instantly
@@ -1162,7 +1162,7 @@ function focusFirst() {
             target = container.querySelector("#player-btn-play") || container.querySelector("#player-btn-back") || Array.from(container.querySelectorAll(".focusable")).find(el => el.offsetWidth > 0 || el.offsetHeight > 0);
         } else if (screenId === 'home-screen' || screenId === 'series-details-screen') {
             if (screenId === 'home-screen' && state.currentSection === 'settings') {
-                target = container.querySelector("#setting-bypass-mode-btn") || container.querySelector(".settings-panel .focusable");
+                target = container.querySelector("#setting-bypass-mode") || container.querySelector(".settings-panel .focusable");
             } else {
                 target = getFocusFallbackForScreen(screenId);
             }
