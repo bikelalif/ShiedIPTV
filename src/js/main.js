@@ -562,19 +562,10 @@ function setupEventListeners() {
         });
     }
     
-    // DoH & Proxy bypass mode. The settings selector is a custom focusable BUTTON
-    // (not a native <select>, which traps/breaks D-pad focus on Android TV) that
-    // cycles none -> doh -> proxy. applyBypassModeUI keeps every surface in sync.
-    window.bypassModeText = function(mode) {
-        const t = TRANSLATIONS[state.language || 'en'];
-        if (mode === 'doh') return t.bypassModeDoh || 'DoH (Bypass DNS)';
-        if (mode === 'proxy') return t.bypassModeProxy || 'Tunneling Proxy (Bypass DNS & IP)';
-        return t.bypassModeNone || 'Désactivé (Direct)';
-    };
-
+    // DoH & Proxy bypass mode using a native <select> element.
     window.applyBypassModeUI = function(mode) {
-        const txt = document.getElementById("setting-bypass-mode-text");
-        if (txt) txt.innerText = window.bypassModeText(mode);
+        const sel = document.getElementById("setting-bypass-mode");
+        if (sel) sel.value = mode;
         const resolverGroup = document.getElementById("setting-doh-resolver-group");
         if (resolverGroup) resolverGroup.style.display = (mode === 'doh') ? '' : 'none';
         const loginToggle = document.getElementById("login-doh-toggle");
@@ -608,13 +599,10 @@ function setupEventListeners() {
         });
     }
 
-    // Custom button (Android TV-safe) cycles through the bypass modes on activation.
-    const bypassBtn = document.getElementById("setting-bypass-mode-btn");
-    if (bypassBtn) {
-        bypassBtn.addEventListener("click", () => {
-            const order = ['none', 'doh', 'proxy'];
-            const next = order[(order.indexOf(state.bypassMode) + 1) % order.length];
-            window.setBypassMode(next, true);
+    const settingBypassModeEl = document.getElementById("setting-bypass-mode");
+    if (settingBypassModeEl) {
+        settingBypassModeEl.addEventListener("change", (e) => {
+            window.setBypassMode(e.target.value, true);
         });
     }
 
