@@ -231,6 +231,7 @@ function loadSavedPlaylists() {
 
 function saveSettings() {
     safeStorage.local.setItem("shield_iptv_settings", JSON.stringify({
+        bypassMode: state.bypassMode,
         isDohEnabled: state.isDohEnabled,
         dohResolver: state.dohResolver,
         language: state.language,
