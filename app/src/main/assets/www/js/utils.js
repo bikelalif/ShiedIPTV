@@ -8,27 +8,22 @@ async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
     
     if (state.bypassMode === 'none') return url;
     
-    // 1. Proxy Tunneling: route through Cloudflare Worker proxy
-    if (state.bypassMode === 'proxy') {
+    const isVideoStream = isLiveStream || 
+                          (url && (url.includes("/live/") || 
+                                   url.includes("/movie/") || 
+                                   url.includes("/series/") || 
+                                   /\.(ts|mp4|mkv|m3u8|avi|mov)$/i.test(url.split('?')[0])));
+    
+    // 1. Proxy Tunneling: route API/data requests through custom worker proxy, but resolve streams via DoH
+    if (state.bypassMode === 'proxy' && !isVideoStream) {
         if (url && url.startsWith("http")) {
-            const isVideoStream = isLiveStream || 
-                                  url.includes("/live/") || 
-                                  url.includes("/movie/") || 
-                                  url.includes("/series/") || 
-                                  /\.(ts|mp4|mkv|m3u8|avi|mov)$/i.test(url.split('?')[0]);
-            
-            if (isVideoStream) {
-                console.log(`[Tunneling] Proxying video stream via corsproxy.io: ${url}`);
-                return `https://corsproxy.io/?${encodeURIComponent(url)}`;
-            } else {
-                console.log(`[Tunneling] Proxying URL via custom worker: ${url}`);
-                return `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
-            }
+            console.log(`[Tunneling] Proxying API/data via custom worker: ${url}`);
+            return `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
         }
         return url;
     }
     
-    // 2. DNS-over-HTTPS (DoH): resolve domain name to IP to bypass ISP DNS hijacking
+    // 2. DNS-over-HTTPS (DoH): resolve domain name to IP to bypass ISP DNS hijacking directly
     if (state.dohUnavailable) return url;
 
     try {
@@ -62,8 +57,7 @@ async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
                 dnsData = await dohResponse.json();
             } catch (dohErr) {
                 clearTimeout(dohTimeout);
-                state.dohUnavailable = true;
-                console.warn(`[DoH] Resolver ${state.dohResolver} unreachable. Disabling DoH for this session.`, dohErr);
+                console.warn(`[DoH] Resolver ${state.dohResolver} unreachable.`, dohErr);
                 return url;
             }
             
@@ -81,12 +75,10 @@ async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
             const serverHostname = state.serverUrl ? new URL(state.serverUrl).hostname : "";
             const isIptvServer = (hostname === serverHostname);
             
-            // Only substitute IP if:
-            // 1. It is a live stream (which we always want to bypass DNS for)
-            // 2. OR it is an image hosted on our IPTV server (to bypass ISP block on server domain)
-            if (isLiveStream || isIptvServer) {
+            // Substitute hostname with resolved IP to bypass DNS block
+            if (isLiveStream || isIptvServer || isVideoStream) {
                 parsedUrl.hostname = ip;
-                console.log(`[DoH] Resolved & Substituted IP: ${hostname} -> ${ip}`);
+                console.log(`[DoH/Bypass] Resolved & Substituted IP: ${hostname} -> ${ip}`);
                 return parsedUrl.toString();
             }
         }
@@ -102,15 +94,13 @@ function resolveUrlWithDoHSync(url) {
     if (!state.bypassMode) state.bypassMode = state.isDohEnabled ? 'proxy' : 'none';
     if (state.bypassMode === 'none' || !url) return url;
     
-    if (state.bypassMode === 'proxy') {
+    const isVideoStream = url.includes("/live/") || 
+                          url.includes("/movie/") || 
+                          url.includes("/series/") || 
+                          /\.(ts|mp4|mkv|m3u8|avi|mov)$/i.test(url.split('?')[0]);
+                          
+    if (state.bypassMode === 'proxy' && !isVideoStream) {
         if (url.startsWith("http")) {
-            const isVideoStream = url.includes("/live/") || 
-                                  url.includes("/movie/") || 
-                                  url.includes("/series/") || 
-                                  /\.(ts|mp4|mkv|m3u8|avi|mov)$/i.test(url.split('?')[0]);
-            if (isVideoStream) {
-                return `https://corsproxy.io/?${encodeURIComponent(url)}`;
-            }
             return `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
         }
         return url;
@@ -127,7 +117,7 @@ function resolveUrlWithDoHSync(url) {
             const ip = state.dohCache[hostname];
             const serverHostname = state.serverUrl ? new URL(state.serverUrl).hostname : "";
             const isIptvServer = (hostname === serverHostname);
-            if (isIptvServer) {
+            if (isIptvServer || isVideoStream) {
                 parsedUrl.hostname = ip;
                 return parsedUrl.toString();
             }
