@@ -1,8 +1,20 @@
 function checkIsMobileWeb() {
-    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && 
-           !window.cordova && 
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) &&
+           !window.cordova &&
            !window.AndroidApp &&
            !/SmartTV|GoogleTV|AppleTV|AndroidTV|webOS|webOSTV/i.test(navigator.userAgent);
+}
+
+// Detect iOS/iPadOS WKWebView (Safari + the Capacitor app). WKWebView has no
+// window.MediaSource, so mpegts.js and (on older iOS) hls.js cannot run — but it
+// plays HLS (.m3u8) natively in the <video> element with no MediaSource needed.
+function isAppleWebView() {
+    if (window.Capacitor && typeof window.Capacitor.getPlatform === 'function') {
+        return window.Capacitor.getPlatform() === 'ios';
+    }
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) return true;
+    // iPadOS 13+ reports a desktop "Macintosh" UA but exposes touch points.
+    return navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1;
 }
 
 function getLiveStreamExt() {
@@ -41,11 +53,11 @@ function getLiveStreamExt() {
 }
 
 function getPlayerForSection(section) {
-    if (!state.playerSettings) return 'html5';
-    if (section === 'live') return state.playerSettings.live || 'html5';
-    if (section === 'movies') return state.playerSettings.movies || (window.AndroidApp ? 'exoplayer' : 'html5');
-    if (section === 'series') return state.playerSettings.series || (window.AndroidApp ? 'exoplayer' : 'html5');
-    return 'html5';
+    if (!state.playerSettings) return getDefaultPlayer(section);
+    if (section === 'live') return state.playerSettings.live || getDefaultPlayer('live');
+    if (section === 'movies') return state.playerSettings.movies || getDefaultPlayer('movies');
+    if (section === 'series') return state.playerSettings.series || getDefaultPlayer('series');
+    return getDefaultPlayer(section);
 }
 
 async function playMedia(item, section) {
@@ -251,27 +263,57 @@ function triggerDirectStreamFallback() {
 }
 
 function handlePlaybackFallback(originalUrl, onFailCallback) {
-    if (state.isDohEnabled && state.lastAttemptedStreamUrl === originalUrl) {
+    const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
+    
+    if (state.bypassMode !== 'none' && state.lastAttemptedStreamUrl === originalUrl) {
         console.warn("[Player] Stream failed using original URL. Retrying with DNS-over-HTTPS fallback...");
         state.lastAttemptedStreamUrl = ""; // prevent loop
         
-        const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
         resolveUrlWithDoH(originalUrl, isLive).then(resolvedUrl => {
             if (resolvedUrl && resolvedUrl !== originalUrl) {
                 console.log("[Player] DoH resolved fallback URL:", resolvedUrl);
                 state.lastAttemptedStreamUrl = resolvedUrl;
                 startPlayback(resolvedUrl, true);
             } else {
-                console.log("[Player] DoH resolution did not yield a different URL.");
-                if (typeof onFailCallback === 'function') onFailCallback();
+                if (state.bypassMode === 'proxy') {
+                    tryProxyFallback(originalUrl, onFailCallback);
+                } else {
+                    if (typeof onFailCallback === 'function') onFailCallback();
+                }
             }
         }).catch(err => {
             console.error("[Player] DoH resolution failed during fallback:", err);
-            if (typeof onFailCallback === 'function') onFailCallback();
+            if (state.bypassMode === 'proxy') {
+                tryProxyFallback(originalUrl, onFailCallback);
+            } else {
+                if (typeof onFailCallback === 'function') onFailCallback();
+            }
         });
+    } else if (state.bypassMode === 'proxy' && state.lastAttemptedStreamUrl && !state.lastAttemptedStreamUrl.includes("workers.dev") && !state.lastAttemptedStreamUrl.includes("corsproxy.io") && !state.lastAttemptedStreamUrl.includes("allorigins.win")) {
+        console.warn("[Player] Stream failed with IP URL. Retrying with CORS Proxy fallback...");
+        tryProxyFallback(originalUrl, onFailCallback);
     } else {
         if (typeof onFailCallback === 'function') onFailCallback();
     }
+}
+
+function tryProxyFallback(originalUrl, onFailCallback) {
+    const fallbackSourceUrl = state.originalStreamUrl || originalUrl;
+    if (!fallbackSourceUrl || !fallbackSourceUrl.startsWith("http") || fallbackSourceUrl.includes("allorigins.win")) {
+        if (typeof onFailCallback === 'function') onFailCallback();
+        return;
+    }
+    
+    // Ensure we don't pass an IP URL if we have a saved original domain URL
+    let cleanSourceUrl = fallbackSourceUrl;
+    if (state.originalStreamUrl && cleanSourceUrl.includes("103.176.90.102") && !state.originalStreamUrl.includes("103.176.90.102")) {
+        cleanSourceUrl = state.originalStreamUrl;
+    }
+    
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(cleanSourceUrl)}`;
+    console.log("[Player] Trying AllOrigins CORS proxy stream fallback:", proxyUrl);
+    state.lastAttemptedStreamUrl = proxyUrl;
+    startPlayback(proxyUrl, true);
 }
 
 async function fetchAndRewritePlaylist(playlistUrl) {
@@ -384,8 +426,17 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
             video.play().catch(err => {});
         }
     } else if (resolvedStreamUrl.includes('.m3u8')) {
+        // hls.js (MSE) cannot run in iOS WKWebView (no window.MediaSource). Even where
+        // ManagedMediaSource exists, the native HLS player is more reliable AND correctly
+        // follows the panel's 302 redirect + relative /hls/ segment paths. So on iOS we
+        // always use the native <video> HLS player with the direct (un-rewritten) URL.
+        const hlsSupported = (typeof Hls !== 'undefined' && Hls.isSupported()) && !isAppleWebView();
         let playUrl = resolvedStreamUrl;
-        if (state.isDohEnabled) {
+        // Only rewrite the manifest into an in-memory blob: URL when playback goes through
+        // hls.js (MSE/ManagedMediaSource), which can load blob: sources. Native HLS players
+        // (iOS Safari/WKWebView) CANNOT load a blob: manifest, so for them we keep the direct
+        // (already DoH-resolved) URL and let the native player fetch the segments itself.
+        if (state.isDohEnabled && hlsSupported) {
             try {
                 playUrl = await fetchAndRewritePlaylist(resolvedStreamUrl);
                 state.currentHlsBlobUrl = playUrl;
@@ -401,7 +452,7 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
             }
         }
         
-        if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+        if (hlsSupported) {
             console.log("[Player] Initializing HLS.js for stream:", playUrl);
             state.hlsPlayer = new Hls({
                 enableWorker: true,
@@ -478,15 +529,57 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
     }
 }
 
+// Play a movie/series episode in the native iOS VLCKit player. Builds the direct
+// file URL with the original container extension (no transmux — VLC decodes it all).
+async function playWithNativeVlc(title) {
+    const stream = state.currentPlayingStream;
+    if (!stream || !stream.item) return;
+    const section = stream.section;
+    const item = stream.item;
+    const streamId = item.stream_id || item.id;
+
+    let targetUrl;
+    if (section === 'live') {
+        // VLCKit decodes raw MPEG-TS directly — no HLS wrapper needed.
+        targetUrl = `${state.serverUrl}/live/${state.username}/${state.password}/${streamId}.ts`;
+    } else {
+        const originalExt = (item.container_extension || 'mp4').toLowerCase();
+        targetUrl = `${state.serverUrl}/${section === 'series' ? 'series' : 'movie'}/${state.username}/${state.password}/${streamId}.${originalExt}`;
+    }
+
+    if (state.isDohEnabled && typeof resolveUrlWithDoH === 'function') {
+        try { targetUrl = await resolveUrlWithDoH(targetUrl, false); } catch (e) {}
+    }
+
+    try {
+        console.log('[VLC] Native playback:', targetUrl);
+        await window.Capacitor.Plugins.ShieldVlcPlayer.play({ url: targetUrl, title: title || '' });
+        // Promise resolves when the user closes the native player; nothing else to do
+        // since the WebView still shows the screen underneath.
+    } catch (e) {
+        console.warn('[VLC] Native playback error:', e);
+    }
+}
+
 function launchVideoPlayer(url, title, logoUrl) {
     const preservedStream = state.currentPlayingStream;
+    state.originalStreamUrl = url;
     state.currentPlayingStreamUrl = url;
     destroyPreviewMpegtsPlayer();
     state.currentPlayingStream = preservedStream;
     
     const section = state.currentPlayingStream ? state.currentPlayingStream.section : 'movies';
     const targetPlayer = getPlayerForSection(section);
-    
+
+    // Native in-app VLCKit player (iOS) when the user selected "vlc_internal" for this
+    // section. VLCKit decodes formats the WebView <video> cannot (MKV, AC3/E-AC3/DTS
+    // Dolby audio, H.265, AVI, raw .ts...). Falls through if the plugin is absent.
+    if (isAppleWebView() && targetPlayer === 'vlc_internal' &&
+        window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ShieldVlcPlayer) {
+        playWithNativeVlc(title);
+        return;
+    }
+
     if ((targetPlayer === 'vlc' || targetPlayer === 'mpv') && !window.AndroidApp && !isTvWrapper) {
         if (window.electronAPI && window.electronAPI.isElectron) {
             // Show embedded container
@@ -649,13 +742,28 @@ function launchVideoPlayer(url, title, logoUrl) {
         }
     }
     
-    // Hide fullscreen button on TV mode/wrapper
+    // Hide fullscreen button only on TV mode/wrapper and Android. On iOS it's shown and
+    // launches Apple's native fullscreen video player (webkitEnterFullscreen), alongside PiP.
     const fullscreenBtn = document.getElementById("player-btn-fullscreen");
     if (fullscreenBtn) {
         if (isTvWrapper || window.AndroidApp || document.body.classList.contains("tv-mode")) {
             fullscreenBtn.style.display = "none";
         } else {
             fullscreenBtn.style.display = "";
+        }
+    }
+
+    // Hide/Show Picture-in-Picture button based on TV mode/device support
+    const pipBtn = document.getElementById("player-btn-pip");
+    if (pipBtn) {
+        if (isTvWrapper || window.AndroidApp || document.body.classList.contains("tv-mode")) {
+            pipBtn.style.display = "none";
+        } else {
+            const videoTemp = document.getElementById("video-player");
+            const supportsPipGlobal = ('pictureInPictureEnabled' in document) || 
+                                     (videoTemp && typeof videoTemp.webkitSetPresentationMode === "function") ||
+                                     (videoTemp && videoTemp.webkitSupportsPresentationMode);
+            pipBtn.style.display = supportsPipGlobal ? "" : "none";
         }
     }
     
@@ -752,8 +860,19 @@ function launchVideoPlayer(url, title, logoUrl) {
     document.getElementById("player-btn-channels").title = t.zapListTitle;
     document.getElementById("player-btn-play").title = t.playPause;
     
-    state.lastAttemptedStreamUrl = url;
-    startPlayback(url, false);
+    if (state.isDohEnabled && typeof resolveUrlWithDoH === 'function') {
+        resolveUrlWithDoH(url, isLive).then(resolvedUrl => {
+            state.lastAttemptedStreamUrl = resolvedUrl;
+            startPlayback(resolvedUrl, false);
+        }).catch(err => {
+            console.warn("[Player] DoH resolution failed, using original url:", err);
+            state.lastAttemptedStreamUrl = url;
+            startPlayback(url, false);
+        });
+    } else {
+        state.lastAttemptedStreamUrl = url;
+        startPlayback(url, false);
+    }
     
     bindFullscreenVideoHandlers();
     
@@ -932,20 +1051,6 @@ function bindFullscreenVideoHandlers() {
             if (total) total.innerText = formatTime(video.duration);
         }
     };
-    
-    video.onwebkitbeginfullscreen = () => {
-        console.log("[Player] iOS native fullscreen started");
-        video.play();
-    };
-    video.onwebkitendfullscreen = () => {
-        console.log("[Player] iOS native fullscreen ended");
-        const wasLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
-        if (wasLive) {
-            exitFullscreenToPreview();
-        } else {
-            closeVideoPlayer();
-        }
-    };
 }
 
 function showPlayerError(msg, showVlc = true) {
@@ -1045,20 +1150,6 @@ function bindPreviewVideoHandlers() {
         stopWatchdog();
     };
     video.ontimeupdate = null;
-    
-    video.onwebkitbeginfullscreen = () => {
-        console.log("[Preview] iOS native fullscreen started");
-        video.play();
-    };
-    video.onwebkitendfullscreen = () => {
-        console.log("[Preview] iOS native fullscreen ended");
-        const wasLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
-        if (wasLive) {
-            exitFullscreenToPreview();
-        } else {
-            closeVideoPlayer();
-        }
-    };
 }
 
 function startWatchdog() {
@@ -1358,6 +1449,7 @@ async function loadLivePreview(item) {
     
     const previewExt = getLiveStreamExt();
     const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${previewExt}`;
+    state.originalStreamUrl = streamUrl;
     
     resolveUrlWithDoH(streamUrl, true).then(async resolvedUrl => {
         if (window.AndroidApp && typeof window.AndroidApp.startPreview === 'function') {
@@ -1426,8 +1518,12 @@ async function loadLivePreview(item) {
                 });
             }
         } else if (resolvedUrl.includes('.m3u8')) {
+            // On iOS use the native HLS player (no MediaSource in WKWebView); blob: manifests
+            // and hls.js are only used where MSE is available.
+            const hlsSupported = (typeof Hls !== 'undefined' && Hls.isSupported()) && !isAppleWebView();
             let playUrl = resolvedUrl;
-            if (state.isDohEnabled) {
+            // Blob: manifests only work with hls.js (MSE); native HLS (iOS) needs the direct URL.
+            if (state.isDohEnabled && hlsSupported) {
                 try {
                     playUrl = await fetchAndRewritePlaylist(resolvedUrl);
                     state.currentHlsBlobUrl = playUrl;
@@ -1448,7 +1544,7 @@ async function loadLivePreview(item) {
                 }
             }
             
-            if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+            if (hlsSupported) {
                 console.log("[Preview] Initializing HLS.js for preview:", playUrl);
                 state.hlsPlayer = new Hls({
                     enableWorker: true,
@@ -1878,6 +1974,20 @@ function togglePlayPause() {
 
 function toggleFullscreen() {
     const video = document.getElementById("video-player");
+
+    // On iOS, the only true fullscreen is Apple's native player on the <video> element
+    // (arbitrary elements can't go fullscreen in WKWebView). Launch it directly.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS && video && typeof video.webkitEnterFullscreen === 'function') {
+        try {
+            video.webkitEnterFullscreen();
+        } catch (err) {
+            console.error("[Player] webkitEnterFullscreen failed:", err);
+        }
+        return;
+    }
+
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
         try {
             const container = document.getElementById("player-screen") || document.documentElement;

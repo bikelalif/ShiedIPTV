@@ -2835,13 +2835,24 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
         gap: 0.75rem !important;
     }
     
-    #player-volume-container {
-        display: none !important;
+    /* Playlist Manager safe-area adjustments */
+    .playlist-manager-container {
+        padding-top: calc(1.5rem + env(safe-area-inset-top, 0px)) !important;
     }
-}
-
-body.is-mobile-device #player-volume-container {
-    display: none !important;
+    
+    /* Series Details Screen safe-area adjustments */
+    .series-details-container {
+        padding: 1.25rem 1rem !important;
+        padding-top: calc(1.5rem + env(safe-area-inset-top, 0px)) !important;
+        padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px)) !important;
+        padding-left: calc(1rem + env(safe-area-inset-left, 0px)) !important;
+        padding-right: calc(1rem + env(safe-area-inset-right, 0px)) !important;
+    }
+    
+    .episodes-list {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+    }
 }
 
 @media (max-width: 600px) {
@@ -3585,6 +3596,11 @@ body.tv-mode .zap-item.focused {
     transform: none !important; /* Prevent layout shifting in zapping sidebar */
     box-shadow: none !important; /* Improve render time */
     border-color: var(--border-focus) !important;
+}
+
+/* Mobile device specific styles */
+body.is-mobile-device .player-volume-container {
+    display: none !important;
 }
 
 /* Optimize Playlist Manager and Login page on mobile landscape screens to prevent scrolling and fit everything */
