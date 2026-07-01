@@ -88,6 +88,7 @@ class VLCPlayerViewController: UIViewController,
     private let currentTimeLabel = UILabel()
     private let totalTimeLabel = UILabel()
 
+    private var loadingCheckTimer: Timer?
     private var isSeeking = false
     private var controlsVisible = true
     private var hideTimer: Timer?
@@ -324,14 +325,30 @@ class VLCPlayerViewController: UIViewController,
         mediaPlayer.media = media
         mediaPlayer.play()
         scheduleHideControls()
+
+        // Timer to stop spinner once playback starts (especially for live streams where state changes can be flaky)
+        loadingCheckTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                return
+            }
+            if self.mediaPlayer.isPlaying {
+                self.spinner.stopAnimating()
+                timer.invalidate()
+            }
+        }
     }
 
     private func cleanup() {
         hideTimer?.invalidate()
-        // Detach the delegate BEFORE stopping so a late state callback (delivered on a
-        // background thread by VLCKit) can't touch UIKit while the view is being torn down.
+        loadingCheckTimer?.invalidate()
         mediaPlayer.delegate = nil
-        mediaPlayer.stop()
+        mediaPlayer.drawable = nil // Detach drawable to prevent drawing to deallocated view!
+        
+        let player = mediaPlayer
+        DispatchQueue.global(qos: .userInitiated).async {
+            player.stop()
+        }
     }
 
     // MARK: - Controls actions
