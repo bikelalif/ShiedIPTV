@@ -279,7 +279,8 @@ function spawnVlc(vlcPath, args) {
 // ---------------------------------------------------------------------------
 
 function buildMpvArgs(url) {
-    return [
+    const isLive = url.includes('/live/');
+    const args = [
         url,
         '--no-config',
         '--force-window=yes',
@@ -289,11 +290,20 @@ function buildMpvArgs(url) {
         '--input-vo-keyboard=yes',
         '--hwdec=auto-safe',
         '--keep-open=no',
-        '--cache=yes',
         '--network-timeout=20',
         '--user-agent=ShieldIPTV',
         '--title=Shield IPTV - Lecteur Externe'
     ];
+    if (isLive) {
+        args.push(
+            '--profile=low-latency',
+            '--cache=no',
+            '--demuxer-lavf-o=reconnect=1,reconnected_stream=1'
+        );
+    } else {
+        args.push('--cache=yes');
+    }
+    return args;
 }
 
 function spawnMpv(url) {
