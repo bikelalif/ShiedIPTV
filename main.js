@@ -34,6 +34,7 @@ function getMpvPath() {
         return bundled;
     }
     const paths = [
+        'C:\\Program Files\\MPV Player\\mpv.exe',
         'C:\\tools\\mpv\\mpv.exe',
         'C:\\mpv\\mpv.exe',
         'C:\\Program Files\\mpv\\mpv.exe',
