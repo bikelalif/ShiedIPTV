@@ -1670,6 +1670,9 @@ function exitFullscreenToPreview() {
     const playerScreen = document.getElementById("player-screen");
     if (!playerScreen || !state.currentPlayingStream) return;
     
+    const targetPlayer = getPlayerForSection('live');
+    const isExternalPlayer = window.electronAPI && window.electronAPI.isElectron && (targetPlayer === 'vlc' || targetPlayer === 'mpv');
+    
     console.log("[Player] Shrinking from fullscreen to preview mode");
     
     if (state.overlayTimeout) {
@@ -1678,10 +1681,14 @@ function exitFullscreenToPreview() {
     }
     playerScreen.style.cursor = "";
     
-    // Mark playerScreen as preview-mode FIRST so showScreen knows not to hide it
-    playerScreen.classList.add("preview-mode");
+    if (isExternalPlayer) {
+        playerScreen.classList.remove("preview-mode");
+        playerScreen.classList.add("hidden");
+    } else {
+        playerScreen.classList.add("preview-mode");
+        playerScreen.classList.remove("hidden");
+    }
     
-    // First show the home screen and live-preview-panel so they are in the DOM layout
     showScreen("home-screen");
     
     const liveItem = state.currentPlayingStream.item;
@@ -1692,13 +1699,12 @@ function exitFullscreenToPreview() {
         homeScreen.classList.add("preview-open");
     }
     
-    // Then calculate positioning
-    updatePreviewVideoPosition();
-    
-    // Schedule additional updates to handle browser exiting fullscreen transition duration
-    setTimeout(updatePreviewVideoPosition, 100);
-    setTimeout(updatePreviewVideoPosition, 300);
-    setTimeout(updatePreviewVideoPosition, 500);
+    if (!isExternalPlayer) {
+        updatePreviewVideoPosition();
+        setTimeout(updatePreviewVideoPosition, 100);
+        setTimeout(updatePreviewVideoPosition, 300);
+        setTimeout(updatePreviewVideoPosition, 500);
+    }
     
     document.querySelectorAll(".media-card").forEach(el => {
         el.classList.remove("active-playing");
@@ -1715,10 +1721,16 @@ function exitFullscreenToPreview() {
         fetchAndRenderPreviewEPG(liveItem, epgListEl, t);
     }
     
-    // Bind preview event handlers
+    if (isExternalPlayer) {
+        const loader = document.getElementById("preview-loader");
+        const playerLoader = document.getElementById("player-loader");
+        if (loader) loader.classList.add("hidden");
+        if (playerLoader) playerLoader.style.display = "none";
+        return;
+    }
+    
     bindPreviewVideoHandlers();
     
-    // Adjust preview loader state immediately
     const loader = document.getElementById("preview-loader");
     const playerLoader = document.getElementById("player-loader");
     const video = document.getElementById("video-player");
