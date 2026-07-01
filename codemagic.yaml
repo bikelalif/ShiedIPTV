@@ -7,7 +7,7 @@ workflows:
       node: latest
       xcode: latest
       vars:
-        XCODE_PROJECT: "ios/App.xcodeproj"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
     triggering:
       events:
@@ -38,7 +38,7 @@ workflows:
         distribution_type: ad_hoc
         bundle_identifier: com.shieldiptv.app
       vars:
-        XCODE_PROJECT: "ios/App.xcodeproj"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
     triggering:
       events:
