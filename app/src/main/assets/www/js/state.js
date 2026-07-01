@@ -1243,14 +1243,16 @@ function initPlayerSettingsDropdowns(lang) {
     
     const vlcLabel = t.playerOptionVlc || "Lecteur VLC";
     const mpvLabel = t.playerOptionMpv || "Lecteur MPV";
-    const html5Label = t.playerOptionDefault || "Lecteur par défaut (HTML5)";
+    const html5Label = isAndroid 
+        ? (newLang === 'fr' ? "Lecteur HTML5" : (newLang === 'es' ? "Reproductor HTML5" : (newLang === 'it' ? "Lettore HTML5" : "HTML5 Player")))
+        : (t.playerOptionDefault || "Lecteur par défaut (HTML5)");
     const exoLabel = t.playerOptionExo || "ExoPlayer (Pur / Plein Écran)";
     const exoPreviewLabel = t.playerOptionExoPreview || "ExoPlayer (Avec Prévisualisation)";
 
     // 1. Live player options
     const liveSelect = document.getElementById("setting-player-live");
     if (liveSelect) {
-        const currentVal = liveSelect.value || state.playerSettings.live || 'html5';
+        const currentVal = state.playerSettings.live || (isAndroid ? 'exoplayer_preview' : 'html5');
         liveSelect.innerHTML = "";
         
         addOption(liveSelect, "html5", html5Label);
@@ -1275,7 +1277,7 @@ function initPlayerSettingsDropdowns(lang) {
     // 2. Movies player options
     const moviesSelect = document.getElementById("setting-player-movies");
     if (moviesSelect) {
-        const currentVal = moviesSelect.value || state.playerSettings.movies || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'));
+        const currentVal = state.playerSettings.movies || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'));
         moviesSelect.innerHTML = "";
         
         if (isElectron) {
@@ -1300,7 +1302,7 @@ function initPlayerSettingsDropdowns(lang) {
     // 3. Series player options
     const seriesSelect = document.getElementById("setting-player-series");
     if (seriesSelect) {
-        const currentVal = seriesSelect.value || state.playerSettings.series || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'));
+        const currentVal = state.playerSettings.series || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'));
         seriesSelect.innerHTML = "";
         
         if (isElectron) {

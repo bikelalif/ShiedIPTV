@@ -1332,7 +1332,8 @@ async function loadLivePreview(item) {
     const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${previewExt}`;
     
     resolveUrlWithDoH(streamUrl, true).then(async resolvedUrl => {
-        if (window.AndroidApp && typeof window.AndroidApp.startPreview === 'function') {
+        const targetPlayer = getPlayerForSection('live');
+        if (window.AndroidApp && targetPlayer === 'exoplayer_preview' && typeof window.AndroidApp.startPreview === 'function') {
             const container = document.getElementById("preview-video-container") || video;
             const rect = container.getBoundingClientRect();
             if (loader) loader.classList.add("hidden");
@@ -1342,6 +1343,7 @@ async function loadLivePreview(item) {
             return;
         }
         const isTsStream = (resolvedUrl.includes('.ts') || resolvedUrl.includes('/live/')) && !resolvedUrl.includes('.m3u8');
+        state.lastAttemptedStreamUrl = streamUrl;
         
         if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
             console.log("[Preview] Initializing mpegts.js for video-player in preview mode:", resolvedUrl);
@@ -1540,10 +1542,28 @@ function goFullscreenFromPreview() {
     const playerScreen = document.getElementById("player-screen");
     if (!playerScreen || !state.currentPlayingStream) return;
     
-    if (window.AndroidApp && state.playerSettings && state.playerSettings.live === 'exoplayer_preview') {
-        console.log("[Android TV] Going fullscreen with native ExoPlayer");
-        window.AndroidApp.goFullscreen();
-        return;
+    if (window.AndroidApp && state.playerSettings) {
+        if (state.playerSettings.live === 'exoplayer_preview') {
+            console.log("[Android TV] Going fullscreen with native ExoPlayer");
+            window.AndroidApp.goFullscreen();
+            return;
+        } else if (state.playerSettings.live === 'exoplayer') {
+            console.log("[Android TV] Going fullscreen with native ExoPlayer Activity");
+            if (typeof window.AndroidApp.stopPreview === 'function') {
+                window.AndroidApp.stopPreview();
+            }
+            const item = state.currentPlayingStream.item;
+            const ext = getLiveStreamExt();
+            const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
+            resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
+                window.AndroidApp.playStream(resolvedUrl, item.name, item.stream_icon || item.cover || "");
+            });
+            return;
+        } else {
+            if (typeof window.AndroidApp.stopPreview === 'function') {
+                window.AndroidApp.stopPreview();
+            }
+        }
     }
     
     console.log("[Player] Transitioning from preview to fullscreen");
@@ -1588,6 +1608,19 @@ function goFullscreenFromPreview() {
     
     // Bind fullscreen event handlers
     bindFullscreenVideoHandlers();
+    
+    // Start HTML5 playback only if not already playing
+    const ext = getLiveStreamExt();
+    const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
+    if (state.lastAttemptedStreamUrl !== streamUrl || (video && (video.paused || video.ended))) {
+        state.lastAttemptedStreamUrl = streamUrl;
+        state.playbackStarted = false;
+        clearLoadingTimeout();
+        if (isLive) {
+            startLoadingTimeout();
+        }
+        startPlayback(streamUrl, false);
+    }
     
     // Adjust loader state immediately based on actual video state
     const playerLoader = document.getElementById("player-loader");

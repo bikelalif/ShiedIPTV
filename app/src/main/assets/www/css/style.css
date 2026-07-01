@@ -3587,3 +3587,7 @@ body.tv-mode .zap-item.focused {
     border-color: var(--border-focus) !important;
 }
 
+body.tv-mode #player-btn-pip {
+    display: none !important;
+}
+
