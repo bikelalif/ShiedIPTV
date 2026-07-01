@@ -92,6 +92,14 @@ async function playMedia(item, section) {
             return;
         }
 
+        if (window.electronAPI && window.electronAPI.isElectron && (targetPlayer === 'vlc' || targetPlayer === 'mpv')) {
+            state.currentPlayingStream = { item, section };
+            const ext = getLiveStreamExt();
+            const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
+            launchVideoPlayer(streamUrl, item.name, item.stream_icon || item.cover);
+            return;
+        }
+
         const isPlayerOpen = activeScreenId() === 'player-screen';
         const isMobile = (window.innerWidth <= 1024) && !window.AndroidApp && !isTvWrapper;
         const isMobileWeb = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.cordova && !window.AndroidApp;
@@ -1539,6 +1547,29 @@ function updatePreviewVideoPosition() {
 function goFullscreenFromPreview() {
     const playerScreen = document.getElementById("player-screen");
     if (!playerScreen || !state.currentPlayingStream) return;
+    
+    const targetPlayer = getPlayerForSection('live');
+    if (window.electronAPI && window.electronAPI.isElectron && (targetPlayer === 'vlc' || targetPlayer === 'mpv')) {
+        console.log("[Electron] Transitioning to embedded/external player from preview:", targetPlayer);
+        destroyMpegtsPlayer();
+        const video = document.getElementById("video-player");
+        if (video) {
+            video.pause();
+            video.src = "";
+            try { video.load(); } catch(e){}
+        }
+        playerScreen.classList.remove("preview-mode");
+        const homeScreen = document.getElementById("home-screen");
+        if (homeScreen) homeScreen.classList.remove("preview-open");
+        const previewPanel = document.getElementById("live-preview-panel");
+        if (previewPanel) previewPanel.classList.add("hidden");
+        
+        const item = state.currentPlayingStream.item;
+        const ext = getLiveStreamExt();
+        const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
+        launchVideoPlayer(streamUrl, item.name, item.stream_icon || item.cover);
+        return;
+    }
     
     if (window.AndroidApp && state.playerSettings && state.playerSettings.live === 'exoplayer_preview') {
         console.log("[Android TV] Going fullscreen with native ExoPlayer");
