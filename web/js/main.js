@@ -6,6 +6,15 @@ if (document.readyState === "loading") {
 }
 
 function initApp() {
+    // Re-initialize player settings dropdowns now that native interfaces are injected
+    if (typeof initPlayerSettingsDropdowns === 'function') {
+        try {
+            initPlayerSettingsDropdowns(state.language);
+        } catch (e) {
+            console.error("Error in early initPlayerSettingsDropdowns:", e);
+        }
+    }
+
     try {
         if (isTvWrapper) {
             document.body.classList.add("tv-mode");
