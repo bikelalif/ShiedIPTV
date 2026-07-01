@@ -1337,6 +1337,22 @@ async function loadLivePreview(item) {
     
     destroyMpegtsPlayer();
     
+    const targetPlayer = getPlayerForSection('live');
+    if (window.electronAPI && window.electronAPI.isElectron && (targetPlayer === 'vlc' || targetPlayer === 'mpv')) {
+        if (playerScreen) {
+            playerScreen.classList.remove("preview-mode");
+            playerScreen.classList.add("hidden");
+        }
+        if (loader) loader.classList.add("hidden");
+        if (playerLoader) playerLoader.style.display = "none";
+        const homeScreen = document.getElementById("home-screen");
+        if (homeScreen) {
+            homeScreen.classList.add("preview-open");
+        }
+        fetchAndRenderPreviewEPG(item, epgListEl, t);
+        return;
+    }
+    
     if (loader) loader.classList.remove("hidden");
     if (playerLoader) playerLoader.style.display = "flex";
     

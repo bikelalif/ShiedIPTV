@@ -35,8 +35,11 @@ function getMpvPath() {
     }
     const paths = [
         'C:\\tools\\mpv\\mpv.exe',
+        'C:\\mpv\\mpv.exe',
         'C:\\Program Files\\mpv\\mpv.exe',
-        'C:\\Program Files (x86)\\mpv\\mpv.exe'
+        'C:\\Program Files (x86)\\mpv\\mpv.exe',
+        path.join(app.getPath('home'), 'scoop', 'shims', 'mpv.exe'),
+        path.join(app.getPath('home'), 'AppData', 'Local', 'Programs', 'mpv', 'mpv.exe')
     ];
     for (const p of paths) {
         if (fs.existsSync(p)) {
@@ -302,7 +305,8 @@ function spawnMpv(url) {
         return null;
     }
     console.log('[Native] Spawning mpv:', url);
-    const child = spawn(mpvPath, buildMpvArgs(url), { windowsHide: false });
+    const useShell = (mpvPath === 'mpv');
+    const child = spawn(mpvPath, buildMpvArgs(url), { windowsHide: false, shell: useShell });
     child.on('error', (err) => console.error('[Native] mpv spawn error:', err));
     if (child.stderr) child.stderr.on('data', d => console.error(`[mpv] ${d.toString().trim()}`));
     return child;
