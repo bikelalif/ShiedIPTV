@@ -1075,10 +1075,9 @@ function applyLanguage(lang) {
     const onboardingH2 = document.getElementById("cgu-modal-title") || document.querySelector("#cgu-modal h2");
     if (onboardingH2) onboardingH2.innerText = t.cguTitle;
     
-    const cguLangText = document.getElementById("cgu-lang-text");
-    if (cguLangText) {
-        const langNames = { fr: "Français", en: "English", es: "Español", it: "Italiano" };
-        cguLangText.innerText = langNames[lang] || "Français";
+    const cguLangSelect = document.getElementById("btn-cgu-lang");
+    if (cguLangSelect && cguLangSelect.tagName.toLowerCase() === 'select') {
+        cguLangSelect.value = lang;
     }
     
     const pmSpeedtest = document.getElementById("pm-btn-speedtest");

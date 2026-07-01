@@ -171,10 +171,15 @@
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; margin-bottom: 0.75rem;">
                     <h2 id="cgu-modal-title" style="margin: 0; font-size: 1.4rem; text-align: left;">Legal Disclaimer &amp; Conditions</h2>
-                    <button id="btn-cgu-lang" class="focusable btn-secondary" style="padding: 0.45rem 0.9rem; width: auto; font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); color: white; cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.45rem 0.75rem; color: white;">
                         <span class="material-icons" style="font-size: 1.15rem; color: var(--primary);">language</span>
-                        <span id="cgu-lang-text">English</span>
-                    </button>
+                        <select id="btn-cgu-lang" class="focusable" style="background: transparent; border: none; color: white; font-size: 0.85rem; font-family: inherit; cursor: pointer; outline: none; padding: 0;">
+                            <option value="fr" style="background: #111; color: white;">Français</option>
+                            <option value="en" style="background: #111; color: white;">English</option>
+                            <option value="es" style="background: #111; color: white;">Español</option>
+                            <option value="it" style="background: #111; color: white;">Italiano</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="cgu-content focusable" tabindex="0">
                     <p><strong>ShieldIPTV Player</strong> is a generic video media player. The application is provided without any content or media streams.</p>
