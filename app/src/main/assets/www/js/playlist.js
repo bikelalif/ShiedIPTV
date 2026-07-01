@@ -810,6 +810,7 @@ function renderPlaylistsGrid() {
         }
         
         card.addEventListener("click", () => {
+            if (state.clickThroughBlock) return;
             connectPlaylist(pl);
         });
         
@@ -826,6 +827,7 @@ function renderPlaylistsGrid() {
     `;
     
     addCard.addEventListener("click", () => {
+        if (state.clickThroughBlock) return;
         showScreen("login-screen");
         document.getElementById("login-name").value = "";
         document.getElementById("login-url").value = "";

@@ -224,6 +224,7 @@ function setupEventListeners() {
     const btnQuickDemo = document.getElementById("btn-quick-demo");
     if (btnQuickDemo) {
         btnQuickDemo.addEventListener("click", () => {
+            if (state.clickThroughBlock) return;
             const demoPlaylist = {
                 id: 'demo',
                 name: 'Playlist Démo (Flux publics)',
@@ -237,6 +238,7 @@ function setupEventListeners() {
     const btnViewCgu = document.getElementById("btn-view-cgu");
     if (btnViewCgu) {
         btnViewCgu.addEventListener("click", () => {
+            if (state.clickThroughBlock) return;
             const actionsContainer = document.getElementById("cgu-actions-container");
             const closeBtn = document.getElementById("btn-cgu-close");
             if (actionsContainer) actionsContainer.classList.add("hidden");
@@ -264,12 +266,16 @@ function setupEventListeners() {
             }
             safeStorage.local.setItem("shield_cgu_accepted", "true");
             
-            // 150ms delay to prevent click-through onto the "Terms & Conditions" button underneath
+            // Set flag to block duplicate click-through actions on elements underneath
+            state.clickThroughBlock = true;
             setTimeout(() => {
-                const modal = document.getElementById("cgu-modal");
-                if (modal) modal.classList.add("hidden");
-                proceedAfterCgu();
-            }, 150);
+                state.clickThroughBlock = false;
+            }, 350);
+            
+            // Hide CGU modal instantly (0ms delay) and proceed
+            const modal = document.getElementById("cgu-modal");
+            if (modal) modal.classList.add("hidden");
+            proceedAfterCgu();
         });
     }
 
