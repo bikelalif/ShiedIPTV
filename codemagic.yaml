@@ -68,6 +68,8 @@ workflows:
     environment:
       node: latest
       xcode: latest
+      integrations:
+        app_store_connect: Bilal
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.shieldiptv.app
@@ -76,9 +78,6 @@ workflows:
         XCODE_SCHEME: "App"
     publishing:
       app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
     scripts:
       - name: Install dependencies
