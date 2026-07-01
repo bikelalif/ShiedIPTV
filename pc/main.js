@@ -452,6 +452,11 @@ function createWindow() {
 
     mainWindow = win;
 
+    // Forward renderer console logs and errors to main process terminal output
+    win.webContents.on('console-message', (event, level, message, line, sourceId) => {
+        console.log(`[Renderer Console] ${message} (Line ${line}: ${sourceId})`);
+    });
+
     // Keep the embedded native video glued to its rectangle when the window
     // itself is resized or moved — handled with the OS-native events so there
     // is no fragile polling from the renderer.
