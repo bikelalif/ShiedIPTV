@@ -29,7 +29,21 @@ function resourcesDir() {
     return app.isPackaged ? process.resourcesPath : path.join(__dirname, 'resources');
 }
 function getMpvPath() {
-    return path.join(resourcesDir(), 'mpv', 'mpv.exe');
+    const bundled = path.join(resourcesDir(), 'mpv', 'mpv.exe');
+    if (fs.existsSync(bundled)) {
+        return bundled;
+    }
+    const paths = [
+        'C:\\tools\\mpv\\mpv.exe',
+        'C:\\Program Files\\mpv\\mpv.exe',
+        'C:\\Program Files (x86)\\mpv\\mpv.exe'
+    ];
+    for (const p of paths) {
+        if (fs.existsSync(p)) {
+            return p;
+        }
+    }
+    return 'mpv';
 }
 function getBundledVlcPath() {
     return path.join(resourcesDir(), 'vlc', 'vlc.exe');
@@ -280,7 +294,7 @@ function buildMpvArgs(url) {
 
 function spawnMpv(url) {
     const mpvPath = getMpvPath();
-    if (!fs.existsSync(mpvPath)) {
+    if (mpvPath !== 'mpv' && !fs.existsSync(mpvPath)) {
         console.error('[Native] mpv.exe not found at', mpvPath);
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('native-error', 'mpv-missing');

@@ -579,10 +579,12 @@ function launchVideoPlayer(url, title, logoUrl) {
             // Use the original container extension for external player instead of M3U8, since they have native codec support
             let targetUrl = url;
             if (state.currentPlayingStream && state.currentPlayingStream.item) {
-                const originalExt = (state.currentPlayingStream.item.container_extension || "mp4").toLowerCase();
                 const section = state.currentPlayingStream.section;
-                const streamId = state.currentPlayingStream.item.stream_id || state.currentPlayingStream.item.id;
-                targetUrl = `${state.serverUrl}/${section === 'series' ? 'series' : 'movie'}/${state.username}/${state.password}/${streamId}.${originalExt}`;
+                if (section === 'movies' || section === 'series') {
+                    const originalExt = (state.currentPlayingStream.item.container_extension || "mp4").toLowerCase();
+                    const streamId = state.currentPlayingStream.item.stream_id || state.currentPlayingStream.item.id;
+                    targetUrl = `${state.serverUrl}/${section === 'series' ? 'series' : 'movie'}/${state.username}/${state.password}/${streamId}.${originalExt}`;
+                }
             }
 
             // Resolve the URL using DoH
