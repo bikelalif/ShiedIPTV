@@ -257,11 +257,19 @@ function setupEventListeners() {
 
     const btnCguAccept = document.getElementById("btn-cgu-accept");
     if (btnCguAccept) {
-        btnCguAccept.addEventListener("click", () => {
+        btnCguAccept.addEventListener("click", (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
             safeStorage.local.setItem("shield_cgu_accepted", "true");
-            const modal = document.getElementById("cgu-modal");
-            if (modal) modal.classList.add("hidden");
-            proceedAfterCgu();
+            
+            // 150ms delay to prevent click-through onto the "Terms & Conditions" button underneath
+            setTimeout(() => {
+                const modal = document.getElementById("cgu-modal");
+                if (modal) modal.classList.add("hidden");
+                proceedAfterCgu();
+            }, 150);
         });
     }
 
