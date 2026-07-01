@@ -269,18 +269,8 @@ function setupEventListeners() {
 
     const btnCguLang = document.getElementById("btn-cgu-lang");
     if (btnCguLang) {
-        btnCguLang.addEventListener("click", () => {
-            const cycle = ['fr', 'en', 'es', 'it'];
-            const currentIndex = cycle.indexOf(state.language || 'en');
-            const nextIndex = (currentIndex + 1) % cycle.length;
-            const nextLang = cycle[nextIndex];
-            applyLanguage(nextLang);
-            
-            // Re-focus the language button after UI re-render and any other timeouts complete
-            setTimeout(() => {
-                const btn = document.getElementById("btn-cgu-lang");
-                if (btn) btn.focus();
-            }, 120);
+        btnCguLang.addEventListener("change", (e) => {
+            applyLanguage(e.target.value);
         });
     }
 
