@@ -9,7 +9,11 @@
 const fs = require('fs');
 const path = require('path');
 
-const CONFIG = path.resolve(__dirname, '..', 'ios', 'App', 'App', 'capacitor.config.json');
+// This script lives at the repo root on the ios branch, so resolve from __dirname
+// directly (no '..'). Previously the stray '..' pointed one level above the repo,
+// so the patch never ran and ShieldVlcPlayer was dropped from packageClassList
+// (native plugin unregistered → Capacitor.Plugins.ShieldVlcPlayer did nothing).
+const CONFIG = path.resolve(__dirname, 'ios', 'App', 'App', 'capacitor.config.json');
 
 // ObjC names (the @objc(Name) of each app-local CAPPlugin subclass).
 const APP_LOCAL_PLUGINS = ['ShieldVlcPlayer'];
