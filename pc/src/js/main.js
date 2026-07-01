@@ -45,6 +45,20 @@ function initApp() {
         } catch (e) {
             console.error("Error in initTvInputs:", e);
         }
+
+        try {
+            const video = document.getElementById("video-player");
+            if (video) {
+                video.addEventListener('leavepictureinpicture', () => {
+                    console.log("[PiP] Exited Picture-in-Picture. Requesting window focus...");
+                    if (window.electronAPI && typeof window.electronAPI.focusWindow === 'function') {
+                        window.electronAPI.focusWindow();
+                    }
+                });
+            }
+        } catch (e) {
+            console.error("Error in video PiP listener setup:", e);
+        }
         
         // Restore settings
         const savedSettings = safeStorage.local.getItem("shield_iptv_settings");

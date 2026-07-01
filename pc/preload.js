@@ -15,5 +15,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onNativeExited: (callback) => ipcRenderer.on('native-exited', () => callback()),
     onNativeError: (callback) => ipcRenderer.on('native-error', (e, code) => callback(code)),
 
+    // Window Focus Control
+    focusWindow: () => ipcRenderer.invoke('focus-window'),
+
     isElectron: true
 });

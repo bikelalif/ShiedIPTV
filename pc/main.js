@@ -493,6 +493,15 @@ app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
 });
 
+ipcMain.handle('focus-window', async () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.show();
+        mainWindow.focus();
+    }
+    return true;
+});
+
 ipcMain.handle('open-vlc-external', async (event, url) => {
     console.log("[Main] open-vlc-external request:", url);
     const vlcPath = getVlcPath();
