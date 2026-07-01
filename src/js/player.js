@@ -96,7 +96,9 @@ async function playMedia(item, section) {
             state.currentPlayingStream = { item, section };
             const ext = getLiveStreamExt();
             const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
-            launchVideoPlayer(streamUrl, item.name, item.stream_icon || item.cover);
+            resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
+                launchVideoPlayer(resolvedUrl, item.name, item.stream_icon || item.cover);
+            });
             return;
         }
 
@@ -1567,7 +1569,9 @@ function goFullscreenFromPreview() {
         const item = state.currentPlayingStream.item;
         const ext = getLiveStreamExt();
         const streamUrl = item.url || `${state.serverUrl}/live/${state.username}/${state.password}/${item.stream_id}.${ext}`;
-        launchVideoPlayer(streamUrl, item.name, item.stream_icon || item.cover);
+        resolveUrlWithDoH(streamUrl, true).then(resolvedUrl => {
+            launchVideoPlayer(resolvedUrl, item.name, item.stream_icon || item.cover);
+        });
         return;
     }
     
