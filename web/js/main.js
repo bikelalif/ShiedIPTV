@@ -191,6 +191,7 @@ function proceedAfterCgu() {
                         connectPlaylist(activePlaylist, true);
                     } catch (connErr) {
                         console.error("Failed to connect playlist on start:", connErr);
+                        hideLoader();
                         showScreen("playlist-manager-screen");
                         if (typeof renderPlaylistsGrid === 'function') {
                             renderPlaylistsGrid();
@@ -198,12 +199,14 @@ function proceedAfterCgu() {
                     }
                 }, 50);
             } else {
+                hideLoader();
                 showScreen("playlist-manager-screen");
                 if (typeof renderPlaylistsGrid === 'function') {
                     renderPlaylistsGrid();
                 }
             }
         } else {
+            hideLoader();
             showScreen("playlist-manager-screen");
             if (typeof renderPlaylistsGrid === 'function') {
                 renderPlaylistsGrid();
@@ -211,6 +214,7 @@ function proceedAfterCgu() {
         }
     } catch (e) {
         console.error("Error in proceedAfterCgu:", e);
+        hideLoader();
         showScreen("playlist-manager-screen");
         if (typeof renderPlaylistsGrid === 'function') {
             renderPlaylistsGrid();
@@ -272,10 +276,17 @@ function setupEventListeners() {
                 state.clickThroughBlock = false;
             }, 350);
             
-            // Hide CGU modal instantly (0ms delay) and proceed
+            // Show loader animation instantly without text so it paints before JS gets busy
+            showLoader("");
+            
+            // Hide CGU modal instantly (0ms delay)
             const modal = document.getElementById("cgu-modal");
             if (modal) modal.classList.add("hidden");
-            proceedAfterCgu();
+            
+            // Proceed after a delay to let the loader render first
+            setTimeout(() => {
+                proceedAfterCgu();
+            }, 150);
         });
     }
 

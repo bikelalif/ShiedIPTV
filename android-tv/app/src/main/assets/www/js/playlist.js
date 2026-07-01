@@ -260,6 +260,12 @@ function logout() {
 async function connectPlaylist(playlist, isAuto = false) {
     const t = TRANSLATIONS[state.language || 'en'];
     
+    // Show loader instantly so the spinner spins while cache loads or server fetches start
+    showLoader(playlist.type === 'demo' ? "" : (t.toastLoginAuth || "Connexion..."));
+    
+    // 50ms delay to let the browser paint the loader before CPU-heavy operations
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
     // Attempt cache load first if not on webapp
     const cacheLoaded = await tryConnectPlaylistFromCache(playlist, isAuto);
     if (cacheLoaded) {
@@ -277,44 +283,46 @@ async function connectPlaylist(playlist, isAuto = false) {
     }
     
     if (playlist.type === 'demo') {
-        showLoader(t.toastPreloadCats);
+        showLoader("");
         
-        state.categories.live = [
-            { category_id: "all", category_name: "Tout" },
-            { category_id: "demo_live_cat_1", category_name: "Documentaires" },
-            { category_id: "demo_live_cat_2", category_name: "Actualités" }
-        ];
-        state.categories.movies = [
-            { category_id: "all", category_name: "Tout" },
-            { category_id: "demo_vod_cat_1", category_name: "Animation / Libre" },
-            { category_id: "demo_vod_cat_2", category_name: "Sci-Fi / Libre" }
-        ];
-        state.categories.series = [
-            { category_id: "all", category_name: "Tout" },
-            { category_id: "demo_series_cat_1", category_name: "Séries Classiques" }
-        ];
-        
-        state.streams.live = DEMO_PLAYLIST_DATA.live;
-        state.streams.movies = DEMO_PLAYLIST_DATA.movies;
-        state.streams.series = DEMO_PLAYLIST_DATA.series;
-        
-        state.username = "Démo";
-        state.isLoggedIn = true;
-        state.sectionFullyLoaded = { live: true, movies: true, series: true };
-        
-        document.getElementById("portal-username").innerText = "Démo";
-        document.getElementById("info-status").innerText = t.activeText;
-        document.getElementById("info-server-url").innerText = "Démo (Local)";
-        document.getElementById("info-max-connections").innerText = "Illimité";
-        document.getElementById("info-exp").innerText = "Jamais";
-        
-        hideLoader();
-        showToast(t.toastLoginSuccess, 3000);
-        if (isAuto) {
-            restoreLastScreenState();
-        } else {
-            showScreen("portal-screen");
-        }
+        setTimeout(() => {
+            state.categories.live = [
+                { category_id: "all", category_name: "Tout" },
+                { category_id: "demo_live_cat_1", category_name: "Documentaires" },
+                { category_id: "demo_live_cat_2", category_name: "Actualités" }
+            ];
+            state.categories.movies = [
+                { category_id: "all", category_name: "Tout" },
+                { category_id: "demo_vod_cat_1", category_name: "Animation / Libre" },
+                { category_id: "demo_vod_cat_2", category_name: "Sci-Fi / Libre" }
+            ];
+            state.categories.series = [
+                { category_id: "all", category_name: "Tout" },
+                { category_id: "demo_series_cat_1", category_name: "Séries Classiques" }
+            ];
+            
+            state.streams.live = DEMO_PLAYLIST_DATA.live;
+            state.streams.movies = DEMO_PLAYLIST_DATA.movies;
+            state.streams.series = DEMO_PLAYLIST_DATA.series;
+            
+            state.username = "Démo";
+            state.isLoggedIn = true;
+            state.sectionFullyLoaded = { live: true, movies: true, series: true };
+            
+            document.getElementById("portal-username").innerText = "Démo";
+            document.getElementById("info-status").innerText = t.activeText;
+            document.getElementById("info-server-url").innerText = "Démo (Local)";
+            document.getElementById("info-max-connections").innerText = "Illimité";
+            document.getElementById("info-exp").innerText = "Jamais";
+            
+            hideLoader();
+            showToast(t.toastLoginSuccess, 3000);
+            if (isAuto) {
+                restoreLastScreenState();
+            } else {
+                showScreen("portal-screen");
+            }
+        }, 1000);
         
     } else if (playlist.type === 'xtream') {
         performLogin(playlist.serverUrl, playlist.username, playlist.password, isAuto);

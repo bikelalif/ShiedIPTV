@@ -153,7 +153,18 @@ window.onAndroidAppResumeFromBackground = function() {
 
 function showLoader(text) {
     const t = TRANSLATIONS[state.language || 'en'];
-    document.getElementById("loader-text").innerText = text || t.loaderDefault;
+    const textEl = document.getElementById("loader-text");
+    if (text === "") {
+        if (textEl) {
+            textEl.innerText = "";
+            textEl.style.display = "none";
+        }
+    } else {
+        if (textEl) {
+            textEl.innerText = text || t.loaderDefault;
+            textEl.style.display = "block";
+        }
+    }
     document.getElementById("loader").classList.remove("hidden");
 }
 
