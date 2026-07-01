@@ -2834,6 +2834,14 @@ body.tv-mode .playlist-type-selector button:focus-visible, body.tv-mode .playlis
         grid-template-columns: 1fr !important;
         gap: 0.75rem !important;
     }
+    
+    #player-volume-container {
+        display: none !important;
+    }
+}
+
+body.is-mobile-device #player-volume-container {
+    display: none !important;
 }
 
 @media (max-width: 600px) {
