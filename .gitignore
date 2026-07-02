@@ -1,13 +1,19 @@
-App/build
-App/Pods
-App/output
-App/App/public
-DerivedData
-xcuserdata
+node_modules/
+dist/
+scratch/
+.idea/
+.vscode/
+
+ios/App/build/
+ios/App/Pods/
+ios/App/output/
+ios/App/App/public/
+DerivedData/
+xcuserdata/
 
 # Cordova plugins for Capacitor
 capacitor-cordova-ios-plugins
 
 # Generated Config files
-App/App/capacitor.config.json
-App/App/config.xml
+ios/App/App/capacitor.config.json
+ios/App/App/config.xml
