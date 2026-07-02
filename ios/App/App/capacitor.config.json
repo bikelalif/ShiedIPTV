@@ -1,0 +1,16 @@
+{
+	"appId": "com.shieldiptv.app",
+	"appName": "Shield IPTV Player",
+	"webDir": "web",
+	"server": {
+		"iosScheme": "http"
+	},
+	"plugins": {
+		"CapacitorHttp": {
+			"enabled": false
+		}
+	},
+	"packageClassList": [
+		"ShieldVlcPlayer"
+	]
+}
