@@ -12,3 +12,5 @@ shieldiptv_channels.json
 # Build artifacts
 mac/dist/
 pc/dist/
+dist/
+scratch/
