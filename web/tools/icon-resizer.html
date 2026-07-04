@@ -334,6 +334,7 @@
                     <button class="tab-btn" onclick="switchTab('webos')">webOS (LG TV)</button>
                     <button class="tab-btn" onclick="switchTab('vidaa')">Vidaa OS (Hisense)</button>
                     <button class="tab-btn" onclick="switchTab('msstore')">Microsoft Store</button>
+                    <button class="tab-btn" onclick="switchTab('ios')">App Store (iOS)</button>
                 </div>
 
                 <!-- Google Play Store Previews -->
@@ -629,6 +630,63 @@
                     </div>
                 </div>
 
+                <!-- App Store (iOS) Previews -->
+                <div class="preview-panel" id="ios-tab" style="display: none;">
+                    <div class="section-title">iPhone 6.5" Screenshots (1242 x 2688 ou 2688 x 1242)</div>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 1rem 0; text-align: left; width: 100%;">Générez jusqu'à 10 captures d'écran par orientation pour les iPhone Xs Max, 11 Pro Max, etc.</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; width: 100%;">
+                        <!-- 6.5" Portrait -->
+                        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                            <h4 style="margin:0; font-size:0.95rem; color:var(--primary);">6.5" Portrait (1242 x 2688 px)</h4>
+                            <div class="drop-zone" id="drop-zone-ios65p" style="min-height: 100px; padding: 1rem;">
+                                <span class="material-icons icon" style="font-size: 1.8rem; margin-bottom: 0.25rem;">add_photo_alternate</span>
+                                <p style="margin: 0; font-size: 0.85rem; text-align: center;">Ajouter captures Portrait</p>
+                                <input type="file" id="file-input-ios65p" accept="image/*" multiple style="display:none;">
+                            </div>
+                            <div id="ios65p-screenshots-grid" class="grid-previews" style="margin-top: 0.5rem; grid-template-columns: 1fr;"></div>
+                        </div>
+
+                        <!-- 6.5" Landscape -->
+                        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                            <h4 style="margin:0; font-size:0.95rem; color:var(--primary);">6.5" Paysage (2688 x 1242 px)</h4>
+                            <div class="drop-zone" id="drop-zone-ios65l" style="min-height: 100px; padding: 1rem;">
+                                <span class="material-icons icon" style="font-size: 1.8rem; margin-bottom: 0.25rem;">add_photo_alternate</span>
+                                <p style="margin: 0; font-size: 0.85rem; text-align: center;">Ajouter captures Paysage</p>
+                                <input type="file" id="file-input-ios65l" accept="image/*" multiple style="display:none;">
+                            </div>
+                            <div id="ios65l-screenshots-grid" class="grid-previews" style="margin-top: 0.5rem; grid-template-columns: 1fr;"></div>
+                        </div>
+                    </div>
+
+                    <div class="section-title" style="margin-top: 2rem;">iPhone 6.7" Screenshots (1284 x 2778 ou 2778 x 1284)</div>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 1rem 0; text-align: left; width: 100%;">Générez jusqu'à 10 captures d'écran par orientation pour les iPhone 12 Pro Max, 13 Pro Max, 14 Plus, etc.</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; width: 100%;">
+                        <!-- 6.7" Portrait -->
+                        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                            <h4 style="margin:0; font-size:0.95rem; color:var(--primary);">6.7" Portrait (1284 x 2778 px)</h4>
+                            <div class="drop-zone" id="drop-zone-ios67p" style="min-height: 100px; padding: 1rem;">
+                                <span class="material-icons icon" style="font-size: 1.8rem; margin-bottom: 0.25rem;">add_photo_alternate</span>
+                                <p style="margin: 0; font-size: 0.85rem; text-align: center;">Ajouter captures Portrait</p>
+                                <input type="file" id="file-input-ios67p" accept="image/*" multiple style="display:none;">
+                            </div>
+                            <div id="ios67p-screenshots-grid" class="grid-previews" style="margin-top: 0.5rem; grid-template-columns: 1fr;"></div>
+                        </div>
+
+                        <!-- 6.7" Landscape -->
+                        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                            <h4 style="margin:0; font-size:0.95rem; color:var(--primary);">6.7" Paysage (2778 x 1284 px)</h4>
+                            <div class="drop-zone" id="drop-zone-ios67l" style="min-height: 100px; padding: 1rem;">
+                                <span class="material-icons icon" style="font-size: 1.8rem; margin-bottom: 0.25rem;">add_photo_alternate</span>
+                                <p style="margin: 0; font-size: 0.85rem; text-align: center;">Ajouter captures Paysage</p>
+                                <input type="file" id="file-input-ios67l" accept="image/*" multiple style="display:none;">
+                            </div>
+                            <div id="ios67l-screenshots-grid" class="grid-previews" style="margin-top: 0.5rem; grid-template-columns: 1fr;"></div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -715,7 +773,8 @@
                 'pc': 'pc-tab',
                 'webos': 'webos-tab',
                 'vidaa': 'vidaa-tab',
-                'msstore': 'msstore-tab'
+                'msstore': 'msstore-tab',
+                'ios': 'ios-tab'
             };
             
             document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
@@ -951,8 +1010,8 @@
             });
 
             function processFiles(files) {
-                const remaining = 8 - count;
-                if (remaining <= 0) { alert('Maximum 8 captures atteint.'); return; }
+                const remaining = 10 - count;
+                if (remaining <= 0) { alert('Maximum 10 captures atteint.'); return; }
                 files.slice(0, remaining).forEach((file, idx) => {
                     const reader = new FileReader();
                     reader.onload = (e) => {
@@ -1032,6 +1091,10 @@
         // Init screenshot zones
         setupScreenshotZone('drop-zone-phone', 'file-input-phone', 'phone-screenshots-grid', 1920, 1080, 'screenshot_phone');
         setupScreenshotZone('drop-zone-tablet', 'file-input-tablet', 'tablet-screenshots-grid', 1920, 1080, 'screenshot_tablet');
+        setupScreenshotZone('drop-zone-ios65p', 'file-input-ios65p', 'ios65p-screenshots-grid', 1242, 2688, 'ios_6.5_portrait');
+        setupScreenshotZone('drop-zone-ios65l', 'file-input-ios65l', 'ios65l-screenshots-grid', 2688, 1242, 'ios_6.5_landscape');
+        setupScreenshotZone('drop-zone-ios67p', 'file-input-ios67p', 'ios67p-screenshots-grid', 1284, 2778, 'ios_6.7_portrait');
+        setupScreenshotZone('drop-zone-ios67l', 'file-input-ios67l', 'ios67l-screenshots-grid', 2778, 1284, 'ios_6.7_landscape');
     </script>
 </body>
 </html>
