@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldIPTV - Politique de Confidentialité</title>
+    <link rel="icon" type="image/png" href="./favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Material+Icons&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/landing.css">
+</head>
+<body>
+
+    <!-- Header / Navbar -->
+    <header class="site-header scrolled">
+        <div class="container nav-wrapper">
+            <a href="./index.html" class="logo">
+                <span class="material-icons logo-icon">shield</span>
+                <h1>Shield<span>IPTV</span></h1>
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="./index.html#features" class="focusable" tabindex="0">Fonctionnalités</a></li>
+                    <li><a href="./index.html#downloads" class="focusable" tabindex="0">Téléchargements</a></li>
+                    <li><a href="http://shieldiptvplayer.com/web/index.html#/webapp" class="btn btn-primary btn-nav focusable" tabindex="0">Lancer l'App Web</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Content Section -->
+    <main class="container cgu-section">
+        <a href="./index.html" class="cgu-back-link focusable" tabindex="0">
+            <span class="material-icons">arrow_back</span> Retour au site
+        </a>
+        
+        <article class="cgu-card glass">
+            <h2>Politique de Confidentialité</h2>
+            <p class="cgu-meta">Dernière mise à jour : 18 Juin 2026</p>
+            
+            <div class="cgu-body">
+                <h3>1. Introduction</h3>
+                <p>
+                    Chez ShieldIPTV, nous accordons une importance primordiale à la protection de votre vie privée et à la sécurité de vos données. Cette Politique de Confidentialité décrit comment nous traitons vos données dans le cadre de l'utilisation de notre lecteur de flux multimédia sur l'ensemble des plateformes prises en charge (Web, Windows PC, Android TV, LG webOS et Hisense Vidaa OS).
+                </p>
+
+                <h3>2. Collecte de données personnelles</h3>
+                <p>
+                    <strong>ShieldIPTV ne collecte, ne transmet, ne vend et ne stocke aucune donnée personnelle.</strong> 
+                </p>
+                <p>
+                    Contrairement à de nombreux services de streaming, nous n'avons aucun serveur centralisé pour suivre vos activités. Nous ne recueillons pas :
+                </p>
+                <ul>
+                    <li>Vos informations d'identification nominatives (nom, adresse e-mail, etc.).</li>
+                    <li>Votre historique de visionnage de chaînes, films ou séries.</li>
+                    <li>Des statistiques d'utilisation ou des données de télémétrie comportementale.</li>
+                </ul>
+
+                <h3>3. Stockage local des informations</h3>
+                <p>
+                    Pour fonctionner, l'application a besoin de mémoriser vos paramètres ainsi que vos informations de connexion à vos listes de lecture (URL du serveur, nom d'utilisateur, mot de passe Xtream Codes ou liens M3U).
+                </p>
+                <p>
+                    Toutes ces données sont stockées <strong>exclusivement en local sur votre appareil</strong> (via LocalStorage ou IndexedDB) de manière sécurisée. Elles ne quittent jamais votre machine et ne sont jamais transmises à nos serveurs ou à des tiers. Si vous désinstallez l'application ou effacez les données de votre navigateur, toutes ces informations seront définitivement supprimées.
+                </p>
+
+                <h3>4. Flux tiers et serveurs de streaming</h3>
+                <p>
+                    Puisque ShieldIPTV ne fournit aucun contenu, l'application se connecte directement aux serveurs du fournisseur de flux IPTV que vous avez vous-même configuré. 
+                </p>
+                <p>
+                    Lorsque vous lisez un flux, des requêtes réseau directes sont envoyées aux serveurs de votre fournisseur tiers. Ce dernier peut être en mesure de voir votre adresse IP et de collecter des journaux de connexion conformément à sa propre politique de confidentialité. Nous vous recommandons de lire la politique de confidentialité de votre fournisseur de playlist.
+                </p>
+
+                <h3>5. DNS over HTTPS (DoH)</h3>
+                <p>
+                    L'application intègre une fonctionnalité optionnelle de DNS over HTTPS (DoH) pour résoudre les noms de domaine des flux de streaming. Si vous activez cette option, vos requêtes de résolution DNS sont envoyées via une connexion sécurisée chiffrée directement vers le fournisseur DoH de votre choix (par exemple, Google DNS ou Cloudflare DNS), empêchant votre fournisseur d'accès Internet (FAI) d'intercepter ou de bloquer vos requêtes. ShieldIPTV n'intercepte pas et ne conserve pas ces résolutions DNS.
+                </p>
+
+                <h3>6. Pas de publicité ni de trackers</h3>
+                <p>
+                    ShieldIPTV ne contient aucun SDK de publicité tiers, aucun tracker publicitaire, et aucun outil d'analyse tiers (comme Google Analytics). L'interface reste totalement propre et exempte de tout script de pistage.
+                </p>
+
+                <h3>7. Modifications de la politique de confidentialité</h3>
+                <p>
+                    Nous pouvons être amenés à modifier cette Politique de Confidentialité pour refléter des changements dans nos pratiques ou pour des raisons opérationnelles, légales ou réglementaires. Toute modification sera publiée directement sur cette page avec la date de mise à jour révisée.
+                </p>
+
+                <h3>8. Contact</h3>
+                <p>
+                    Pour toute question ou demande d'assistance technique concernant le respect de votre vie privée dans l'application, vous pouvez vous référer à la documentation disponible sur notre dépôt de projet officiel.
+                </p>
+            </div>
+        </article>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2026 ShieldIPTV. Tous droits réservés.</p>
+                <p>Lecteur technique indépendant.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="./js/landing.js"></script>
+</body>
+</html>
