@@ -84,21 +84,22 @@
                     return true;
                 }
                 
-                var msgStr = String(message || '');
+                var msgStr = typeof message === 'string' ? message : (message && message.message ? message.message : String(message || ''));
+                var errStr = error && error.message ? String(error.message) : '';
                 var srcStr = String(source || '');
                 var stackStr = error && error.stack ? String(error.stack) : '';
+                var combined = (msgStr + ' ' + errStr + ' ' + srcStr + ' ' + stackStr).toLowerCase();
                 
                 // Ignore non-critical background playback / library errors during fast zapping/detaching
-                if (srcStr.indexOf('mpegts') !== -1 || 
-                    srcStr.indexOf('hls') !== -1 ||
-                    msgStr.indexOf('mpegts') !== -1 ||
-                    msgStr.indexOf('SourceBuffer') !== -1 ||
-                    msgStr.indexOf('updateend') !== -1 ||
-                    msgStr.indexOf('RemoveRanges') !== -1 ||
-                    msgStr.indexOf('play()') !== -1 ||
-                    msgStr.indexOf('AbortError') !== -1 ||
-                    stackStr.indexOf('mpegts') !== -1 ||
-                    stackStr.indexOf('SourceBuffer') !== -1) {
+                if (combined.indexOf('mpegts') !== -1 || 
+                    combined.indexOf('hls') !== -1 ||
+                    combined.indexOf('currenturl') !== -1 ||
+                    combined.indexOf('sourcebuffer') !== -1 ||
+                    combined.indexOf('updateend') !== -1 ||
+                    combined.indexOf('removeranges') !== -1 ||
+                    combined.indexOf('play()') !== -1 ||
+                    combined.indexOf('aborterror') !== -1 ||
+                    combined.indexOf('blob:') !== -1) {
                     console.warn("Ignored non-critical playback/zapping error:", message, "from", source);
                     return true;
                 }
@@ -110,10 +111,15 @@
             window.addEventListener('unhandledrejection', function(event) {
                 var reason = event.reason;
                 var message = reason && reason.message ? reason.message : String(reason);
-                var stack = reason && reason.stack ? reason.stack : '';
+                var stack = reason && reason.stack ? String(reason.stack) : '';
+                var combined = (message + ' ' + stack).toLowerCase();
                 
                 // Ignore video playback interruption errors (AbortError) common during zapping
-                if (message.indexOf('AbortError') !== -1 || message.indexOf('play()') !== -1) {
+                if (combined.indexOf('aborterror') !== -1 || 
+                    combined.indexOf('play()') !== -1 ||
+                    combined.indexOf('mpegts') !== -1 ||
+                    combined.indexOf('hls') !== -1 ||
+                    combined.indexOf('currenturl') !== -1) {
                     console.warn("Ignored video playback promise interruption:", message);
                     return;
                 }
@@ -123,7 +129,6 @@
             // Capture resource loading errors (like script 404s) which do not bubble
             window.addEventListener('error', function(event) {
                 var target = event.target;
-                if (target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK')) {
                     var url = target.src || target.href;
                     showError('Failed to load resource: ' + url, 'Network', 0, 0);
                 }

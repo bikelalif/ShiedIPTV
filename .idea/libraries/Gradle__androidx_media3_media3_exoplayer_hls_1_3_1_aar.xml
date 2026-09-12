@@ -1,0 +1,15 @@
+<component name="libraryTable">
+  <library name="Gradle: androidx.media3:media3-exoplayer-hls:1.3.1@aar" external-system-id="GRADLE">
+    <ANNOTATIONS>
+      <root url="jar://$USER_HOME$/.gradle/caches/9.1.0/transforms/a5654dd16322876922eb2b00d76209d4/workspace/transformed/media3-exoplayer-hls-1.3.1/annotations.zip!/" />
+    </ANNOTATIONS>
+    <CLASSES>
+      <root url="file://$USER_HOME$/.gradle/caches/9.1.0/transforms/a5654dd16322876922eb2b00d76209d4/workspace/transformed/media3-exoplayer-hls-1.3.1/AndroidManifest.xml" />
+      <root url="jar://$USER_HOME$/.gradle/caches/9.1.0/transforms/a5654dd16322876922eb2b00d76209d4/workspace/transformed/media3-exoplayer-hls-1.3.1/jars/classes.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/androidx.media3/media3-exoplayer-hls/1.3.1/488950f57399f2044f4bf721165e56d5318bc90d/media3-exoplayer-hls-1.3.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

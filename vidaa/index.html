@@ -2,15 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>ShieldIPTV</title>
     <script>
         (function() {
-            // Disable pinch-to-zoom gestures on iOS WKWebView
-            document.addEventListener('gesturestart', function(e) {
-                e.preventDefault();
-            });
-
             function showError(message, source, lineno, colno, error) {
                 var overlay = document.getElementById('debug-error-overlay');
                 if (!overlay) {
@@ -89,21 +84,22 @@
                     return true;
                 }
                 
-                var msgStr = String(message || '');
+                var msgStr = typeof message === 'string' ? message : (message && message.message ? message.message : String(message || ''));
+                var errStr = error && error.message ? String(error.message) : '';
                 var srcStr = String(source || '');
                 var stackStr = error && error.stack ? String(error.stack) : '';
+                var combined = (msgStr + ' ' + errStr + ' ' + srcStr + ' ' + stackStr).toLowerCase();
                 
                 // Ignore non-critical background playback / library errors during fast zapping/detaching
-                if (srcStr.indexOf('mpegts') !== -1 || 
-                    srcStr.indexOf('hls') !== -1 ||
-                    msgStr.indexOf('mpegts') !== -1 ||
-                    msgStr.indexOf('SourceBuffer') !== -1 ||
-                    msgStr.indexOf('updateend') !== -1 ||
-                    msgStr.indexOf('RemoveRanges') !== -1 ||
-                    msgStr.indexOf('play()') !== -1 ||
-                    msgStr.indexOf('AbortError') !== -1 ||
-                    stackStr.indexOf('mpegts') !== -1 ||
-                    stackStr.indexOf('SourceBuffer') !== -1) {
+                if (combined.indexOf('mpegts') !== -1 || 
+                    combined.indexOf('hls') !== -1 ||
+                    combined.indexOf('currenturl') !== -1 ||
+                    combined.indexOf('sourcebuffer') !== -1 ||
+                    combined.indexOf('updateend') !== -1 ||
+                    combined.indexOf('removeranges') !== -1 ||
+                    combined.indexOf('play()') !== -1 ||
+                    combined.indexOf('aborterror') !== -1 ||
+                    combined.indexOf('blob:') !== -1) {
                     console.warn("Ignored non-critical playback/zapping error:", message, "from", source);
                     return true;
                 }
@@ -115,10 +111,15 @@
             window.addEventListener('unhandledrejection', function(event) {
                 var reason = event.reason;
                 var message = reason && reason.message ? reason.message : String(reason);
-                var stack = reason && reason.stack ? reason.stack : '';
+                var stack = reason && reason.stack ? String(reason.stack) : '';
+                var combined = (message + ' ' + stack).toLowerCase();
                 
                 // Ignore video playback interruption errors (AbortError) common during zapping
-                if (message.indexOf('AbortError') !== -1 || message.indexOf('play()') !== -1) {
+                if (combined.indexOf('aborterror') !== -1 || 
+                    combined.indexOf('play()') !== -1 ||
+                    combined.indexOf('mpegts') !== -1 ||
+                    combined.indexOf('hls') !== -1 ||
+                    combined.indexOf('currenturl') !== -1) {
                     console.warn("Ignored video playback promise interruption:", message);
                     return;
                 }
@@ -128,7 +129,6 @@
             // Capture resource loading errors (like script 404s) which do not bubble
             window.addEventListener('error', function(event) {
                 var target = event.target;
-                if (target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK')) {
                     var url = target.src || target.href;
                     showError('Failed to load resource: ' + url, 'Network', 0, 0);
                 }
@@ -138,7 +138,7 @@
     <link rel="icon" type="image/png" href="assets/icon.png">
     <!-- Google Fonts: Outfit & Material Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Material+Icons&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=1.1.0">
+    <link rel="stylesheet" href="css/style.css?v=1.0.9.8">
     <!-- Local mpegts.js for live TS stream decoding in browser -->
     <script src="libs/mpegts.min.js"></script>
     <!-- Local hls.js for live HLS stream decoding in browser -->
@@ -176,10 +176,15 @@
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; margin-bottom: 0.75rem;">
                     <h2 id="cgu-modal-title" style="margin: 0; font-size: 1.4rem; text-align: left;">Legal Disclaimer &amp; Conditions</h2>
-                    <button id="btn-cgu-lang" class="focusable btn-secondary" style="padding: 0.45rem 0.9rem; width: auto; font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); color: white; cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.45rem 0.75rem; color: white;">
                         <span class="material-icons" style="font-size: 1.15rem; color: var(--primary);">language</span>
-                        <span id="cgu-lang-text">English</span>
-                    </button>
+                        <select id="btn-cgu-lang" class="focusable" style="background: transparent; border: none; color: white; font-size: 0.85rem; font-family: inherit; cursor: pointer; outline: none; padding: 0;">
+                            <option value="fr" style="background: #111; color: white;">Français</option>
+                            <option value="en" style="background: #111; color: white;">English</option>
+                            <option value="es" style="background: #111; color: white;">Español</option>
+                            <option value="it" style="background: #111; color: white;">Italiano</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="cgu-content focusable" tabindex="0">
                     <p><strong>ShieldIPTV Player</strong> is a generic video media player. The application is provided without any content or media streams.</p>
@@ -304,7 +309,7 @@
                     <div class="login-doh-wrapper">
                         <label for="login-doh-toggle" class="focusable doh-checkbox-label" tabindex="0" id="login-doh-label" style="width: 100%; display: flex; align-items: center; padding: 0.5rem 0.75rem; border-radius: 10px; border: 1px solid transparent; cursor: pointer;">
                             <input type="checkbox" id="login-doh-toggle" style="width: 18px; height: 18px; margin: 0; pointer-events: none; accent-color: var(--primary);">
-                            <span style="margin-left: 0.75rem;">Contournement FAI (Bypass DNS & IP)</span>
+                            <span style="margin-left: 0.75rem;">Enable DNS Bypass (DoH)</span>
                         </label>
                     </div>
                     
@@ -444,13 +449,14 @@
                             <h3 id="settings-bypass-title">Contournement FAI / Blocage</h3>
                             <p class="settings-desc" id="settings-bypass-desc">Permet de contourner les blocages DNS et d'IP imposés par les fournisseurs d'accès Internet.</p>
                             <div class="input-group">
-                                 <label id="settings-bypass-mode-label">Mode de Contournement</label>
-                                 <button id="setting-bypass-mode-btn" class="focusable settings-btn-value" style="width: 100%; text-align: left; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: var(--text-color); cursor: pointer; font-weight: 500; display: flex; justify-content: space-between; align-items: center;">
-                                     <span id="setting-bypass-mode-text">Tunneling Proxy (Bypass DNS & IP)</span>
-                                     <span class="material-icons" style="font-size: 1.2rem; color: var(--text-muted);">sync</span>
-                                 </button>
-                             </div>
-                            <div class="input-group" id="setting-doh-resolver-group">
+                                <label for="setting-bypass-mode" id="settings-bypass-mode-label">Mode de Contournement</label>
+                                <select id="setting-bypass-mode" class="focusable">
+                                    <option value="none" id="bypass-mode-option-none">Désactivé (Direct)</option>
+                                    <option value="doh" id="bypass-mode-option-doh">DoH (Bypass DNS)</option>
+                                    <option value="proxy" id="bypass-mode-option-proxy">Tunneling Proxy (Bypass DNS & IP)</option>
+                                </select>
+                            </div>
+                            <div class="input-group" id="setting-doh-resolver-group" style="display: none;">
                                 <label for="setting-doh-url" id="settings-doh-resolver-label">Résolveur DoH</label>
                                 <select id="setting-doh-url" class="focusable">
                                     <option value="https://dns.google/resolve">Google DNS (Recommandé)</option>
@@ -480,9 +486,8 @@
                                 <label for="setting-player-live" id="settings-player-live-label">Direct (Live TV)</label>
                                 <select id="setting-player-live" class="focusable">
                                     <option value="html5">Lecteur par défaut (HTML5)</option>
-                                    <option value="exoplayer">ExoPlayer (Natif Android)</option>
+                                    <option value="exoplayer">ExoPlayer (Pur / Plein Écran Direct)</option>
                                     <option value="exoplayer_preview">ExoPlayer (Avec Prévisualisation)</option>
-                                    <option value="vlc">VLC Player (Externe / Recommandé pour iOS)</option>
                                 </select>
                             </div>
                             <div class="input-group">
@@ -495,17 +500,13 @@
                             <div class="input-group">
                                 <label for="setting-player-movies" id="settings-player-movies-label">Films (Movies)</label>
                                 <select id="setting-player-movies" class="focusable">
-                                    <option value="html5">Lecteur par défaut (HTML5)</option>
                                     <option value="exoplayer">ExoPlayer (Natif Android)</option>
-                                    <option value="vlc">VLC Player (Externe / Recommandé pour MKV/4K/Dolby)</option>
                                 </select>
                             </div>
                             <div class="input-group">
                                 <label for="setting-player-series" id="settings-player-series-label">Séries (Series)</label>
                                 <select id="setting-player-series" class="focusable">
-                                    <option value="html5">Lecteur par défaut (HTML5)</option>
                                     <option value="exoplayer">ExoPlayer (Natif Android)</option>
-                                    <option value="vlc">VLC Player (Externe / Recommandé pour MKV/4K/Dolby)</option>
                                 </select>
                             </div>
                         </div>
@@ -549,6 +550,10 @@
                                 </div>
                             </div>
                         </div>
+                        <button id="btn-update-playlist" class="focusable btn-primary" style="margin-top: 1.5rem; margin-bottom: 0.75rem; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; background: rgba(59, 130, 246, 0.25); border: 1px solid var(--primary); text-shadow: 0 0 10px rgba(59, 130, 246, 0.4);">
+                            <span class="material-icons">refresh</span>
+                            <span id="settings-update-playlist-label">Mettre à jour la playlist</span>
+                        </button>
                         <button id="btn-logout" class="focusable btn-danger">
                             <span class="material-icons">logout</span>
                             <span>Logout</span>
@@ -869,13 +874,13 @@
     </div>
 
     <!-- JS Logic - Sequential Standard Script Imports (shares global window scope, fully compatible with file:// WebView protocols) -->
-    <script src="js/state.js?v=1.1.1"></script>
-    <script src="js/utils.js?v=1.1.1"></script>
-    <script src="js/player.js?v=1.1.1"></script>
-    <script src="js/navigation.js?v=1.1.1"></script>
-    <script src="js/playlist.js?v=1.1.1"></script>
-    <script src="js/content.js?v=1.1.1"></script>
-    <script src="js/diagnostics.js?v=1.1.1"></script>
-    <script src="js/main.js?v=1.1.1"></script>
+    <script src="js/state.js?v=1.0.9.8"></script>
+    <script src="js/utils.js?v=1.0.9.8"></script>
+    <script src="js/player.js?v=1.0.9.9"></script>
+    <script src="js/navigation.js?v=1.0.9.8"></script>
+    <script src="js/playlist.js?v=1.0.9.8"></script>
+    <script src="js/content.js?v=1.0.9.8"></script>
+    <script src="js/diagnostics.js?v=1.0.9.8"></script>
+    <script src="js/main.js?v=1.0.9.8"></script>
 </body>
 </html>

@@ -2,11 +2,28 @@
    SHIELDIPTV UTILITIES & PARSERS
    ========================================================================== */
 
-// DNS-over-HTTPS (DoH) Resolver
+/// DNS-over-HTTPS (DoH) & Proxy Tunneling Resolver
 async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
+    if (!state.bypassMode) state.bypassMode = state.isDohEnabled ? 'proxy' : 'none';
+    
     if (state.bypassMode === 'none') return url;
-    // If the DoH resolver already proved unreachable this session, skip it entirely
-    // so we don't pay the timeout again on every subsequent request.
+    
+    const isVideoStream = isLiveStream || 
+                          (url && (url.includes("/live/") || 
+                                   url.includes("/movie/") || 
+                                   url.includes("/series/") || 
+                                   /\.(ts|mp4|mkv|m3u8|avi|mov)$/i.test(url.split('?')[0])));
+    
+    // 1. Proxy Tunneling: route API/data requests through custom worker proxy, but resolve streams via DoH
+    if (state.bypassMode === 'proxy' && !isVideoStream) {
+        if (url && url.startsWith("http")) {
+            console.log(`[Tunneling] Proxying API/data via custom worker: ${url}`);
+            return `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
+        }
+        return url;
+    }
+    
+    // 2. DNS-over-HTTPS (DoH): resolve domain name to IP to bypass ISP DNS hijacking directly
     if (state.dohUnavailable) return url;
 
     try {
@@ -40,10 +57,7 @@ async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
                 dnsData = await dohResponse.json();
             } catch (dohErr) {
                 clearTimeout(dohTimeout);
-                // Resolver is blocked/slow — disable DoH for the rest of the session to avoid
-                // repeating this delay on every request.
-                state.dohUnavailable = true;
-                console.warn(`[DoH] Resolver ${state.dohResolver} unreachable or timed out. Disabling DoH for this session.`, dohErr);
+                console.warn(`[DoH] Resolver ${state.dohResolver} unreachable.`, dohErr);
                 return url;
             }
             
@@ -61,12 +75,10 @@ async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
             const serverHostname = state.serverUrl ? new URL(state.serverUrl).hostname : "";
             const isIptvServer = (hostname === serverHostname);
             
-            // Only substitute IP if:
-            // 1. It is a live stream (which we always want to bypass DNS for)
-            // 2. OR it is an image hosted on our IPTV server (to bypass ISP block on server domain)
-            if (isLiveStream || isIptvServer) {
+            // Substitute hostname with resolved IP to bypass DNS block
+            if (isLiveStream || isIptvServer || isVideoStream) {
                 parsedUrl.hostname = ip;
-                console.log(`[DoH] Resolved & Substituted IP: ${hostname} -> ${ip}`);
+                console.log(`[DoH/Bypass] Resolved & Substituted IP: ${hostname} -> ${ip}`);
                 return parsedUrl.toString();
             }
         }
@@ -79,7 +91,21 @@ async function resolveUrlWithDoH(url, isLiveStream = false, isImage = false) {
 
 // Synchronous DNS bypass for logo image elements using pre-resolved cache
 function resolveUrlWithDoHSync(url) {
-    if (state.bypassMode === 'none') return url;
+    if (!state.bypassMode) state.bypassMode = state.isDohEnabled ? 'proxy' : 'none';
+    if (state.bypassMode === 'none' || !url) return url;
+    
+    const isVideoStream = url.includes("/live/") || 
+                          url.includes("/movie/") || 
+                          url.includes("/series/") || 
+                          /\.(ts|mp4|mkv|m3u8|avi|mov)$/i.test(url.split('?')[0]);
+                          
+    if (state.bypassMode === 'proxy' && !isVideoStream) {
+        if (url.startsWith("http")) {
+            return `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
+        }
+        return url;
+    }
+    
     try {
         const parsedUrl = new URL(url);
         const hostname = parsedUrl.hostname;
@@ -91,7 +117,7 @@ function resolveUrlWithDoHSync(url) {
             const ip = state.dohCache[hostname];
             const serverHostname = state.serverUrl ? new URL(state.serverUrl).hostname : "";
             const isIptvServer = (hostname === serverHostname);
-            if (isIptvServer) {
+            if (isIptvServer || isVideoStream) {
                 parsedUrl.hostname = ip;
                 return parsedUrl.toString();
             }
@@ -157,7 +183,11 @@ function loadImageWithFallback(imgElement, originalUrl, defaultPoster) {
 }
 // Proxy retry helper using custom Cloudflare Worker first, then public corsproxy.io as fallback
 async function fetchWithProxy(url, tryFetch, originalError) {
-    if (state.bypassMode === 'proxy' && url.startsWith("http")) {
+    const isWebapp = document.body.classList.contains("is-webapp");
+    if (!state.bypassMode) state.bypassMode = state.isDohEnabled ? 'proxy' : 'none';
+    const isProxyEnabled = (state.bypassMode === 'proxy');
+    
+    if ((isWebapp || isProxyEnabled) && url.startsWith("http")) {
         console.log(`[CORS Proxy] Retrying fetch via custom worker for: ${url}`);
         const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
         try {
@@ -165,13 +195,14 @@ async function fetchWithProxy(url, tryFetch, originalError) {
             if (res.ok) return res;
             throw new Error(`Custom worker returned non-ok status: ${res.status}`);
         } catch (proxyError) {
-            console.warn(`[CORS Proxy] Custom worker failed. Retrying with public corsproxy.io...`, proxyError);
-            const publicProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+            console.warn("[CORS Proxy] Custom worker failed, trying public corsproxy.io:", proxyError);
+            const secondaryProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
             try {
-                const res = await tryFetch(publicProxyUrl);
+                const res = await tryFetch(secondaryProxyUrl);
                 if (res.ok) return res;
                 throw new Error(`Public proxy returned non-ok status: ${res.status}`);
-            } catch (workerError) {
+            } catch (secError) {
+                console.error("[CORS Proxy] Public proxy also failed:", secError);
                 throw originalError;
             }
         }
@@ -182,45 +213,8 @@ async function fetchWithProxy(url, tryFetch, originalError) {
 // Generic fetch handler with DNS-over-HTTPS (DoH) resolution and fallback to original URL on failure
 async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
     const isWebapp = document.body.classList.contains("is-webapp");
-    if (isWebapp && url.startsWith("http")) {
-        const tryFetchProxy = async (proxyUrl) => {
-            const controller = new AbortController();
-            const signal = options.signal || controller.signal;
-            let timeoutId;
-            if (!options.signal) {
-                timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-            }
-            try {
-                const fetchOptions = { ...options, signal };
-                const response = await fetch(proxyUrl, fetchOptions);
-                if (timeoutId) clearTimeout(timeoutId);
-                return response;
-            } catch (err) {
-                if (timeoutId) clearTimeout(timeoutId);
-                throw err;
-            }
-        };
-
-        console.log(`[CORS Proxy] Webapp mode: direct proxy fetch via custom worker for: ${url}`);
-        const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
-        try {
-            const response = await tryFetchProxy(proxyUrl);
-            if (response.ok || response.status === 401 || response.status === 403) {
-                return response;
-            }
-            throw new Error(`Custom worker returned non-ok status: ${response.status}`);
-        } catch (proxyError) {
-            console.warn(`[CORS Proxy] Custom worker failed. Retrying with public corsproxy.io...`, proxyError);
-            const publicProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-            try {
-                return await tryFetchProxy(publicProxyUrl);
-            } catch (workerError) {
-                throw workerError;
-            }
-        }
-    }
-
-    const resolvedUrl = await resolveUrlWithDoH(url);
+    if (!state.bypassMode) state.bypassMode = state.isDohEnabled ? 'proxy' : 'none';
+    const isProxyEnabled = (state.bypassMode === 'proxy');
     
     const tryFetch = async (targetUrl) => {
         const controller = new AbortController();
@@ -241,6 +235,54 @@ async function fetchWithFallback(url, options = {}, timeoutMs = 20000) {
             throw err;
         }
     };
+
+    // If tunneling proxy mode is enabled, route via proxy first!
+    if (isProxyEnabled && url.startsWith("http")) {
+        console.log(`[Tunneling] Trying proxy fetch for: ${url}`);
+        const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
+        try {
+            const response = await tryFetch(proxyUrl);
+            if (response.ok || response.status === 401 || response.status === 403) {
+                return response;
+            }
+            throw new Error(`Custom worker returned non-ok status: ${response.status}`);
+        } catch (proxyError) {
+            console.warn(`[Tunneling] Custom proxy failed. Trying public corsproxy.io...`, proxyError);
+            const publicProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+            try {
+                const response = await tryFetch(publicProxyUrl);
+                if (response.ok || response.status === 401 || response.status === 403) {
+                    return response;
+                }
+                throw new Error(`Public proxy returned non-ok status: ${response.status}`);
+            } catch (workerError) {
+                console.warn(`[Tunneling] Proxies failed. Trying direct/DoH fallback...`);
+            }
+        }
+    }
+    
+    // For Webapp, direct fetch is proxied by default
+    if (isWebapp && url.startsWith("http")) {
+        console.log(`[CORS Proxy] Webapp mode: direct proxy fetch via custom worker for: ${url}`);
+        const proxyUrl = `https://shieldiptv-proxy.bilalkefif243.workers.dev/?url=${encodeURIComponent(url)}`;
+        try {
+            const response = await tryFetch(proxyUrl);
+            if (response.ok || response.status === 401 || response.status === 403) {
+                return response;
+            }
+            throw new Error(`Custom worker returned non-ok status: ${response.status}`);
+        } catch (proxyError) {
+            console.warn(`[CORS Proxy] Custom worker failed. Retrying with public corsproxy.io...`, proxyError);
+            const publicProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+            try {
+                return await tryFetch(publicProxyUrl);
+            } catch (workerError) {
+                throw workerError;
+            }
+        }
+    }
+
+    const resolvedUrl = await resolveUrlWithDoH(url);
     
     try {
         return await tryFetch(resolvedUrl);

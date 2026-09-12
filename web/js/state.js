@@ -230,7 +230,7 @@ const state = {
     // Video player selection settings (ExoPlayer vs HTML5 default)
     playerSettings: {
         live: (window.AndroidApp || (typeof navigator !== 'undefined' && /Android|GoogleTV|AndroidTV|FireTV/i.test(navigator.userAgent))) ? 'exoplayer_preview' : 'html5',
-        liveFormat: 'ts',
+        liveFormat: (window.AndroidApp || (typeof navigator !== 'undefined' && /Android|GoogleTV|AndroidTV|FireTV/i.test(navigator.userAgent))) ? 'ts' : 'm3u8',
         movies: (window.AndroidApp || (typeof navigator !== 'undefined' && /Android|GoogleTV|AndroidTV|FireTV/i.test(navigator.userAgent))) ? 'exoplayer' : ((window.electronAPI && window.electronAPI.isElectron) ? 'mpv' : 'html5'),
         series: (window.AndroidApp || (typeof navigator !== 'undefined' && /Android|GoogleTV|AndroidTV|FireTV/i.test(navigator.userAgent))) ? 'exoplayer' : ((window.electronAPI && window.electronAPI.isElectron) ? 'mpv' : 'html5')
     },

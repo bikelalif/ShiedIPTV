@@ -85,7 +85,7 @@ function initApp() {
                 if (settings.playerSettings) {
                     state.playerSettings = {
                         live: settings.playerSettings.live || (isAndroid ? 'exoplayer_preview' : 'html5'),
-                        liveFormat: settings.playerSettings.liveFormat || 'ts',
+                        liveFormat: settings.playerSettings.liveFormat || (isAndroid ? 'ts' : 'm3u8'),
                         movies: settings.playerSettings.movies || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5')),
                         series: settings.playerSettings.series || (isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'))
                     };
@@ -105,7 +105,7 @@ function initApp() {
                 } else {
                     state.playerSettings = {
                         live: isAndroid ? 'exoplayer_preview' : 'html5',
-                        liveFormat: 'ts',
+                        liveFormat: isAndroid ? 'ts' : 'm3u8',
                         movies: isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5'),
                         series: isElectron ? 'mpv' : (isAndroid ? 'exoplayer' : 'html5')
                     };

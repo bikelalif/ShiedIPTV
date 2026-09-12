@@ -29,7 +29,25 @@ function resourcesDir() {
     return app.isPackaged ? process.resourcesPath : path.join(__dirname, 'resources');
 }
 function getMpvPath() {
-    return path.join(resourcesDir(), 'mpv', 'mpv.exe');
+    const bundled = path.join(resourcesDir(), 'mpv', 'mpv.exe');
+    if (fs.existsSync(bundled)) {
+        return bundled;
+    }
+    const paths = [
+        'C:\\Program Files\\MPV Player\\mpv.exe',
+        'C:\\tools\\mpv\\mpv.exe',
+        'C:\\mpv\\mpv.exe',
+        'C:\\Program Files\\mpv\\mpv.exe',
+        'C:\\Program Files (x86)\\mpv\\mpv.exe',
+        path.join(app.getPath('home'), 'scoop', 'shims', 'mpv.exe'),
+        path.join(app.getPath('home'), 'AppData', 'Local', 'Programs', 'mpv', 'mpv.exe')
+    ];
+    for (const p of paths) {
+        if (fs.existsSync(p)) {
+            return p;
+        }
+    }
+    return 'mpv';
 }
 function getBundledVlcPath() {
     return path.join(resourcesDir(), 'vlc', 'vlc.exe');
@@ -261,7 +279,8 @@ function spawnVlc(vlcPath, args) {
 // ---------------------------------------------------------------------------
 
 function buildMpvArgs(url) {
-    return [
+    const isLive = url.includes('/live/');
+    const args = [
         url,
         '--no-config',
         '--force-window=yes',
@@ -271,16 +290,25 @@ function buildMpvArgs(url) {
         '--input-vo-keyboard=yes',
         '--hwdec=auto-safe',
         '--keep-open=no',
-        '--cache=yes',
         '--network-timeout=20',
         '--user-agent=ShieldIPTV',
         '--title=Shield IPTV - Lecteur Externe'
     ];
+    if (isLive) {
+        args.push(
+            '--profile=low-latency',
+            '--cache=no',
+            '--demuxer-lavf-o=reconnect=1,reconnected_stream=1'
+        );
+    } else {
+        args.push('--cache=yes');
+    }
+    return args;
 }
 
 function spawnMpv(url) {
     const mpvPath = getMpvPath();
-    if (!fs.existsSync(mpvPath)) {
+    if (mpvPath !== 'mpv' && !fs.existsSync(mpvPath)) {
         console.error('[Native] mpv.exe not found at', mpvPath);
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('native-error', 'mpv-missing');
@@ -288,7 +316,8 @@ function spawnMpv(url) {
         return null;
     }
     console.log('[Native] Spawning mpv:', url);
-    const child = spawn(mpvPath, buildMpvArgs(url), { windowsHide: false });
+    const useShell = (mpvPath === 'mpv');
+    const child = spawn(mpvPath, buildMpvArgs(url), { windowsHide: false, shell: useShell });
     child.on('error', (err) => console.error('[Native] mpv spawn error:', err));
     if (child.stderr) child.stderr.on('data', d => console.error(`[mpv] ${d.toString().trim()}`));
     return child;

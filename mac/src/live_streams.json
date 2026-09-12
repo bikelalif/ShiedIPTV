@@ -1,0 +1,30 @@
+[
+    {
+        "num": 1,
+        "name": "France 24 Français",
+        "stream_type": "live",
+        "stream_id": 1001,
+        "stream_icon": "https://upload.wikimedia.org/wikipedia/commons/a/a2/France_24_logo.svg",
+        "epg_channel_id": "France24.fr",
+        "added": "1620000000",
+        "category_id": "1",
+        "custom_sid": "",
+        "tv_archive": 0,
+        "direct_source": "",
+        "tv_archive_duration": 0
+    },
+    {
+        "num": 2,
+        "name": "Red Bull TV Live",
+        "stream_type": "live",
+        "stream_id": 1002,
+        "stream_icon": "https://upload.wikimedia.org/wikipedia/commons/c/c5/Red_Bull_logo.svg",
+        "epg_channel_id": "RedBull.tv",
+        "added": "1620000000",
+        "category_id": "2",
+        "custom_sid": "",
+        "tv_archive": 0,
+        "direct_source": "",
+        "tv_archive_duration": 0
+    }
+]

@@ -262,16 +262,31 @@ function handlePlaybackFallback(originalUrl, onFailCallback) {
                 state.lastAttemptedStreamUrl = resolvedUrl;
                 startPlayback(resolvedUrl, true);
             } else {
-                console.log("[Player] DoH resolution did not yield a different URL.");
-                if (typeof onFailCallback === 'function') onFailCallback();
+                tryProxyFallback(originalUrl, onFailCallback);
             }
         }).catch(err => {
             console.error("[Player] DoH resolution failed during fallback:", err);
-            if (typeof onFailCallback === 'function') onFailCallback();
+            tryProxyFallback(originalUrl, onFailCallback);
         });
+    } else if (state.lastAttemptedStreamUrl && !state.lastAttemptedStreamUrl.includes("workers.dev") && !state.lastAttemptedStreamUrl.includes("corsproxy.io") && !state.lastAttemptedStreamUrl.includes("allorigins.win")) {
+        console.warn("[Player] Stream failed with IP URL. Retrying with CORS Proxy fallback...");
+        tryProxyFallback(originalUrl, onFailCallback);
     } else {
         if (typeof onFailCallback === 'function') onFailCallback();
     }
+}
+
+function tryProxyFallback(originalUrl, onFailCallback) {
+    const fallbackSourceUrl = state.originalStreamUrl || originalUrl;
+    if (!fallbackSourceUrl || !fallbackSourceUrl.startsWith("http") || fallbackSourceUrl.includes("corsproxy.io")) {
+        if (typeof onFailCallback === 'function') onFailCallback();
+        return;
+    }
+    
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(fallbackSourceUrl)}`;
+    console.log("[Player] Trying CORS proxy stream fallback:", proxyUrl);
+    state.lastAttemptedStreamUrl = proxyUrl;
+    startPlayback(proxyUrl, true);
 }
 
 async function fetchAndRewritePlaylist(playlistUrl) {
@@ -329,13 +344,24 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
     const isLive = state.currentPlayingStream && state.currentPlayingStream.section === 'live';
     const isTsStream = (resolvedStreamUrl.includes('.ts') || resolvedStreamUrl.includes('/live/')) && !resolvedStreamUrl.includes('.m3u8');
     
+    // Automatically route HTTP video streams through CORS proxy on HTTPS web deployments to prevent Mixed Content blocking.
+    let finalPlayUrl = resolvedStreamUrl;
+    const isHttpsPage = window.location.protocol === 'https:';
+    const isHttpStream = resolvedStreamUrl.startsWith('http://');
+    const isWebVersion = !window.AndroidApp && !window.electronAPI && !window.cordova && !isTvWrapper;
+    
+    if (isWebVersion && isHttpsPage && isHttpStream && !resolvedStreamUrl.includes('corsproxy.io')) {
+        console.log("[Player] HTTPS client trying to load HTTP stream. Proxying via corsproxy.io:", resolvedStreamUrl);
+        finalPlayUrl = `https://corsproxy.io/?${encodeURIComponent(resolvedStreamUrl)}`;
+    }
+    
     if (isTsStream && typeof mpegts !== 'undefined' && mpegts.getFeatureList().mseLivePlayback) {
-        console.log("[Player] Initializing mpegts.js decoder for stream:", resolvedStreamUrl);
+        console.log("[Player] Initializing mpegts.js decoder for stream:", finalPlayUrl);
         try {
             state.mpegtsPlayer = mpegts.createPlayer({
                 type: 'mpegts',
                 isLive: isLive,
-                url: resolvedStreamUrl
+                url: finalPlayUrl
             }, {
                 enableWorker: true,
                 lazyLoad: !isLive,
@@ -380,13 +406,14 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
             });
         } catch (err) {
             console.error("mpegts.js setup crashed, falling back to native player:", err);
-            video.src = resolvedStreamUrl;
+            video.src = finalPlayUrl;
             video.play().catch(err => {});
         }
     } else if (resolvedStreamUrl.includes('.m3u8')) {
-        let playUrl = resolvedStreamUrl;
+        let playUrl = finalPlayUrl;
         if (state.isDohEnabled) {
             try {
+                // If rewriting HLS playlist, resolve the manifest source first
                 playUrl = await fetchAndRewritePlaylist(resolvedStreamUrl);
                 state.currentHlsBlobUrl = playUrl;
             } catch (err) {
@@ -397,7 +424,7 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
                     return;
                 }
                 console.warn("[Player] HLS playlist rewrite failed, falling back to original resolved URL:", err);
-                playUrl = resolvedStreamUrl;
+                playUrl = finalPlayUrl;
             }
         }
         
@@ -446,7 +473,7 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
                                 break;
                             default:
                                 destroyMpegtsPlayer();
-                                video.src = resolvedStreamUrl;
+                                video.src = finalPlayUrl;
                                 video.play().catch(e => {
                                     video.muted = true;
                                     video.play().catch(err => {});
@@ -467,8 +494,8 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
             });
         }
     } else {
-        console.log("[Player] Launching native HTML5 source:", resolvedStreamUrl);
-        video.src = resolvedStreamUrl;
+        console.log("[Player] Launching native HTML5 source:", finalPlayUrl);
+        video.src = finalPlayUrl;
         video.load();
         video.play().catch(e => {
             console.warn("Native Autoplay failed, trying muted...", e);
@@ -480,6 +507,7 @@ async function startPlayback(resolvedStreamUrl, isFallback = false) {
 
 function launchVideoPlayer(url, title, logoUrl) {
     const preservedStream = state.currentPlayingStream;
+    state.originalStreamUrl = url;
     state.currentPlayingStreamUrl = url;
     destroyPreviewMpegtsPlayer();
     state.currentPlayingStream = preservedStream;
